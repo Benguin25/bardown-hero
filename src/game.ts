@@ -1,5 +1,7 @@
 // Rink coordinates: x across the ice, z toward the camera. Attack toward -z.
-export type Point = { x: number; z: number; height?: number };
+export type Point = { x: number; z: number; height?: number; bounce?: boolean };
+export const BOARD_X = 10.75;
+export const BOARD_Z = 22.5;
 export type Phase = 'AUTO_PLAY' | 'PAUSED_FOR_INPUT' | 'EXECUTING_ACTION' | 'REBOUND' | 'SUCCESS' | 'FAIL';
 export type Intent = { kind: 'pass'; target: number } | { kind: 'shot' } | { kind: 'loose' };
 export const NET_Z = -18;
@@ -136,6 +138,42 @@ export function cleanPath(raw: Point[], end?: Point): Point[] {
   return smooth;
 }
 
+// Fold a drawn path through mirrored copies of the rink. Split at every wall
+// before folding, so a sparse swipe still has exact, sharp reflection points.
+export function bankPath(raw: Point[]): Point[] {
+  if (!raw.length || raw.some(p => !Number.isFinite(p.x) || !Number.isFinite(p.z))) return [];
+  const fold = (v: number, half: number) => {
+    const span = half * 2, phase = ((v + half) % (span * 2) + span * 2) % (span * 2);
+    return phase <= span ? phase - half : span * 2 - phase - half;
+  };
+  const point = (p: Point): Point => ({ ...p, x: fold(p.x, BOARD_X), z: fold(p.z, BOARD_Z) });
+  const result = [point(raw[0])];
+  for (let i = 1; i < raw.length; i++) {
+    const a = raw[i - 1], b = raw[i], cuts = [1];
+    for (const [axis, half] of [['x', BOARD_X], ['z', BOARD_Z]] as const) {
+      const delta = b[axis] - a[axis];
+      if (Math.abs(delta) < 1e-9) continue;
+      const low = Math.min(a[axis], b[axis]), high = Math.max(a[axis], b[axis]);
+      const first = Math.ceil((low - half) / (half * 2)), last = Math.floor((high - half) / (half * 2));
+      if (last - first > 512) return [];
+      for (let k = first; k <= last; k++) {
+        const t = (half + k * half * 2 - a[axis]) / delta;
+        if (t > 1e-8 && t < 1 - 1e-8) cuts.push(t);
+      }
+    }
+    cuts.sort((a, b) => a - b);
+    for (let j = 0; j < cuts.length; j++) {
+      if (j && Math.abs(cuts[j] - cuts[j - 1]) < 1e-8) continue;
+      const p = point(mix(a, b, cuts[j]));
+      if (Math.abs(Math.abs(p.x) - BOARD_X) < 1e-7 || Math.abs(Math.abs(p.z) - BOARD_Z) < 1e-7) p.bounce = true;
+      result.push(p);
+      // Same fixed budget as the rendered preview; never execute invisible tails.
+      if (result.length > 512) return [];
+    }
+  }
+  return result;
+}
+
 export class Game {
   readonly levelIndex: number;
   constructor(levelIndex = 0) {
@@ -155,6 +193,8 @@ export class Game {
   get coveredCorner() { return GOAL_CORNERS[(this.levelIndex + this.stage + (this.reboundUsed ? 2 : 0)) % GOAL_CORNERS.length]; }
   cornerCovered(p: Point) { return this.goalieCovers(p); }
   phase: Phase = 'AUTO_PLAY';
+  introRemaining = 0;
+  startPreview() { if (this.phase === 'AUTO_PLAY' && this.stage === 0) this.introRemaining = 3; }
   stage = 0;
   carrier = 0;
   attackers: Point[] = [{ x: -4, z: 18 }, { x: 6, z: 12 }, { x: -6, z: 4 }];
@@ -227,6 +267,33 @@ export class Game {
 
   aim(raw: Point[]) {
     if (!this.paused || !raw.length) return;
+    if (raw.some(p => !Number.isFinite(p.x) || !Number.isFinite(p.z))) { this.cancel(); return; }
+    // A swipe through a wall is a ground bank path. Direct goal-face aiming
+    // keeps its existing height and shot behavior.
+    const banking = raw.some(p => Math.abs(p.x) > BOARD_X || Math.abs(p.z) > BOARD_Z);
+    if (banking) {
+      let path = cleanPath([copy(this.puck), ...raw.slice(1).map(p => ({ x: p.x, z: p.z }))]);
+      if (this.armed === 'curve' && path.length > 2) {
+        const first = path[0], last = path[path.length - 1];
+        path = path.map((p, i) => { const base = mix(first, last, i / (path.length - 1)); return { x: base.x + (p.x - base.x) * 1.8, z: base.z + (p.z - base.z) * 1.8 }; });
+      }
+      this.preview = bankPath(path);
+      this.intent = { kind: 'loose' };
+      const finish = this.preview[this.preview.length - 1];
+      if (!finish) { this.message = 'Try a shorter bank swipe.'; return; }
+      const nearest = this.targets.sort((a, b) => distance(a, finish) - distance(b, finish))[0];
+      if (nearest && !finish.bounce && distance(nearest, finish) < 2.3) {
+        this.intent = { kind: 'pass', target: nearest.id };
+        // Assist only after the final reflection, preserving every wall contact.
+        const lastBounce = this.preview.reduce((last, p, i) => p.bounce ? i : last, 0);
+        const dx = nearest.x - finish.x, dz = nearest.z - finish.z;
+        this.preview = this.preview.map((p, i, points) => {
+          const weight = Math.max(0, (i - lastBounce) / Math.max(1, points.length - 1 - lastBounce));
+          return { ...p, x: p.x + dx * weight, z: p.z + dz * weight };
+        });
+      }
+      return;
+    }
     this.intent = this.classify(raw[raw.length - 1]);
     const end = this.intent.kind === 'pass' ? this.attackers[this.intent.target] : undefined;
     let stroke = raw;
@@ -323,6 +390,7 @@ export class Game {
     // Freeze includes the camera, players, particles, goalie, and simulation clock.
     if (this.paused) return;
     const dt = Number.isFinite(realDt) ? clamp(realDt, 0, 0.05) : 0;
+    if (this.introRemaining > 0) { this.introRemaining = Math.max(0, this.introRemaining - dt); return; }
     const slow = (this.phase === 'EXECUTING_ACTION' && this.puck.z < -14) || this.phase === 'REBOUND' ? 0.42 : 1;
     this.elapsed += dt;
     this.motion += dt * (this.phase === 'SUCCESS' ? 0.35 : slow);
@@ -374,12 +442,13 @@ export class Game {
       this.puck = mix(a, b, this.segmentOffset / length);
       this.moveGoalie(step / this.speed, this.intent.kind === 'shot' ? previous : undefined);
       if ((this.puck.height ?? 0) < 2.1 && this.defenders.some(d => distance(d, this.puck) < 1.05)) { this.fail('PICKED OFF. Bend around the red jerseys.'); break; }
-      if (Math.abs(this.puck.x) > 10.5 || this.puck.z > 22 || this.puck.z < -21) { this.fail('OFF THE ICE. Keep the curve inside the boards.'); break; }
+      if (Math.abs(this.puck.x) > BOARD_X + 0.001 || Math.abs(this.puck.z) > BOARD_Z + 0.001) { this.fail('OFF THE ICE. Draw past the boards to preview a bank pass.'); break; }
+      if (this.intent.kind !== 'shot' && this.puck.z < NET_Z - 0.1 && this.puck.z > -20.2 && Math.abs(this.puck.x) < NET_HALF_WIDTH + 0.15) { this.fail('HIT THE CAGE. Bank around the outside of the net.'); break; }
       if (previous.z > this.goalie.z && this.puck.z <= this.goalie.z) {
         const crossing = mix(previous, this.puck, (this.goalie.z - previous.z) / (this.puck.z - previous.z));
         if (this.goalieCovers(crossing)) { this.puck = crossing; this.save(); break; }
       }
-      if (previous.z > NET_Z && this.puck.z <= NET_Z) {
+      if (previous.z > NET_Z && this.puck.z <= NET_Z && (this.intent.kind === 'shot' || Math.abs(this.puck.x) < NET_HALF_WIDTH - 0.15)) {
         const crossing = mix(previous, this.puck, (NET_Z - previous.z) / (this.puck.z - previous.z));
         if ((crossing.height ?? 0) > NET_HEIGHT - 0.15) this.fail('OVER THE BAR. Aim below the red crossbar.');
         else if (Math.abs(crossing.x) >= NET_HALF_WIDTH - 0.15) this.fail('WIDE OF THE NET. Aim inside the red posts.');
@@ -394,6 +463,7 @@ export class Game {
         break;
       }
       if (this.segmentOffset >= length - 0.00001) {
+        if (b.bounce) { this.callout = 'OFF THE BOARDS!'; this.emit('bank', 0.45); this.addTrail(); }
         this.segment++; this.segmentOffset = 0;
         if (this.segment === this.path.length - 1) this.finishPath();
       }

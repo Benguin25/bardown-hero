@@ -4,6 +4,13 @@
 
 ## Current playable scope (September 2026)
 
+Board-bank and presentation update:
+
+- Draw past either side board or either end board to reflect the ground trajectory back onto the rink. The preview inserts exact reflection points; pass assistance targets the reflected endpoint and preserves board contacts. Execution follows that same preview at constant arcade speed. Excessively long paths are rejected rather than executed beyond the visible preview budget.
+- End-board passes may travel beside the goal but cannot pass through its cage. Ordinary shots keep their save/goal/miss rules.
+- Slightly lower camera; both end boards remain framed before aiming. Net uses round posts, a tapered rear frame, and roof/side/back mesh. The goalie has a padded blocker and a catching glove with a laced pocket, without changing save zones.
+- Every level start and retry shows its three objectives during a three-second countdown. Gameplay starts afterward; backgrounding pauses the countdown through the existing active-app loop.
+
 The current request supersedes the original vertical-slice exclusions below.
 
 - Ten authored portrait levels with 2–4 intended decision moments per run, including optional guided rebounds.

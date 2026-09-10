@@ -1,5 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const { bankPath, BOARD_X, BOARD_Z } = require('../.test-build/game.js');
 const { emptyProgress, parseProgress, recordRun, isUnlocked, stars } = require('../.test-build/progress.js');
 const { Game, LEVELS, relativeAim, cleanPath, distance, GOAL_CORNERS, NET_HEIGHT, spaceSkaters, SKATER_SPACING } = require('../.test-build/game.js');
 
@@ -8,6 +9,64 @@ function until(game, predicate, limit = 4000) {
   assert.ok(predicate(game), `Timed out in ${game.phase}: ${game.message}`);
 }
 function pause(game) { until(game, g => g.paused || g.terminal); assert.equal(game.phase, 'PAUSED_FOR_INPUT'); }
+
+test('bank preview splits sparse swipes exactly at side, end, and corner reflections', () => {
+  for (const end of [{ x: 18, z: 4 }, { x: -18, z: 4 }, { x: 4, z: 35 }, { x: 4, z: -35 }, { x: BOARD_X * 2, z: BOARD_Z * 2 }, { x: 60, z: 100 }]) {
+    const path = bankPath([{ x: 0, z: 0 }, end]);
+    assert.ok(path.some(p => p.bounce));
+    assert.ok(path.every(p => Math.abs(p.x) <= BOARD_X + 1e-8 && Math.abs(p.z) <= BOARD_Z + 1e-8));
+    const length = path.reduce((sum, p, i) => sum + (i ? distance(path[i - 1], p) : 0), 0);
+    assert.ok(Math.abs(length - distance({ x: 0, z: 0 }, end)) < 1e-7);
+    for (const p of path.filter(p => p.bounce)) assert.ok(Math.abs(Math.abs(p.x) - BOARD_X) < 1e-7 || Math.abs(Math.abs(p.z) - BOARD_Z) < 1e-7);
+  }
+  assert.deepEqual(bankPath([{ x: 0, z: 0 }, { x: Infinity, z: 0 }]), []);
+  assert.deepEqual(bankPath([{ x: 0, z: 0 }, { x: 1e12, z: 0 }]), []);
+});
+
+test('side-board bank preview snaps to the reflected teammate and is the executed path', () => {
+  for (const dt of [1 / 120, 1 / 60, 0.05]) {
+    const g = new Game(); pause(g);
+    const raw = [g.puck, { x: BOARD_X * 2 - 6.4, z: 4.3 }];
+    g.aim(raw); assert.equal(g.intent.kind, 'pass'); assert.deepEqual(g.preview.at(-1), { x: 6, z: 4 });
+    const preview = g.preview.map(p => ({ ...p })); assert.ok(preview.some(p => p.bounce));
+    g.release(raw, 0.2); assert.deepEqual(g.path, preview);
+    let bounced = false;
+    for (let i = 0; i < 4000 && !g.paused && !g.terminal; i++) { g.update(dt); if (g.event === 'bank') bounced = true; }
+    assert.ok(bounced); assert.ok(g.paused, g.message); assert.equal(g.stage, 1); assert.deepEqual(g.puck, { x: 6, z: 4 });
+  }
+});
+
+test('end-board bank can travel beside the net and back to a teammate', () => {
+  for (const sign of [-1, 1]) {
+    const g = new Game(); pause(g);
+    g.attackers = [{ x: 7, z: sign * 10 }, { x: 7, z: sign * 5 }, { x: -7, z: 0 }];
+    g.puck = { ...g.attackers[0] }; g.defenders = [{ x: -8, z: 5 }, { x: -6, z: 10 }];
+    const raw = [g.puck, { x: 7, z: sign * (BOARD_Z * 2 - 5) }];
+    g.aim(raw); assert.equal(g.intent.kind, 'pass'); assert.ok(g.preview.some(p => Math.abs(p.z) === BOARD_Z));
+    g.release(raw); pause(g); assert.equal(g.stage, 1); assert.deepEqual(g.puck, { x: 7, z: sign * 5 });
+  }
+});
+
+test('bank passes cannot pass through the back of the cage', () => {
+  const g = new Game(); pause(g);
+  g.attackers = [{ x: 7, z: -10 }, { x: -7, z: -10 }, { x: 7, z: 0 }];
+  g.puck = { ...g.attackers[0] }; g.defenders = [{ x: -8, z: 5 }, { x: -6, z: 10 }];
+  g.release([g.puck, { x: 7, z: -24 }, { x: -7, z: -35 }]);
+  until(g, x => x.terminal || x.paused);
+  assert.equal(g.phase, 'FAIL'); assert.match(g.message, /CAGE/);
+});
+
+test('three-second introduction holds gameplay, rejects input, and resets on retry', () => {
+  const g = new Game(); g.startPreview();
+  const puck = { ...g.puck }, attack = g.attackers.map(p => ({ ...p }));
+  g.release([g.puck, { x: 6, z: 4 }]); g.activatePowerup();
+  for (let i = 0; i < 59; i++) g.update(0.05);
+  assert.ok(g.introRemaining > 0); assert.equal(g.elapsed, 0); assert.deepEqual(g.puck, puck); assert.deepEqual(g.attackers, attack);
+  assert.equal(g.objectives.length, 3); assert.equal(g.preview.length, 0);
+  for (let i = 0; i < 3; i++) g.update(0.05);
+  assert.equal(g.introRemaining, 0); pause(g);
+  const retry = new Game(); retry.startPreview(); assert.equal(retry.introRemaining, 3);
+});
 function passOne(game) { pause(game); game.release([game.puck, { x: 6, z: 4 }]); pause(game); }
 function shootingSetup() {
   const g = new Game(); passOne(g);

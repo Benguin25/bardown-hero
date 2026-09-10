@@ -50,7 +50,7 @@ export default function App() {
       progress.current = recordRun(progress.current, g.levelIndex, g.objectives.map(o => o.complete));
       persist();
     }
-    const key = `${g.levelIndex}|${g.phase}|${g.stage}|${g.message}|${g.intent.kind}|${g.preview.length > 0}|${g.cornerCovered(g.preview[g.preview.length - 1] ?? g.puck)}|${g.armed}|${g.terminalTime >= 1.1}|${screen.current}`;
+    const key = `${g.levelIndex}|${g.phase}|${g.stage}|${g.message}|${g.intent.kind}|${g.preview.length > 0}|${g.preview.some(p => p.bounce)}|${g.eventId}|${Math.ceil(g.introRemaining)}|${g.cornerCovered(g.preview[g.preview.length - 1] ?? g.puck)}|${g.armed}|${g.terminalTime >= 1.1}|${screen.current}`;
     if (key !== lastUI.current && mounted.current) { lastUI.current = key; redraw(v => v + 1); }
   };
 
@@ -133,12 +133,13 @@ export default function App() {
 
   const selectLevel = (index: number) => {
     if (!loaded || !isUnlocked(progress.current, index)) return;
-    stroke.current = []; game.current = new Game(index); screen.current = 'game'; sync();
+    stroke.current = []; game.current = new Game(index); game.current.startPreview(); screen.current = 'game'; sync();
   };
   const retry = () => selectLevel(game.current.levelIndex);
   const g = game.current;
   const aiming = g.preview.length > 1;
-  const label = aiming ? g.intent.kind === 'pass' ? 'ASSISTED PASS' : g.intent.kind === 'shot' ? 'SHOT ON NET' : 'NO TARGET' : g.paused ? 'TIME FROZEN' : g.terminal ? 'PLAY COMPLETE' : 'LIVE PLAY';
+  const banking = g.preview.some(p => p.bounce);
+  const label = g.introRemaining > 0 ? 'GET READY' : aiming ? g.intent.kind === 'pass' ? banking ? 'BANK PASS' : 'ASSISTED PASS' : g.intent.kind === 'shot' ? 'SHOT ON NET' : banking ? 'BANK · NO TARGET' : 'NO TARGET' : g.paused ? 'TIME FROZEN' : g.terminal ? 'PLAY COMPLETE' : 'LIVE PLAY';
 
   if (screen.current === 'levels') return <SafeAreaView style={s.root}>
     <StatusBar barStyle="light-content" />
@@ -181,6 +182,13 @@ export default function App() {
           <Text style={s.scenario}>{g.level.title}</Text>
         </View>
         {!ready && !error && <View pointerEvents="none" style={s.center}><Text style={s.resultTitle}>FLOODING THE ICE…</Text></View>}
+        {ready && !error && g.introRemaining > 0 && <ScrollView style={s.result} contentContainerStyle={s.resultContent}>
+          <Text style={s.resultKicker}>YOUR OBJECTIVES</Text>
+          <Text style={s.title}>{g.level.title}</Text>
+          <Text accessibilityLiveRegion="polite" style={s.countdown}>{Math.ceil(g.introRemaining)}</Text>
+          {g.objectives.map(o => <Text key={o.id} style={s.objectiveDone}>☆ {o.label}</Text>)}
+          <Text style={s.resultBody}>Three stars. One run. Make it count.</Text>
+        </ScrollView>}
         {!!error && <View style={s.result}><Text style={s.resultTitle}>RINK COULDN’T LOAD</Text><Text style={s.resultBody}>{error}</Text><Text style={s.resultBody}>Share this error for debugging. See the rink troubleshooting steps in launch.md.</Text></View>}
         {!!g.callout && (!g.terminal || g.terminalTime < 1.1) && <Callout text={g.callout} eventId={g.eventId} />}
         {g.terminal && g.terminalTime >= 1.1 && !error && <ScrollView style={s.result} contentContainerStyle={s.resultContent}>
@@ -201,13 +209,14 @@ export default function App() {
         <Text style={s.eyebrow}>{g.reboundUsed ? 'BONUS CHANCE / REBOUND' : `DECISION ${g.stage + 1} / ${g.level.moments.length}`}</Text>
         <Text style={s.title}>{g.reboundUsed ? 'CLEAN UP THE REBOUND' : g.moment.title}</Text>
         <Text style={s.instruction}>{aiming ? g.intent.kind === 'pass' ? 'Teammate locked. Release to send your curve.' : g.intent.kind === 'shot' ? g.cornerCovered(g.preview[g.preview.length - 1]) ? 'Covered right now. Bend late or change corners.' : 'A gap for now. Shoot quickly or bend it late.' : 'Finish near a teammate or toward the net.' : g.message}</Text>
-        <Text style={s.hint}>{g.paused ? 'DRAG ANYWHERE  →  DRAW ANY CURVE  →  RELEASE' : 'TEAL ATTACKS ↑  •  NO LIMIT ON RETRIES'}</Text>
+        <Text style={s.hint}>{g.paused ? 'DRAG ANYWHERE · DRAW PAST BOARDS TO BANK · RELEASE' : 'TEAL ATTACKS ↑  •  NO LIMIT ON RETRIES'}</Text>
       </View>
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
+  countdown: { color: '#ffcf5a', fontSize: 56, fontWeight: '900', lineHeight: 64 },
   menu: { padding: 22, gap: 12, paddingBottom: 40 },
   menuTitle: { color: '#f2f8fa', fontSize: 34, fontWeight: '900', letterSpacing: -1.5, marginTop: 12 },
   progressRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginVertical: 8 },

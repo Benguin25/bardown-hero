@@ -86,3 +86,19 @@ test('camera framing stays fixed while drawing a high shot', () => {
   frameRink(camera, 390, 500, game);
   assert.deepEqual([...camera.projectionMatrix.elements, ...camera.matrixWorld.elements], before);
 });
+
+test('end boards remain visible and camera stays fixed during a bank preview', () => {
+  const camera = new THREE.OrthographicCamera(-14, 14, 24, -24, 0.1, 150);
+  for (const [width, height] of [[320, 240], [390, 500], [430, 680]]) {
+    const game = new Game();
+    for (let i = 0; i < 100 && !game.paused; i++) game.update(1 / 60);
+    frameRink(camera, width, height, game);
+    const before = [...camera.projectionMatrix.elements, ...camera.matrixWorld.elements];
+    game.aim([game.puck, { x: 15.5, z: 4 }]); frameRink(camera, width, height, game);
+    assert.deepEqual([...camera.projectionMatrix.elements, ...camera.matrixWorld.elements], before);
+    for (const x of [-10.75, 10.75]) for (const z of [-22.5, 22.5]) {
+      const p = new THREE.Vector3(x, 0.14, z).project(camera);
+      assert.ok(Math.abs(p.x) < 1 && Math.abs(p.y) < 1);
+    }
+  }
+});

@@ -62,6 +62,8 @@ This PATH change lasts only for the current terminal. `.tooling` is ignored by G
 - A pink path with **NO TARGET** will leave a loose puck unless you redirect its endpoint before releasing.
 - You can draw large curves and loops. Stay inside the boards and avoid red defenders.
 - Tap **RETRY** at any time, or **RUN IT BACK** after the result, to immediately reset the scenario.
+- Each start/retry shows the level objectives and counts down **3–2–1** before the rush begins.
+- For a bank pass, keep drawing past a side or end board. The visible path reflects back onto the ice. Adjust until its reflected endpoint locks onto a teammate and the HUD reads **BANK PASS**, then release. Bank around the outside of the cage; the puck cannot travel through its back. Ordinary missed shots still end the attempt.
 
 Use **LEVELS** to return to the menu. A goal unlocks the next level regardless of stars. Each level has three objectives shown on its card and results screen. Stars must be earned together in one run; only the best run is saved, and tied runs do not merge objectives. Retry restarts the selected level with fresh powerups. The five opening scenarios cover breakout, hooked passes, one-timers, traffic, and rebounds. Levels 6–10 add Fire Puck, Mega Curve, Freeze, tight lanes, and a four-decision finale. A second save ends the attempt. You can still shoot early or choose another teammate.
 
