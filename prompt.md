@@ -1,28 +1,30 @@
-Build the first playable vertical slice described in SPEC.md.
+Improve the existing hockey prototype without changing the overall game structure.
 
-Focus only on core gameplay.
+Focus on two areas:
 
-Requirements:
-- Expo + React Native + TypeScript
-- portrait
-- simple 3D hockey rink with placeholder players
-- 3 attackers, 2 defenders, 1 goalie
-- scripted auto-play between decision points
-- full freeze at each decision point
-- drag from puck to draw a visible trajectory
-- endpoint near teammate = assisted pass
-- endpoint toward net = shot
-- drawn curve strongly affects puck path
-- allow exaggerated/unrealistic curves
-- execute the puck path on release
-- defender interception/failure
-- goalie save/goal behavior
-- one guided rebound continuation
-- instant retry
-- 3 decision moments in one scenario
+Better swipe input
+The player should be able to start dragging anywhere on the screen, not directly on the puck/path.
+The actual preview trajectory should still always begin at the current puck carrier/puck.
+Treat the user’s drag like a relative gesture: where they drag on screen controls the shape/direction of the puck path.
+This should let the user drag lower on the screen so their finger does not cover the trajectory preview.
+Keep the visible trajectory preview anchored to the puck/player.
+Preserve curve drawing, path smoothing, teammate snapping, pass vs shot detection, and swipe-speed influence.
+Make the control feel intuitive and forgiving on a phone.
+Add more test scenarios
+Keep the existing opening scenario.
+Add 3–5 additional handcrafted levels that reuse the same mechanics.
+Levels should be short and have 2–4 decision pauses.
+Test different situations such as:
+threading a curved pass around a defender
+cross-ice one-timer
+two defenders blocking different lanes
+goalie save into a guided rebound
+difficult curved shot around traffic
+Keep player/defender movement authored and simple.
+Add a very basic temporary way to switch between test levels. This can be dev-only/simple buttons or a level index, not a polished menu.
 
-Add arcade juice early: puck trail, camera punch/zoom, slow-mo on important moments, and exaggerated reactions. Keep it lightweight.
+Also fix obvious bugs encountered while doing this, especially reset/retry, puck state, pause/resume, and path execution issues.
 
-Do not build menus, progression, accounts, stores, customization, or backend systems.
+Do not add progression, currencies, cosmetics, accounts, shops, powerups, or polished menus yet.
 
-Use simple authored behavior over complex physics/AI. Make reasonable technical choices yourself. The project should run with `npx expo start`.
+Prioritize making the swipe mechanic easy to read and fun to repeat.

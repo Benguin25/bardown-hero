@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { Game, cleanPath, distance } = require('../.test-build/game.js');
+const { Game, LEVELS, relativeAim, cleanPath, distance } = require('../.test-build/game.js');
 
 function until(game, predicate, limit = 4000) {
   for (let i = 0; i < limit && !predicate(game); i++) game.update(1 / 60);
@@ -68,4 +68,95 @@ test('fast execution still detects defender collision', () => {
   const g = new Game(); passOne(g); g.release([g.puck, { x: -6, z: -7 }], 0.01);
   for (let i = 0; i < 100 && !g.terminal; i++) g.update(0.05);
   assert.equal(g.phase, 'FAIL'); assert.match(g.message, /PICKED OFF/);
+});
+
+test('relative gestures preserve screen displacement independently of touch origin', () => {
+  const anchor = { x: 140, y: 180 };
+  const curve = [{ x: 0, y: 0 }, { x: -40, y: -30 }, { x: 60, y: -150 }];
+  const draw = start => curve.map(delta => {
+    const finger = { x: start.x + delta.x, y: start.y + delta.y };
+    return relativeAim(anchor, finger.x - start.x, finger.y - start.y);
+  });
+  assert.deepEqual(draw(anchor), draw({ x: 120, y: 650 }));
+  assert.deepEqual(draw(anchor)[0], anchor);
+});
+
+test('preview and execution always begin at the current puck', () => {
+  const g = new Game(); pause(g);
+  const puck = { ...g.puck };
+  g.aim([{ x: 9, z: 20 }, { x: 6.4, z: 4.3 }]);
+  assert.deepEqual(g.preview[0], puck);
+  assert.deepEqual(g.preview.at(-1), g.attackers[1]);
+  g.release([{ x: 9, z: 20 }, { x: 6.4, z: 4.3 }]);
+  assert.deepEqual(g.path[0], puck);
+  g.update(1 / 60);
+  assert.ok(distance(g.puck, puck) < 0.5);
+});
+
+test('cancel or duplicate release during flight preserves the pass and resume', () => {
+  const g = new Game(); pause(g);
+  g.release([g.puck, g.attackers[1]]);
+  g.update(0.05); const puck = { ...g.puck };
+  g.cancel(); g.release([]);
+  assert.equal(g.intent.kind, 'pass');
+  assert.deepEqual(g.puck, puck);
+  pause(g); assert.equal(g.stage, 1);
+});
+
+const routes = [
+  [ // Hook around the stick, then finish.
+    [{ x: -5, z: 2 }, { x: -3, z: -4 }, { x: 5, z: -6 }],
+    [{ x: 2.5, z: -18 }],
+  ],
+  [ // Cross-ice reception is an immediate shooting pause.
+    [{ x: 7, z: -10 }], [{ x: 2.5, z: -18 }],
+  ],
+  [ // Outside both lanes, switch sides, curl around shooting traffic.
+    [{ x: -7, z: 7 }, { x: -9, z: 1 }, { x: -7, z: -2 }],
+    [{ x: -4, z: -2 }, { x: 5, z: -3 }, { x: 7, z: -9 }],
+    [{ x: 7, z: -13 }, { x: 6, z: -16 }, { x: 2.5, z: -18 }],
+  ],
+  [ // Intentional save followed by the guided rebound.
+    [{ x: 0, z: -10 }], [{ x: 0, z: -18 }], [{ x: 2.5, z: -18 }],
+  ],
+];
+routes.forEach((route, i) => test(`handcrafted level ${i + 2} has a playable route with 2–4 pauses`, () => {
+  const g = new Game(i + 1); let decisions = 0;
+  for (const points of route) {
+    pause(g); decisions++;
+    assert.deepEqual(g.puck, g.attackers[g.carrier]);
+    g.release([g.puck, ...points], 0.8);
+    if (i === 1 && decisions === 1) {
+      until(g, x => x.phase !== 'EXECUTING_ACTION');
+      assert.ok(g.paused); assert.equal(g.stage, 1);
+      assert.deepEqual(g.puck, { x: 7, z: -10 });
+    }
+  }
+  until(g, x => x.terminal);
+  assert.equal(g.phase, 'SUCCESS', g.message);
+  assert.ok(decisions >= 2 && decisions <= 4);
+  assert.equal(g.reboundUsed, i === 3);
+}));
+
+test('retry every level clears action, rebound, goalie, timers, and preview state', () => {
+  LEVELS.forEach((_, i) => {
+    const old = new Game(i); pause(old);
+    old.release([old.puck, old.attackers[1]]); old.update(0.05);
+    const fresh = new Game(old.levelIndex);
+    assert.equal(fresh.levelIndex, i);
+    assert.deepEqual(fresh, new Game(i));
+    assert.equal(fresh.phase, 'AUTO_PLAY');
+    assert.equal(fresh.reboundUsed, false);
+    assert.equal(fresh.path.length, 0);
+    pause(fresh); assert.deepEqual(fresh.puck, fresh.moment.carrier);
+  });
+});
+
+test('swipe speed affects execution while leaving the authored curve intact', () => {
+  const fast = new Game(), slow = new Game(); pause(fast); pause(slow);
+  const path = [fast.puck, { x: 6, z: 4 }];
+  fast.release(path, 0.1); slow.release(path, 3);
+  assert.deepEqual(fast.path, slow.path);
+  fast.update(0.05); slow.update(0.05);
+  assert.ok(distance(fast.puck, path[0]) > distance(slow.puck, path[0]));
 });

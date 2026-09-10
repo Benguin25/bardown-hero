@@ -1,6 +1,6 @@
 # Run Bardown Hero on your iPhone
 
-This is an Expo + React Native + TypeScript prototype. It opens directly into one playable hockey scenario. Your Windows PC runs the development server; your iPhone runs the game in Expo Go.
+This is an Expo + React Native + TypeScript prototype. It opens into the original rush, with five selectable test scenarios. Your Windows PC runs the development server; your iPhone runs the game in Expo Go.
 
 ## 1. Install these once
 
@@ -55,18 +55,18 @@ This PATH change lasts only for the current terminal. `.tooling` is ignored by G
 ## 3. Play
 
 - **Teal** players are your team. **Red** players intercept. **Gold** is the goalie.
-- When **TIME FROZEN** appears, start your finger on the gold ring around the puck. Drag across the ice to draw a trajectory, then lift your finger to execute it.
+- When **TIME FROZEN** appears, drag anywhere on the screen, including the lower instruction area. Your finger's movement draws a trajectory anchored to the gold puck ring. Start below the puck to keep the preview visible, then lift to execute. Taps do nothing; a second finger cancels the stroke.
 - Finish near a teal teammate: the preview turns teal and says **ASSISTED PASS**. The endpoint snaps to that teammate while your curve remains.
 - Finish toward the net: the preview turns gold and says **SHOT ON NET**. Aim inside the red posts; the gold ice rings mark the corners.
 - A pink path with **NO TARGET** will leave a loose puck unless you redirect its endpoint before releasing.
 - You can draw large curves and loops. Stay inside the boards and avoid red defenders.
 - Tap **RETRY** at any time, or **RUN IT BACK** after the result, to immediately reset the scenario.
 
-The three main decisions are a breakout pass, a curved pass, and a shot. A goalie save gives one guided rebound and another frozen decision. A second save ends the attempt.
+Use the temporary **TEST 1–5** buttons to switch scenarios. Retry restarts the selected level. Level 1 keeps the opening breakout, curved pass, and shot. Level 2 tests a pass around a defender; level 3 pauses immediately on a cross-ice reception for a one-timer; level 4 tests two blocked lanes and a curved shot around traffic; level 5 sets up a center shot for a guided rebound. Each authored route has 2–3 decisions, with at most one extra rebound. A second save ends the attempt. These are open test setups: you can still shoot early or choose another teammate.
 
 ## 4. Quick playtest checklist
 
-1. **Breakout:** pass to the teammate on the right. Check that your finger can start comfortably near the puck and that the preview follows your stroke.
+1. **Breakout:** pass to the teammate on the right. Try the same stroke from the puck, empty ice, and the lower instruction area. The preview should always start at the puck and follow the same relative shape.
 2. **Curve:** draw toward the left teammate while bending around the center defender. A straight pass to that teammate should be intercepted. Retry and try a wide curve.
 3. **Freeze:** hold your finger down for several seconds. Players, goalie, camera, and effects should remain still. Lift to resume.
 4. **Goal:** at the third decision, shoot into a corner inside the posts. Check for the goal result, trail, camera punch, and player celebration.

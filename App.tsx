@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, PanResponder, Pressable, SafeAreaView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { GLView, type ExpoWebGLRenderingContext } from 'expo-gl';
-import { Game, MOMENTS, Point, distance } from './src/game';
+import { Game, LEVELS, Point, distance, relativeAim } from './src/game';
 import { Rink } from './src/rink';
 
 export default function App() {
@@ -13,13 +13,14 @@ export default function App() {
   const size = useRef({ width: 1, height: 1 });
   const stroke = useRef<Point[]>([]);
   const started = useRef(0);
+  const anchor = useRef({ x: 0, y: 0 });
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
   const [, redraw] = useState(0);
   const lastUI = useRef('');
   const sync = () => {
     const g = game.current;
-    const key = `${g.phase}|${g.stage}|${g.message}|${g.intent.kind}|${g.preview.length > 0}`;
+    const key = `${g.levelIndex}|${g.phase}|${g.stage}|${g.message}|${g.intent.kind}|${g.preview.length > 0}`;
     if (key !== lastUI.current && mounted.current) { lastUI.current = key; redraw(v => v + 1); }
   };
 
@@ -55,8 +56,9 @@ export default function App() {
   }
 
   const gesture = useMemo(() => {
-    const add = (x: number, y: number) => {
-      const point = rink.current?.icePoint(x, y);
+    const add = (dx: number, dy: number) => {
+      const screen = relativeAim(anchor.current, dx, dy);
+      const point = rink.current?.icePoint(screen.x, screen.y);
       if (!point || !stroke.current.length) return;
       if (distance(stroke.current[stroke.current.length - 1], point) > 0.12) {
         // Bound memory during very long doodles while retaining the whole curve.
@@ -66,18 +68,21 @@ export default function App() {
       game.current.aim(stroke.current); sync();
     };
     return PanResponder.create({
-      onStartShouldSetPanResponder: event => {
-        if (!game.current.paused || !rink.current || event.nativeEvent.touches.length !== 1) return false;
-        const p = rink.current.screenPoint(game.current.puck);
-        return Math.hypot(p.x - event.nativeEvent.locationX, p.y - event.nativeEvent.locationY) < 48;
+      onMoveShouldSetPanResponder: (event, state) => {
+        return active.current && game.current.paused && !!rink.current && event.nativeEvent.touches.length === 1 && Math.hypot(state.dx, state.dy) > 5;
       },
-      onPanResponderGrant: () => { stroke.current = [{ ...game.current.puck }]; started.current = performance.now(); },
-      onPanResponderMove: event => {
+      onPanResponderGrant: (_, state) => {
+        anchor.current = rink.current!.screenPoint(game.current.puck);
+        stroke.current = [{ ...game.current.puck }]; started.current = performance.now();
+        add(state.dx, state.dy);
+      },
+      onPanResponderMove: (event, state) => {
         if (event.nativeEvent.touches.length > 1) { stroke.current = []; game.current.cancel(); sync(); return; }
-        add(event.nativeEvent.locationX, event.nativeEvent.locationY);
+        add(state.dx, state.dy);
       },
-      onPanResponderRelease: event => {
-        add(event.nativeEvent.locationX, event.nativeEvent.locationY);
+      onPanResponderRelease: (_, state) => {
+        if (!stroke.current.length) return;
+        add(state.dx, state.dy);
         game.current.release(stroke.current, (performance.now() - started.current) / 1000);
         stroke.current = []; sync();
       },
@@ -86,27 +91,32 @@ export default function App() {
     });
   }, []);
 
-  const retry = () => { stroke.current = []; game.current = new Game(); sync(); };
+  const selectLevel = (index: number) => { stroke.current = []; game.current = new Game(index); sync(); };
+  const retry = () => selectLevel(game.current.levelIndex);
   const g = game.current;
   const aiming = g.preview.length > 1;
   const label = aiming ? g.intent.kind === 'pass' ? 'ASSISTED PASS' : g.intent.kind === 'shot' ? 'SHOT ON NET' : 'NO TARGET' : g.paused ? 'TIME FROZEN' : g.terminal ? 'PLAY COMPLETE' : 'LIVE PLAY';
 
   return (
-    <SafeAreaView style={s.root}>
+    <SafeAreaView style={s.root} {...gesture.panHandlers}>
       <StatusBar barStyle="light-content" />
       <View style={s.header}>
         <View><Text style={s.eyebrow}>ONE RUSH. MAKE IT COUNT.</Text><Text style={s.brand}>BARDOWN<Text style={s.hero}> HERO</Text></Text></View>
         <Pressable accessibilityRole="button" accessibilityLabel="Restart the play" onPress={retry} style={s.retry}><Text style={s.retryText}>↻ RETRY</Text></Pressable>
       </View>
-      <View style={s.progress}>
-        {['BREAKOUT', 'CURVE', 'FINISH'].map((name, i) => <View key={name} style={[s.step, i <= g.stage && s.stepOn]}><Text style={[s.stepText, i === g.stage && s.stepCurrent]}>{String(i + 1).padStart(2, '0')}  {name}</Text></View>)}
+      <View style={s.levels}>
+        <Text style={s.eyebrow}>TEST</Text>
+        {LEVELS.map((level, i) => <Pressable key={level.title} accessibilityRole="button" accessibilityLabel={`Test level ${i + 1}: ${level.title}`} accessibilityState={{ selected: i === g.levelIndex }} onPress={() => selectLevel(i)} style={[s.levelButton, i === g.levelIndex && s.levelSelected]}><Text style={s.retryText}>{i + 1}</Text></Pressable>)}
       </View>
-      <View style={s.arena} onLayout={e => { size.current = e.nativeEvent.layout; rink.current?.resize(size.current.width, size.current.height); }}>
+      <View style={s.progress}>
+        {g.level.moments.map((moment, i) => <View key={moment.title} style={[s.step, i <= g.stage && s.stepOn]}><Text style={[s.stepText, i === g.stage && s.stepCurrent]}>{String(i + 1).padStart(2, '0')}  {i === g.level.moments.length - 1 ? 'FINISH' : 'PASS'}</Text></View>)}
+      </View>
+      <View style={s.arena} onLayout={e => { stroke.current = []; game.current.cancel(); size.current = e.nativeEvent.layout; rink.current?.resize(size.current.width, size.current.height); sync(); }}>
         <GLView style={StyleSheet.absoluteFill} onContextCreate={contextCreated} msaaSamples={4} />
-        <View style={StyleSheet.absoluteFill} {...gesture.panHandlers} accessibilityLabel="Hockey rink. Drag from the gold puck ring to draw a pass or shot." />
+        <View style={StyleSheet.absoluteFill} accessibilityLabel="Hockey rink. Drag anywhere on the screen to draw a pass or shot from the puck." />
         <View pointerEvents="none" style={s.arenaTop}>
           <View style={[s.badge, g.paused && s.frozen]}><Text style={[s.badgeText, g.paused && s.darkText]}>{label}</Text></View>
-          <Text style={s.scenario}>THE OPENING RUSH</Text>
+          <Text style={s.scenario}>{g.level.title}</Text>
         </View>
         {!ready && !error && <View pointerEvents="none" style={s.center}><Text style={s.resultTitle}>FLOODING THE ICE…</Text></View>}
         {!!error && <View style={s.result}><Text style={s.resultTitle}>RINK COULDN’T LOAD</Text><Text style={s.resultBody}>{error}</Text><Text style={s.resultBody}>Share this error for debugging. See the rink troubleshooting steps in launch.md.</Text></View>}
@@ -119,10 +129,10 @@ export default function App() {
         <View pointerEvents="none" style={s.legend}><Text style={s.teal}>● YOUR TEAM</Text><Text style={s.red}>● DEFENDERS</Text><Text style={s.goldText}>● GOALIE</Text></View>
       </View>
       <View style={s.footer}>
-        <Text style={s.eyebrow}>{g.reboundUsed ? 'BONUS CHANCE / REBOUND' : `DECISION ${g.stage + 1} / 3`}</Text>
-        <Text style={s.title}>{g.reboundUsed ? 'CLEAN UP THE REBOUND' : MOMENTS[g.stage].title}</Text>
+        <Text style={s.eyebrow}>{g.reboundUsed ? 'BONUS CHANCE / REBOUND' : `DECISION ${g.stage + 1} / ${g.level.moments.length}`}</Text>
+        <Text style={s.title}>{g.reboundUsed ? 'CLEAN UP THE REBOUND' : g.moment.title}</Text>
         <Text style={s.instruction}>{aiming ? g.intent.kind === 'pass' ? 'Teammate locked. Release to send your curve.' : g.intent.kind === 'shot' ? 'Placement matters. Release to rip it.' : 'Finish near a teammate or toward the net.' : g.message}</Text>
-        <Text style={s.hint}>{g.paused ? 'HOLD PUCK  →  DRAW ANY CURVE  →  RELEASE' : 'TEAL ATTACKS ↑  •  NO LIMIT ON RETRIES'}</Text>
+        <Text style={s.hint}>{g.paused ? 'DRAG ANYWHERE  →  DRAW ANY CURVE  →  RELEASE' : 'TEAL ATTACKS ↑  •  NO LIMIT ON RETRIES'}</Text>
       </View>
     </SafeAreaView>
   );
@@ -136,6 +146,9 @@ const s = StyleSheet.create({
   hero: { color: '#23dcb6' },
   retry: { padding: 10, borderWidth: 1, borderColor: '#314a5b', borderRadius: 6 },
   retryText: { color: '#dcecf1', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  levels: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 20, paddingBottom: 8 },
+  levelButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 5, backgroundColor: '#1b3547' },
+  levelSelected: { backgroundColor: '#267463' },
   progress: { flexDirection: 'row', gap: 6, paddingHorizontal: 20, paddingBottom: 10 },
   step: { flex: 1, borderTopWidth: 2, borderColor: '#213a4b', paddingTop: 8 },
   stepOn: { borderColor: '#23dcb6' },

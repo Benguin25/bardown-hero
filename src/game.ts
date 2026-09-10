@@ -10,10 +10,39 @@ const copy = (p: Point): Point => ({ ...p });
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
 export const MOMENTS = [
-  { title: 'THE BREAKOUT', instruction: 'Draw from the puck to a teal teammate.', carrier: { x: -4, z: 12 }, support: [{ x: 6, z: 4 }, { x: -6, z: -4 }], defense: [{ x: -1, z: 2 }, { x: 2, z: -10 }] },
+  { title: 'THE BREAKOUT', instruction: 'Drag anywhere. Guide the puck path to a teal teammate.', carrier: { x: -4, z: 12 }, support: [{ x: 6, z: 4 }, { x: -6, z: -4 }], defense: [{ x: -1, z: 2 }, { x: 2, z: -10 }] },
   { title: 'BEND THE RULES', instruction: 'Curve around the red defender to your teammate.', carrier: { x: 6, z: 3 }, support: [{ x: -6, z: -7 }, { x: 7, z: -10 }], defense: [{ x: 0, z: -2 }, { x: 6.5, z: -5.8 }] },
   { title: 'PICK YOUR CORNER', instruction: 'Draw into either corner of the net. Beat the goalie.', carrier: { x: -4, z: -10 }, support: [{ x: 7, z: -10 }, { x: -7, z: -14 }], defense: [{ x: -1, z: -4 }, { x: 4, z: -6 }] },
 ] as const;
+
+type Moment = { title: string; instruction: string; carrier: Point; support: readonly Point[]; defense: readonly Point[] };
+type Level = { title: string; moments: readonly Moment[]; instantReceive?: boolean };
+export const LEVELS: readonly Level[] = [
+  { title: 'THE OPENING RUSH', moments: MOMENTS },
+  { title: 'AROUND THE STICK', moments: [
+    { title: 'HOOK THE PASS', instruction: 'Bend left of the defender, then into the far teammate.', carrier: { x: -6, z: 6 }, support: [{ x: 5, z: -6 }, { x: -7, z: -9 }], defense: [{ x: -0.5, z: 0 }, { x: -6.5, z: -2 }] },
+    { title: 'FAR CORNER', instruction: 'Finish the rush with a corner shot.', carrier: { x: 5, z: -10 }, support: [{ x: -6, z: -10 }, { x: 7, z: -13 }], defense: [{ x: -2, z: -6 }, { x: 0, z: -12 }] },
+  ] },
+  { title: 'CROSS-ICE ONE-TIMER', instantReceive: true, moments: [
+    { title: 'ACROSS THE SLOT', instruction: 'Send it across to the right wing. Be ready to shoot.', carrier: { x: -7, z: -10 }, support: [{ x: 7, z: -10 }, { x: -5, z: -5 }], defense: [{ x: 0, z: -7 }, { x: -2, z: -14 }] },
+    { title: 'HIT IT FIRST TIME', instruction: 'No skating delay. Swipe into the near corner.', carrier: { x: 7, z: -10 }, support: [{ x: -7, z: -10 }, { x: -5, z: -5 }], defense: [{ x: 0, z: -7 }, { x: -2, z: -14 }] },
+  ] },
+  { title: 'TWO CLOSED LANES', moments: [
+    { title: 'SPLIT THE COVERAGE', instruction: 'Both straight lanes are blocked. Loop outside to a wing.', carrier: { x: 0, z: 8 }, support: [{ x: -7, z: -2 }, { x: 7, z: -2 }], defense: [{ x: -3.5, z: 3 }, { x: 3.5, z: 3 }] },
+    { title: 'SWITCH SIDES', instruction: 'Curl below the red jerseys and find the opposite wing.', carrier: { x: -7, z: -3 }, support: [{ x: 7, z: -9 }, { x: -7, z: -12 }], defense: [{ x: 0, z: -6 }, { x: -7, z: -7.5 }] },
+    { title: 'AROUND TRAFFIC', instruction: 'Bend outside the defender and back inside the right post.', carrier: { x: 6, z: -9 }, support: [{ x: -7, z: -10 }, { x: 8, z: -5 }], defense: [{ x: 4, z: -13.5 }, { x: -1, z: -12 }] },
+  ] },
+  { title: 'SAVE & SCRAMBLE', moments: [
+    { title: 'SET UP THE SAVE', instruction: 'Pass to the middle to set up a rebound test.', carrier: { x: -6, z: -5 }, support: [{ x: 0, z: -10 }, { x: 7, z: -9 }], defense: [{ x: -5, z: -12 }, { x: 5, z: -6 }] },
+    { title: 'TEST THE PADS', instruction: 'Shoot at the goalie for a guided rebound, then pick a corner.', carrier: { x: 0, z: -10 }, support: [{ x: 6, z: -11.5 }, { x: -7, z: -10 }], defense: [{ x: -5, z: -13 }, { x: 5, z: -6 }] },
+  ] },
+];
+
+// Translate the gesture in screen space before projecting onto the ice.
+// This preserves the visible shape even when the finger starts below the puck.
+export function relativeAim(anchor: { x: number; y: number }, dx: number, dy: number) {
+  return { x: anchor.x + dx, y: anchor.y + dy };
+}
 
 export function cleanPath(raw: Point[], end?: Point): Point[] {
   if (!raw.length) return [];
@@ -36,6 +65,20 @@ export function cleanPath(raw: Point[], end?: Point): Point[] {
 }
 
 export class Game {
+  readonly levelIndex: number;
+  constructor(levelIndex = 0) {
+    this.levelIndex = Number.isInteger(levelIndex) && LEVELS[levelIndex] ? levelIndex : 0;
+    if (this.levelIndex !== 0) {
+      const first = this.level.moments[0];
+      this.attackers = [first.carrier, ...first.support].map(p => ({ x: p.x, z: p.z + 3 }));
+      this.defenders = first.defense.map(p => ({ x: p.x, z: p.z + 2 }));
+      this.puck = copy(this.attackers[0]);
+      this.fromAttack = this.attackers.map(copy);
+      this.fromDefense = this.defenders.map(copy);
+    }
+  }
+  get level() { return LEVELS[this.levelIndex]; }
+  get moment() { return this.level.moments[this.stage]; }
   phase: Phase = 'AUTO_PLAY';
   stage = 0;
   carrier = 0;
@@ -79,13 +122,18 @@ export class Game {
     if (!this.paused || !raw.length) return;
     this.intent = this.classify(raw[raw.length - 1]);
     const end = this.intent.kind === 'pass' ? this.attackers[this.intent.target] : undefined;
-    this.preview = cleanPath(raw, end);
+    this.preview = cleanPath([copy(this.puck), ...raw.slice(1)], end);
   }
 
-  cancel() { this.preview = []; this.intent = { kind: 'loose' }; }
+  cancel() {
+    this.preview = [];
+    // A canceled finger gesture must never erase an action already in flight.
+    if (this.phase !== 'EXECUTING_ACTION') this.intent = { kind: 'loose' };
+  }
 
   release(raw: Point[], seconds = 1) {
-    if (!this.paused || raw.length < 2) { this.cancel(); return; }
+    if (!this.paused) return;
+    if (raw.length < 2) { this.cancel(); return; }
     this.aim(raw);
     const length = this.preview.reduce((sum, p, i, a) => sum + (i ? distance(a[i - 1], p) : 0), 0);
     if (length < 1) { this.cancel(); return; }
@@ -114,7 +162,7 @@ export class Game {
   update(realDt: number) {
     // Freeze includes the camera, players, particles, goalie, and simulation clock.
     if (this.paused) return;
-    const dt = Math.min(realDt, 0.05);
+    const dt = Number.isFinite(realDt) ? clamp(realDt, 0, 0.05) : 0;
     const slow = (this.phase === 'EXECUTING_ACTION' && this.puck.z < -14) || this.phase === 'REBOUND' ? 0.42 : 1;
     this.elapsed += dt;
     this.motion += dt * slow;
@@ -124,7 +172,7 @@ export class Game {
       this.routeTime += dt;
       const t = Math.min(1, this.routeTime / 1.15);
       const ease = t * t * (3 - 2 * t);
-      const moment = MOMENTS[this.stage];
+      const moment = this.moment;
       const others = [0, 1, 2].filter(i => i !== this.carrier);
       this.attackers = this.attackers.map((_, i) => mix(this.fromAttack[i], i === this.carrier ? moment.carrier : moment.support[others.indexOf(i)], ease));
       this.defenders = this.defenders.map((_, i) => mix(this.fromDefense[i], moment.defense[i], ease));
@@ -183,8 +231,14 @@ export class Game {
       this.carrier = this.intent.target;
       this.puck = copy(this.attackers[this.carrier]);
       // A late pass stays in the shooting setup instead of adding a fourth stage.
-      if (this.stage >= 2) { this.phase = 'PAUSED_FOR_INPUT'; this.trail = []; this.message = 'Find the open corner and shoot.'; return; }
+      this.path = [];
+      this.intent = { kind: 'loose' };
+      if (this.stage >= this.level.moments.length - 1) { this.phase = 'PAUSED_FOR_INPUT'; this.trail = []; this.impact = 0; this.message = 'Find the open corner and shoot.'; return; }
       this.stage++;
+      if (this.level.instantReceive) {
+        this.phase = 'PAUSED_FOR_INPUT'; this.trail = []; this.message = this.moment.instruction;
+        this.emit('freeze', 0); return;
+      }
       this.phase = 'AUTO_PLAY';
       this.routeTime = 0;
       this.fromAttack = this.attackers.map(copy);
@@ -198,8 +252,10 @@ export class Game {
     this.emit('save');
     if (this.reboundUsed) { this.fail('DENIED. Try the other corner.'); return; }
     this.reboundUsed = true;
-    this.stage = 2;
+    this.stage = this.level.moments.length - 1;
+    this.path = [];
     this.phase = 'REBOUND';
+    this.cancel();
     this.routeTime = 0;
     this.reboundStart = copy(this.puck);
     this.carrier = this.targets.sort((a, b) => b.x - a.x)[0].id;
