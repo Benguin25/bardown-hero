@@ -128,7 +128,7 @@ export default function App() {
       <View style={s.footer}>
         <Text style={s.eyebrow}>{g.reboundUsed ? 'BONUS CHANCE / REBOUND' : `DECISION ${g.stage + 1} / ${g.level.moments.length}`}</Text>
         <Text style={s.title}>{g.reboundUsed ? 'CLEAN UP THE REBOUND' : g.moment.title}</Text>
-        <Text style={s.instruction}>{aiming ? g.intent.kind === 'pass' ? 'Teammate locked. Release to send your curve.' : g.intent.kind === 'shot' ? g.cornerCovered(g.preview[g.preview.length - 1]) ? 'Goalie covers this corner. Try a gold target.' : 'Aim high or low. Gold corners are open.' : 'Finish near a teammate or toward the net.' : g.message}</Text>
+        <Text style={s.instruction}>{aiming ? g.intent.kind === 'pass' ? 'Teammate locked. Release to send your curve.' : g.intent.kind === 'shot' ? g.cornerCovered(g.preview[g.preview.length - 1]) ? 'Covered right now. Bend late or change corners.' : 'A gap for now. Shoot quickly or bend it late.' : 'Finish near a teammate or toward the net.' : g.message}</Text>
         <Text style={s.hint}>{g.paused ? 'DRAG ANYWHERE  →  DRAW ANY CURVE  →  RELEASE' : 'TEAL ATTACKS ↑  •  NO LIMIT ON RETRIES'}</Text>
       </View>
     </SafeAreaView>

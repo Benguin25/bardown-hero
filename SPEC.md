@@ -46,7 +46,7 @@ One-finger swipe/draw anywhere on screen, with the preview anchored to the puck.
 ### Shot
 - Endpoint toward the net becomes a shot.
 - Shot placement matters.
-- A tall net has four high/low corner targets. Gold targets are open; red marks the goalie's authored coverage. Shot height affects saves, defender clearance, and crossbar misses.
+- A tall net has four high/low corner targets. Gold targets show current gaps; red marks current pad/body/glove coverage. The goalie can close a gap after release. Shot height affects saves, defender clearance, and crossbar misses.
 - Less aim assistance than passes.
 - Swipe speed may slightly affect puck speed/power.
 
@@ -64,6 +64,7 @@ One-finger swipe/draw anywhere on screen, with the preview anchored to the puck.
 ## Goalie
 Hybrid behavior:
 - reacts to incoming shot direction
+- projects the puck's current heading after a reaction delay, with limited lateral acceleration, glove speed, and recovery after saves; never reads the future drawn endpoint
 - authored tendencies/save zones are acceptable
 - shot placement must be capable of beating the goalie
 - spectacle matters more than realism

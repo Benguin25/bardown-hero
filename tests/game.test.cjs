@@ -16,7 +16,7 @@ function shootingSetup() {
 
 test('three authored decisions, assisted passing, then a corner goal', () => {
   const g = shootingSetup();
-  g.release([g.puck, { x: -2.5, z: -18 }]);
+  g.release([g.puck, { x: -2.25, z: -18, height: 3.5 }], 0.3);
   until(g, x => x.terminal);
   assert.equal(g.phase, 'SUCCESS');
 });
@@ -38,7 +38,7 @@ test('center shot creates exactly one guided rebound decision; corner converts',
   g.release([g.puck, { x: 0, z: -18 }]); pause(g);
   assert.equal(g.reboundUsed, true); assert.equal(g.stage, 2);
   assert.ok(distance(g.puck, { x: 6, z: -11.5 }) < 0.001);
-  g.release([g.puck, { x: 2.5, z: -18 }]); until(g, x => x.terminal);
+  g.release([g.puck, { x: -2.25, z: -18, height: 3.5 }]); until(g, x => x.terminal);
   assert.equal(g.phase, 'SUCCESS');
 });
 test('second save ends the run instead of producing unlimited rebounds', () => {
@@ -106,7 +106,7 @@ test('cancel or duplicate release during flight preserves the pass and resume', 
 const routes = [
   [ // Hook around the stick, then finish.
     [{ x: -5, z: 2 }, { x: -3, z: -4 }, { x: 5, z: -6 }],
-    [{ x: 2.5, z: -18 }],
+    [{ x: -2.25, z: -18, height: 3.5 }],
   ],
   [ // Cross-ice reception is an immediate shooting pause.
     [{ x: 7, z: -10 }], [{ x: 2.5, z: -18 }],
@@ -117,7 +117,7 @@ const routes = [
     [{ x: 7, z: -13 }, { x: 6, z: -16 }, { x: 2.25, z: -18, height: 3.5 }],
   ],
   [ // Intentional save followed by the guided rebound.
-    [{ x: 0, z: -10 }], [{ x: 0, z: -18 }], [{ x: 2.5, z: -18 }],
+    [{ x: 0, z: -10 }], [{ x: 0, z: -18 }], [{ x: -2.25, z: -18, height: 3.5 }],
   ],
 ];
 routes.forEach((route, i) => test(`handcrafted level ${i + 2} has a playable route with 2–4 pauses`, () => {
@@ -218,7 +218,7 @@ test('skaters stay separated throughout every authored route and reception', () 
     const g = new Game(index + 1);
     const update = g.update.bind(g);
     g.update = dt => { update(dt); assertSpacing([...g.attackers, ...g.defenders]); };
-    for (const points of route) { pause(g); g.release([g.puck, ...points]); }
+    for (const points of route) { pause(g); g.release([g.puck, ...points], 0.8); }
     until(g, x => x.terminal);
     assert.equal(g.phase, 'SUCCESS');
   });
@@ -227,27 +227,29 @@ test('skaters stay separated throughout every authored route and reception', () 
 function clearShootingSetup(stage = 0) {
   const g = new Game(); pause(g);
   g.stage = stage;
+  g.goalieGlove = { ...g.coveredCorner, z: g.goalie.z };
   g.puck = { x: 0, z: -10 }; g.attackers[0] = { ...g.puck };
   g.defenders = [{ x: -9, z: 8 }, { x: 9, z: 8 }];
   return g;
 }
 
-test('all four corners score when open and save when covered', () => {
+test('all four corners can beat a wrong-footed goalie, and actual glove contact saves', () => {
   GOAL_CORNERS.forEach((corner, index) => {
-    // Stage/rebound tendencies expose every corner across the existing setups.
-    const open = clearShootingSetup((index + 1) % 3);
-    if (open.cornerCovered(corner)) open.reboundUsed = true;
+    const open = clearShootingSetup();
+    open.puck = { x: 0, z: -13 }; open.attackers[0] = { ...open.puck };
+    open.goalieGlove = { ...GOAL_CORNERS[index ^ 1], z: open.goalie.z };
     assert.equal(open.cornerCovered(corner), false);
     open.release([open.puck, corner]);
     until(open, g => g.terminal || g.phase === 'REBOUND');
     assert.equal(open.phase, 'SUCCESS', corner.label);
 
-    const blocked = clearShootingSetup(index % 3);
-    if (index === 3) { blocked.stage = 1; blocked.reboundUsed = true; }
+    const blocked = clearShootingSetup();
+    blocked.puck = { x: 0, z: -13 }; blocked.attackers[0] = { ...blocked.puck };
+    blocked.goalieGlove = { ...corner, z: blocked.goalie.z };
     assert.equal(blocked.cornerCovered(corner), true);
     blocked.release([blocked.puck, corner]);
     until(blocked, g => g.terminal || g.phase === 'REBOUND');
-    assert.equal(blocked.phase, index === 3 ? 'FAIL' : 'REBOUND', corner.label);
+    assert.equal(blocked.phase, 'REBOUND', corner.label);
   });
 });
 
@@ -276,4 +278,53 @@ test('shots over the taller crossbar miss and high saves return the puck to the 
   assert.equal(saved.puck.height ?? 0, 0);
   assert.deepEqual(saved.puck, saved.attackers[saved.carrier]);
   assertSpacing([...saved.attackers, ...saved.defenders]);
+});
+
+test('goalie reads long straight shots into every corner, but a late curve beats the commitment', () => {
+  for (const dt of [1 / 120, 1 / 60, 0.05]) {
+    for (const corner of GOAL_CORNERS) {
+      const g = clearShootingSetup();
+      g.puck = { x: 0, z: 4 }; g.attackers[0] = { ...g.puck };
+      g.defenders = [{ x: -9, z: 15 }, { x: 9, z: 15 }];
+      g.release([g.puck, corner], 0.3);
+      for (let i = 0; i < 1000 && g.phase === 'EXECUTING_ACTION'; i++) g.update(dt);
+      assert.equal(g.phase, 'REBOUND', `${corner.label}, dt ${dt}`);
+    }
+    const bent = clearShootingSetup();
+    bent.puck = { x: 0, z: 4 }; bent.attackers[0] = { ...bent.puck };
+    bent.defenders = [{ x: -9, z: 15 }, { x: 9, z: 15 }];
+    bent.release([bent.puck, { x: 5, z: -15 }, GOAL_CORNERS[0]], 0.3);
+    for (let i = 0; i < 1000 && bent.phase === 'EXECUTING_ACTION'; i++) bent.update(dt);
+    assert.equal(bent.phase, 'SUCCESS');
+  }
+});
+
+test('quicker release can beat the glove on a shot that is saved at a slower speed', () => {
+  const quick = shootingSetup(), slow = shootingSetup();
+  for (const [game, seconds] of [[quick, 0.3], [slow, 1]]) {
+    game.release([game.puck, GOAL_CORNERS[2]], seconds);
+    until(game, g => g.terminal || g.phase === 'REBOUND');
+  }
+  assert.equal(quick.phase, 'SUCCESS');
+  assert.equal(slow.phase, 'REBOUND');
+});
+
+test('goalie reacts to current travel, not the unseen endpoint, and freezes with the play', () => {
+  const left = clearShootingSetup(), right = clearShootingSetup();
+  for (const [game, side] of [[left, -1], [right, 1]]) {
+    game.puck = { x: 0, z: 4 }; game.attackers[0] = { ...game.puck };
+    game.release([game.puck, { x: 0, z: 0 }, { x: 0, z: -8 }, { x: side * 8, z: -12 }, { x: side * 2.25, z: -18 }]);
+    const start = { ...game.goalie };
+    for (let i = 0; i < 10; i++) {
+      game.update(1 / 60);
+      assert.ok(Math.abs(game.goalieVelocity) <= 6.5);
+    }
+    assert.ok(distance(start, game.goalie) < 0.2);
+  }
+  assert.deepEqual(left.goalie, right.goalie);
+  assert.deepEqual(left.goalieGlove, right.goalieGlove);
+  const frozen = shootingSetup();
+  const before = JSON.stringify(frozen);
+  for (let i = 0; i < 120; i++) frozen.update(0.05);
+  assert.equal(JSON.stringify(frozen), before);
 });

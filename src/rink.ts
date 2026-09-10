@@ -4,6 +4,34 @@ import { Game, Point, GOAL_CORNERS, NET_Z, NET_HEIGHT, NET_HALF_WIDTH } from './
 
 const C = { ice: 0xdceef0, teal: 0x18dcb6, red: 0xef4d65, ink: 0x10293c, gold: 0xffcf5a };
 
+export function frameRink(camera: THREE.OrthographicCamera, width: number, height: number, game: Game) {
+  const aspect = width / height;
+  const follow = Math.max(-5, Math.min(1, game.puck.z * 0.22));
+  camera.position.set(Math.sin(game.motion * 57) * game.impact * 0.16, 37, 24 + follow);
+  camera.lookAt(0, 0, follow - 2);
+  camera.zoom = 1 + game.impact * 0.065;
+  camera.updateMatrixWorld();
+  // Fit the whole cage (including its back/top), puck, and skaters below the
+  // status overlay. Shift framing first; widen only when both ends need room.
+  const bounds = [
+    ...[-3.2, 3.2].flatMap(x => [-20.1, NET_Z + 0.1].flatMap(z => [0, NET_HEIGHT + 0.2].map(y => new THREE.Vector3(x, y, z)))),
+    new THREE.Vector3(game.puck.x, 0.2 + (game.puck.height ?? 0), game.puck.z),
+    ...[...game.attackers, ...game.defenders].flatMap(p => [0, 2.4].map(y => new THREE.Vector3(p.x, y, p.z))),
+  ].map(p => p.applyMatrix4(camera.matrixWorldInverse));
+  const minY = Math.min(...bounds.map(p => p.y)), maxY = Math.max(...bounds.map(p => p.y));
+  const topPadding = Math.min(48, height * 0.18), bottomPadding = Math.min(24, height * 0.08);
+  const usable = 1 - (topPadding + bottomPadding) / height;
+  const halfHeight = Math.max(Math.max(11.8 / aspect, 18) / camera.zoom, (maxY - minY) / (2 * usable));
+  const lowerCenter = maxY - halfHeight + 2 * halfHeight * topPadding / height;
+  const upperCenter = minY + halfHeight - 2 * halfHeight * bottomPadding / height;
+  const center = Math.max(lowerCenter, Math.min(upperCenter, 0));
+  camera.left = -halfHeight * aspect * camera.zoom;
+  camera.right = halfHeight * aspect * camera.zoom;
+  camera.top = center + halfHeight * camera.zoom;
+  camera.bottom = center - halfHeight * camera.zoom;
+  camera.updateProjectionMatrix();
+}
+
 export class Rink {
   private scene = new THREE.Scene();
   private camera = new THREE.OrthographicCamera(-14, 14, 24, -24, 0.1, 150);
@@ -158,18 +186,7 @@ export class Rink {
   }
 
   render(game: Game) {
-    const aspect = this.width / this.height;
-    // Fill the screen with the ice, leaving just enough room for the boards.
-    // The height floor keeps the attacking net visible on shorter screens.
-    const halfWidth = Math.max(11.8, 18 * aspect);
-    this.camera.left = -halfWidth; this.camera.right = halfWidth;
-    this.camera.top = halfWidth / aspect; this.camera.bottom = -halfWidth / aspect;
-    // Tracking is derived only from simulation state, so aiming never moves the ice.
-    const follow = Math.max(-5, Math.min(1, game.puck.z * 0.22));
-    this.camera.position.set(Math.sin(game.motion * 57) * game.impact * 0.16, 37, 24 + follow);
-    this.camera.lookAt(0, 0, follow - 2);
-    this.camera.zoom = 1 + game.impact * 0.065;
-    this.camera.updateProjectionMatrix(); this.camera.updateMatrixWorld();
+    frameRink(this.camera, this.width, this.height, game);
     [...game.attackers, ...game.defenders].forEach((p, i) => {
       const model = this.players[i];
       model.position.set(p.x, 0, p.z);
@@ -182,9 +199,9 @@ export class Rink {
     });
     this.goalie.position.set(game.goalie.x, 0, game.goalie.z);
     this.goalie.rotation.y = Math.PI;
-    this.goalie.rotation.z = game.reboundUsed ? -0.8 * Math.max(0.2, game.impact) : (game.puck.x - game.goalie.x) * 0.025;
-    const cover = game.coveredCorner;
-    this.glove.position.set(cover.x, cover.height + 0.14, NET_Z + 0.15);
+    this.goalie.rotation.z = -game.goalieVelocity * 0.055;
+    const cover = game.goalieGlove;
+    this.glove.position.set(cover.x, (cover.height ?? 0) + 0.14, cover.z);
     const shoulder = new THREE.Vector3(game.goalie.x, 1.4, game.goalie.z);
     this.gloveArm.position.copy(shoulder).lerp(this.glove.position, 0.5);
     this.gloveArm.scale.z = shoulder.distanceTo(this.glove.position);

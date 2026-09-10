@@ -105,6 +105,7 @@ export class Game {
   readonly levelIndex: number;
   constructor(levelIndex = 0) {
     this.levelIndex = Number.isInteger(levelIndex) && LEVELS[levelIndex] ? levelIndex : 0;
+    this.goalieGlove = { ...this.coveredCorner, z: this.goalie.z };
     if (this.levelIndex !== 0) {
       const first = this.level.moments[0];
       this.attackers = [first.carrier, ...first.support].map(p => ({ x: p.x, z: p.z + 3 }));
@@ -117,13 +118,18 @@ export class Game {
   get level() { return LEVELS[this.levelIndex]; }
   get moment() { return this.level.moments[this.stage]; }
   get coveredCorner() { return GOAL_CORNERS[(this.levelIndex + this.stage + (this.reboundUsed ? 2 : 0)) % GOAL_CORNERS.length]; }
-  cornerCovered(p: Point) { return Math.abs(p.x - this.coveredCorner.x) < 0.85 && Math.abs((p.height ?? 0) - this.coveredCorner.height) < 0.9; }
+  cornerCovered(p: Point) { return this.goalieCovers(p); }
   phase: Phase = 'AUTO_PLAY';
   stage = 0;
   carrier = 0;
   attackers: Point[] = [{ x: -4, z: 18 }, { x: 6, z: 12 }, { x: -6, z: 4 }];
   defenders: Point[] = [{ x: -1, z: 7 }, { x: 2, z: -5 }];
   goalie: Point = { x: 0, z: -17.25 };
+  goalieGlove: Point = { x: -2.25, z: -17.25, height: 0.55 };
+  goalieVelocity = 0;
+  private goalieGloveVelocity = { x: 0, height: 0 };
+  private goalieShotTime = 0;
+  private goalieRecovery = 0;
   puck: Point = copy(this.attackers[0]);
   preview: Point[] = [];
   path: Point[] = [];
@@ -211,6 +217,7 @@ export class Game {
     this.segmentOffset = 0;
     this.speed = 23 + clamp(length / Math.max(seconds, 0.1) / 20, 0, 5);
     this.actionDistance = 0;
+    this.goalieShotTime = 0;
     this.actionLength = this.path.reduce((sum, p, i, a) => sum + (i ? distance(a[i - 1], p) : 0), 0);
     this.fromDefense = this.defenders.map(copy);
     this.fromAttack = this.attackers.map(copy);
@@ -261,6 +268,7 @@ export class Game {
       const p = mix(this.reboundStart, this.reboundEnd, t);
       p.x += Math.sin(t * Math.PI) * 1.6;
       this.puck = p;
+      this.moveGoalie(dt * slow);
       this.addTrail();
       this.attackers[this.carrier] = mix(this.fromAttack[this.carrier], this.reboundEnd, t);
       this.separateSkaters(this.carrier);
@@ -285,18 +293,17 @@ export class Game {
       this.attackers = this.fromAttack.map((p, i) => mix(p, this.toAttack[i], Math.min(1, this.actionDistance / this.actionLength)));
       this.separateSkaters(this.intent.kind === 'pass' ? this.intent.target : this.carrier);
       this.puck = mix(a, b, this.segmentOffset / length);
-      if (this.intent.kind === 'shot') {
-        const desired = clamp(this.puck.x * 0.28, -1.1, 1.1);
-        this.goalie.x += (desired - this.goalie.x) * Math.min(1, step * 0.07);
-      }
+      this.moveGoalie(step / this.speed, this.intent.kind === 'shot' ? previous : undefined);
       if ((this.puck.height ?? 0) < 2.1 && this.defenders.some(d => distance(d, this.puck) < 1.05)) { this.fail('PICKED OFF. Bend around the red jerseys.'); break; }
       if (Math.abs(this.puck.x) > 10.5 || this.puck.z > 22 || this.puck.z < -21) { this.fail('OFF THE ICE. Keep the curve inside the boards.'); break; }
-      if (previous.z > this.goalie.z && this.puck.z <= this.goalie.z && (this.puck.height ?? 0) < 2.1 && Math.abs(this.puck.x - this.goalie.x) < 1.05) { this.save(); break; }
+      if (previous.z > this.goalie.z && this.puck.z <= this.goalie.z) {
+        const crossing = mix(previous, this.puck, (this.goalie.z - previous.z) / (this.puck.z - previous.z));
+        if (this.goalieCovers(crossing)) { this.puck = crossing; this.save(); break; }
+      }
       if (previous.z > NET_Z && this.puck.z <= NET_Z) {
         const crossing = mix(previous, this.puck, (NET_Z - previous.z) / (this.puck.z - previous.z));
         if ((crossing.height ?? 0) > NET_HEIGHT - 0.15) this.fail('OVER THE BAR. Aim below the red crossbar.');
         else if (Math.abs(crossing.x) >= NET_HALF_WIDTH - 0.15) this.fail('WIDE OF THE NET. Aim inside the red posts.');
-        else if (this.cornerCovered(crossing)) this.save();
         else { this.phase = 'SUCCESS'; this.message = 'BAR DOWN!'; this.emit('goal'); }
         break;
       }
@@ -319,6 +326,45 @@ export class Game {
     this.defenders = spaced.slice(3);
   }
 
+  private goalieCovers(p: Point) {
+    const y = p.height ?? 0, dx = Math.abs(p.x - this.goalie.x);
+    const pads = y >= 0 && y < 0.9 && dx < 1.3;
+    const torso = y >= 0.65 && y < 2.25 && dx < 0.95;
+    const glove = Math.hypot((p.x - this.goalieGlove.x) / 0.85, (y - (this.goalieGlove.height ?? 0)) / 0.85) < 1;
+    return pads || torso || glove;
+  }
+
+  private moveGoalie(dt: number, previous?: Point) {
+    this.goalieRecovery = Math.max(0, this.goalieRecovery - dt);
+    let aimX = this.puck.x * 0.32;
+    let gloveX: number = this.coveredCorner.x, gloveHeight: number = this.coveredCorner.height;
+    if (previous) {
+      this.goalieShotTime += dt;
+      // Read only the puck's current heading, never the drawn destination.
+      // Reaction delay and momentum give late bends and quick shots an edge.
+      if (this.goalieShotTime < 0.14 + this.goalieRecovery * 0.3) return;
+      const dz = this.puck.z - previous.z;
+      const ahead = dz < -0.00001 ? clamp((this.goalie.z - this.puck.z) / dz, 0, 10000) : 0;
+      aimX = this.puck.x + (this.puck.x - previous.x) * ahead;
+      gloveX = aimX;
+      gloveHeight = clamp((this.puck.height ?? 0) + ((this.puck.height ?? 0) - (previous.height ?? 0)) * ahead, 0.4, 3.65);
+    }
+    const recovering = this.goalieRecovery > 0;
+    const bodyTarget = clamp(aimX, -1.9, 1.9);
+    const desiredVelocity = clamp((bodyTarget - this.goalie.x) * 12, -6.5, 6.5);
+    this.goalieVelocity += clamp(desiredVelocity - this.goalieVelocity, -38 * dt, 38 * dt);
+    this.goalie.x = clamp(this.goalie.x + this.goalieVelocity * dt * (recovering ? 0.55 : 1), -1.9, 1.9);
+    const target = { x: clamp(gloveX, this.goalie.x - 1.8, this.goalie.x + 1.8), height: gloveHeight };
+    for (const axis of ['x', 'height'] as const) {
+      const value = this.goalieGlove[axis] ?? 0;
+      const desired = clamp((target[axis] - value) * 14, -8, 8);
+      this.goalieGloveVelocity[axis] += clamp(desired - this.goalieGloveVelocity[axis], -55 * dt, 55 * dt);
+      this.goalieGlove[axis] = value + this.goalieGloveVelocity[axis] * dt * (recovering ? 0.55 : 1);
+    }
+    this.goalieGlove.x = clamp(this.goalieGlove.x, -2.65, 2.65);
+    this.goalieGlove.height = clamp(this.goalieGlove.height ?? 0, 0.35, 3.65);
+  }
+
   private finishPath() {
     if (this.intent.kind === 'pass') {
       this.carrier = this.intent.target;
@@ -337,6 +383,7 @@ export class Game {
 
   private save() {
     this.emit('save');
+    this.goalieRecovery = 0.65;
     if (this.reboundUsed) { this.fail('DENIED. Try the other corner.'); return; }
     this.reboundUsed = true;
     this.stage = this.level.moments.length - 1;
