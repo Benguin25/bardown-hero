@@ -7,7 +7,7 @@ Core loop:
 
 1. Play auto-advances along a scripted hockey sequence.
 2. At key moments, everything freezes.
-3. Player drags from the puck to draw a pass or shot path.
+3. Player drags anywhere to draw a relative pass or shot path anchored to the puck.
 4. The path is previewed while dragging.
 5. On release, the path is lightly cleaned/snapped.
 6. The puck follows the drawn path, including ridiculous curves.
@@ -36,7 +36,7 @@ Do not optimize for hockey simulation.
 - Semi-realistic hockey setting with intentionally over-the-top effects and animation.
 
 ## Input
-One-finger swipe/draw from the puck.
+One-finger swipe/draw anywhere on screen, with the preview anchored to the puck.
 
 ### Pass
 - Endpoint near a teammate snaps/assists toward them.
@@ -46,12 +46,14 @@ One-finger swipe/draw from the puck.
 ### Shot
 - Endpoint toward the net becomes a shot.
 - Shot placement matters.
+- A tall net has four high/low corner targets. Gold targets are open; red marks the goalie's authored coverage. Shot height affects saves, defender clearance, and crossbar misses.
 - Less aim assistance than passes.
 - Swipe speed may slightly affect puck speed/power.
 
 ## Gameplay Rules
 - Time fully freezes during input.
 - Teammates and defenders mostly follow authored routes.
+- Defenders move on release; reception freezes play immediately. Receivers remain stationary during passes. Skaters keep separate positions along routes and at reception.
 - Small reactions are allowed, but avoid general-purpose hockey AI.
 - Defender collision/interception can fail the play.
 - Bad shots can be saved.
@@ -90,6 +92,8 @@ Flow:
 No menus, accounts, economy, customization, career UI, multiplayer, or purchases.
 
 ## Progression Later
+User priority: finish and tune the core mechanics before adding powerups, more levels, leagues, or progression. The ideas below are deferred, not current implementation tasks.
+
 Career chapters:
 - Rookie
 - Junior

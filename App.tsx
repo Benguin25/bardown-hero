@@ -20,7 +20,7 @@ export default function App() {
   const lastUI = useRef('');
   const sync = () => {
     const g = game.current;
-    const key = `${g.levelIndex}|${g.phase}|${g.stage}|${g.message}|${g.intent.kind}|${g.preview.length > 0}`;
+    const key = `${g.levelIndex}|${g.phase}|${g.stage}|${g.message}|${g.intent.kind}|${g.preview.length > 0}|${g.cornerCovered(g.preview[g.preview.length - 1] ?? g.puck)}`;
     if (key !== lastUI.current && mounted.current) { lastUI.current = key; redraw(v => v + 1); }
   };
 
@@ -58,9 +58,9 @@ export default function App() {
   const gesture = useMemo(() => {
     const add = (dx: number, dy: number) => {
       const screen = relativeAim(anchor.current, dx, dy);
-      const point = rink.current?.icePoint(screen.x, screen.y);
+      const point = rink.current?.aimPoint(screen.x, screen.y);
       if (!point || !stroke.current.length) return;
-      if (distance(stroke.current[stroke.current.length - 1], point) > 0.12) {
+      if (Math.hypot(distance(stroke.current[stroke.current.length - 1], point), (stroke.current[stroke.current.length - 1].height ?? 0) - (point.height ?? 0)) > 0.12) {
         // Bound memory during very long doodles while retaining the whole curve.
         if (stroke.current.length >= 500) stroke.current = stroke.current.filter((_, i) => i % 2 === 0);
         stroke.current.push(point);
@@ -128,7 +128,7 @@ export default function App() {
       <View style={s.footer}>
         <Text style={s.eyebrow}>{g.reboundUsed ? 'BONUS CHANCE / REBOUND' : `DECISION ${g.stage + 1} / ${g.level.moments.length}`}</Text>
         <Text style={s.title}>{g.reboundUsed ? 'CLEAN UP THE REBOUND' : g.moment.title}</Text>
-        <Text style={s.instruction}>{aiming ? g.intent.kind === 'pass' ? 'Teammate locked. Release to send your curve.' : g.intent.kind === 'shot' ? 'Placement matters. Release to rip it.' : 'Finish near a teammate or toward the net.' : g.message}</Text>
+        <Text style={s.instruction}>{aiming ? g.intent.kind === 'pass' ? 'Teammate locked. Release to send your curve.' : g.intent.kind === 'shot' ? g.cornerCovered(g.preview[g.preview.length - 1]) ? 'Goalie covers this corner. Try a gold target.' : 'Aim high or low. Gold corners are open.' : 'Finish near a teammate or toward the net.' : g.message}</Text>
         <Text style={s.hint}>{g.paused ? 'DRAG ANYWHERE  →  DRAW ANY CURVE  →  RELEASE' : 'TEAL ATTACKS ↑  •  NO LIMIT ON RETRIES'}</Text>
       </View>
     </SafeAreaView>

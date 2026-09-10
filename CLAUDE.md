@@ -4,6 +4,8 @@
 Build a polished-feeling arcade hockey prototype, not a hockey simulator.
 
 ## Priorities
+User direction: get the core game mechanics right first. Defer powerups, additional levels, leagues, progression, and other extras until the swipe, spacing, passing, shooting, and goalie interactions feel good. Existing test scenarios are for validating those mechanics.
+
 1. Core swipe gameplay
 2. Juice / responsiveness
 3. Readability in portrait

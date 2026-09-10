@@ -58,6 +58,7 @@ This PATH change lasts only for the current terminal. `.tooling` is ignored by G
 - When **TIME FROZEN** appears, drag anywhere on the screen, including the lower instruction area. Your finger's movement draws a trajectory anchored to the gold puck ring. Start below the puck to keep the preview visible, then lift to execute. Taps do nothing; a second finger cancels the stroke.
 - Finish near a teal teammate: the preview turns teal and says **ASSISTED PASS**. The endpoint snaps to that teammate while your curve remains.
 - Finish toward the net: the preview turns gold and says **SHOT ON NET**. Aim inside the red posts; the gold ice rings mark the corners.
+- Aim into the upright net's four rings for high-left, high-right, low-left, or low-right shots. Gold rings are open; the red ring is covered by the goalie's extended glove/pad. Coverage changes between decisions and after a rebound. The preview and puck rise to the selected height, and shots above the crossbar miss.
 - A pink path with **NO TARGET** will leave a loose puck unless you redirect its endpoint before releasing.
 - You can draw large curves and loops. Stay inside the boards and avoid red defenders.
 - Tap **RETRY** at any time, or **RUN IT BACK** after the result, to immediately reset the scenario.

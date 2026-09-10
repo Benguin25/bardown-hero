@@ -1,29 +1,66 @@
 // Rink coordinates: x across the ice, z toward the camera. Attack toward -z.
-export type Point = { x: number; z: number };
+export type Point = { x: number; z: number; height?: number };
 export type Phase = 'AUTO_PLAY' | 'PAUSED_FOR_INPUT' | 'EXECUTING_ACTION' | 'REBOUND' | 'SUCCESS' | 'FAIL';
 export type Intent = { kind: 'pass'; target: number } | { kind: 'shot' } | { kind: 'loose' };
 export const NET_Z = -18;
 export const NET_HALF_WIDTH = 3.05;
+export const NET_HEIGHT = 4.4;
+export const GOAL_CORNERS = [
+  { x: -2.25, z: NET_Z, height: 0.55, label: 'LOW LEFT' },
+  { x: 2.25, z: NET_Z, height: 0.55, label: 'LOW RIGHT' },
+  { x: -2.25, z: NET_Z, height: 3.5, label: 'HIGH LEFT' },
+  { x: 2.25, z: NET_Z, height: 3.5, label: 'HIGH RIGHT' },
+] as const;
 export const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.z - b.z);
-export const mix = (a: Point, b: Point, t: number): Point => ({ x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t });
+export const mix = (a: Point, b: Point, t: number): Point => ({ x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t, ...(a.height !== undefined || b.height !== undefined ? { height: (a.height ?? 0) + ((b.height ?? 0) - (a.height ?? 0)) * t } : {}) });
 const copy = (p: Point): Point => ({ ...p });
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
+
+export const SKATER_SPACING = 1.85;
+// Keep the receiver fixed and give everyone else a distinct patch of ice.
+// The same small constraint is applied along routes, not only at their ends.
+export function spaceSkaters(points: Point[], pinned: number): Point[] {
+  const result = points.map(copy);
+  for (let iteration = 0; iteration < 24; iteration++) {
+    let adjusted = false;
+    for (let i = 0; i < result.length; i++) for (let j = i + 1; j < result.length; j++) {
+      const a = result[i], b = result[j], d = distance(a, b);
+      if (d >= SKATER_SPACING - 0.00001) continue;
+      let dx = d > 0.00001 ? (b.x - a.x) / d : Math.cos((i * 5 + j) * 2.399);
+      let dz = d > 0.00001 ? (b.z - a.z) / d : Math.sin((i * 5 + j) * 2.399);
+      const push = SKATER_SPACING - d + 0.0001;
+      const shareA = i === pinned ? 0 : j === pinned ? 1 : 0.5;
+      const shareB = 1 - shareA;
+      // At the boards, separate along the ice instead of pushing into a wall.
+      if (Math.abs(dz) < 0.25 && (Math.abs(a.x - dx * push * shareA) > 9.6 || Math.abs(b.x + dx * push * shareB) > 9.6)) {
+        dx = 0; dz = b.z >= a.z ? 1 : -1;
+      }
+      a.x = clamp(a.x - dx * push * shareA, -9.6, 9.6);
+      a.z = clamp(a.z - dz * push * shareA, -15.5, 21);
+      b.x = clamp(b.x + dx * push * shareB, -9.6, 9.6);
+      b.z = clamp(b.z + dz * push * shareB, -15.5, 21);
+      adjusted = true;
+    }
+    if (!adjusted) break;
+  }
+  return result;
+}
 
 export const MOMENTS = [
   { title: 'THE BREAKOUT', instruction: 'Drag anywhere. Guide the puck path to a teal teammate.', carrier: { x: -4, z: 12 }, support: [{ x: 6, z: 4 }, { x: -6, z: -4 }], defense: [{ x: -1, z: 2 }, { x: 2, z: -10 }] },
   { title: 'BEND THE RULES', instruction: 'Curve around the red defender to your teammate.', carrier: { x: 6, z: 3 }, support: [{ x: -6, z: -7 }, { x: 7, z: -10 }], defense: [{ x: 0, z: -2 }, { x: 6.5, z: -5.8 }] },
-  { title: 'PICK YOUR CORNER', instruction: 'Draw into either corner of the net. Beat the goalie.', carrier: { x: -4, z: -10 }, support: [{ x: 7, z: -10 }, { x: -7, z: -14 }], defense: [{ x: -1, z: -4 }, { x: 4, z: -6 }] },
+  { title: 'PICK YOUR CORNER', instruction: 'Aim high or low into a gold corner. Red is covered.', carrier: { x: -4, z: -10 }, support: [{ x: 7, z: -10 }, { x: -7, z: -14 }], defense: [{ x: -1, z: -4 }, { x: 4, z: -6 }] },
 ] as const;
 
 type Moment = { title: string; instruction: string; carrier: Point; support: readonly Point[]; defense: readonly Point[] };
-type Level = { title: string; moments: readonly Moment[]; instantReceive?: boolean };
+type Level = { title: string; moments: readonly Moment[] };
 export const LEVELS: readonly Level[] = [
   { title: 'THE OPENING RUSH', moments: MOMENTS },
   { title: 'AROUND THE STICK', moments: [
     { title: 'HOOK THE PASS', instruction: 'Bend left of the defender, then into the far teammate.', carrier: { x: -6, z: 6 }, support: [{ x: 5, z: -6 }, { x: -7, z: -9 }], defense: [{ x: -0.5, z: 0 }, { x: -6.5, z: -2 }] },
     { title: 'FAR CORNER', instruction: 'Finish the rush with a corner shot.', carrier: { x: 5, z: -10 }, support: [{ x: -6, z: -10 }, { x: 7, z: -13 }], defense: [{ x: -2, z: -6 }, { x: 0, z: -12 }] },
   ] },
-  { title: 'CROSS-ICE ONE-TIMER', instantReceive: true, moments: [
+  { title: 'CROSS-ICE ONE-TIMER', moments: [
     { title: 'ACROSS THE SLOT', instruction: 'Send it across to the right wing. Be ready to shoot.', carrier: { x: -7, z: -10 }, support: [{ x: 7, z: -10 }, { x: -5, z: -5 }], defense: [{ x: 0, z: -7 }, { x: -2, z: -14 }] },
     { title: 'HIT IT FIRST TIME', instruction: 'No skating delay. Swipe into the near corner.', carrier: { x: 7, z: -10 }, support: [{ x: -7, z: -10 }, { x: -5, z: -5 }], defense: [{ x: 0, z: -7 }, { x: -2, z: -14 }] },
   ] },
@@ -79,6 +116,8 @@ export class Game {
   }
   get level() { return LEVELS[this.levelIndex]; }
   get moment() { return this.level.moments[this.stage]; }
+  get coveredCorner() { return GOAL_CORNERS[(this.levelIndex + this.stage + (this.reboundUsed ? 2 : 0)) % GOAL_CORNERS.length]; }
+  cornerCovered(p: Point) { return Math.abs(p.x - this.coveredCorner.x) < 0.85 && Math.abs((p.height ?? 0) - this.coveredCorner.height) < 0.9; }
   phase: Phase = 'AUTO_PLAY';
   stage = 0;
   carrier = 0;
@@ -103,6 +142,10 @@ export class Game {
   private segment = 0;
   private segmentOffset = 0;
   private speed = 22;
+  private actionDistance = 0;
+  private actionLength = 1;
+  private toDefense: Point[] = [];
+  private toAttack: Point[] = [];
   private reboundStart: Point = { x: 0, z: 0 };
   private reboundEnd: Point = { x: 6, z: -11 };
 
@@ -122,7 +165,23 @@ export class Game {
     if (!this.paused || !raw.length) return;
     this.intent = this.classify(raw[raw.length - 1]);
     const end = this.intent.kind === 'pass' ? this.attackers[this.intent.target] : undefined;
-    this.preview = cleanPath([copy(this.puck), ...raw.slice(1)], end);
+    let stroke = raw;
+    const target = raw[raw.length - 1];
+    if (this.intent.kind === 'shot' && target.height !== undefined) {
+      // Dragging around the goal face adjusts the destination, rather than
+      // executing an earlier crossing of the goal line at the wrong height.
+      const enteredNet = raw.findIndex((p, i) => i > 0 && p.height !== undefined);
+      if (enteredNet > 0) stroke = [...raw.slice(0, enteredNet), target];
+    }
+    this.preview = cleanPath([copy(this.puck), ...stroke.slice(1).map(p => ({ x: p.x, z: p.z }))], end);
+    if (this.intent.kind === 'shot' && target.height !== undefined) {
+      const total = this.preview.reduce((sum, p, i, a) => sum + (i ? distance(a[i - 1], p) : 0), 0);
+      let traveled = 0;
+      this.preview = this.preview.map((p, i, a) => {
+        if (i) traveled += distance(a[i - 1], p);
+        return i === 0 ? p : { ...p, height: target.height! * traveled / Math.max(total, 0.001) };
+      });
+    }
   }
 
   cancel() {
@@ -151,6 +210,21 @@ export class Game {
     this.segment = 0;
     this.segmentOffset = 0;
     this.speed = 23 + clamp(length / Math.max(seconds, 0.1) / 20, 0, 5);
+    this.actionDistance = 0;
+    this.actionLength = this.path.reduce((sum, p, i, a) => sum + (i ? distance(a[i - 1], p) : 0), 0);
+    this.fromDefense = this.defenders.map(copy);
+    this.fromAttack = this.attackers.map(copy);
+    const next = this.level.moments[Math.min(this.stage + 1, this.level.moments.length - 1)];
+    // Short authored routes, capped to a readable skating speed. Identical
+    // setups still get a small lateral slide instead of motionless defenders.
+    this.toDefense = this.defenders.map((p, i) => {
+      const destination = next.defense[i];
+      return distance(p, destination) > 0.1 ? copy(destination) : { x: clamp(p.x + (i === 0 ? 1 : -1), -9, 9), z: p.z - 0.4 };
+    });
+    const receiver = this.intent.kind === 'pass' ? this.intent.target : this.carrier;
+    const others = [0, 1, 2].filter(i => i !== receiver);
+    this.toAttack = this.attackers.map((p, i) => this.intent.kind === 'pass' && i !== receiver ? copy(next.support[others.indexOf(i)]) : copy(p));
+    this.toAttack = spaceSkaters(this.toAttack, receiver);
     this.phase = 'EXECUTING_ACTION';
     this.message = this.intent.kind === 'pass' ? 'THREAD IT.' : this.intent.kind === 'shot' ? 'LET IT RIP.' : 'LOOSE PUCK…';
     this.emit('release', 0.35);
@@ -176,6 +250,7 @@ export class Game {
       const others = [0, 1, 2].filter(i => i !== this.carrier);
       this.attackers = this.attackers.map((_, i) => mix(this.fromAttack[i], i === this.carrier ? moment.carrier : moment.support[others.indexOf(i)], ease));
       this.defenders = this.defenders.map((_, i) => mix(this.fromDefense[i], moment.defense[i], ease));
+      this.separateSkaters(this.carrier);
       this.puck = copy(this.attackers[this.carrier]);
       if (t === 1) { this.phase = 'PAUSED_FOR_INPUT'; this.impact = 0; this.trail = []; this.message = moment.instruction; this.emit('freeze', 0); }
       return;
@@ -188,7 +263,8 @@ export class Game {
       this.puck = p;
       this.addTrail();
       this.attackers[this.carrier] = mix(this.fromAttack[this.carrier], this.reboundEnd, t);
-      if (t === 1) { this.phase = 'PAUSED_FOR_INPUT'; this.trail = []; this.impact = 0; this.message = 'REBOUND! Draw to the open corner. One more chance.'; this.emit('freeze', 0); }
+      this.separateSkaters(this.carrier);
+      if (t === 1) { this.puck = copy(this.attackers[this.carrier]); this.phase = 'PAUSED_FOR_INPUT'; this.trail = []; this.impact = 0; this.message = 'REBOUND! Aim for a gold corner. One more chance.'; this.emit('freeze', 0); }
       return;
     }
     let travel = this.speed * dt * slow;
@@ -203,27 +279,44 @@ export class Game {
       const previous = this.puck;
       this.segmentOffset += step;
       travel -= step;
+      this.actionDistance += step;
+      const flightTime = this.actionDistance / this.speed;
+      this.defenders = this.fromDefense.map((p, i) => mix(p, this.toDefense[i], Math.min(1, flightTime * 4 / Math.max(0.001, distance(p, this.toDefense[i])))));
+      this.attackers = this.fromAttack.map((p, i) => mix(p, this.toAttack[i], Math.min(1, this.actionDistance / this.actionLength)));
+      this.separateSkaters(this.intent.kind === 'pass' ? this.intent.target : this.carrier);
       this.puck = mix(a, b, this.segmentOffset / length);
       if (this.intent.kind === 'shot') {
         const desired = clamp(this.puck.x * 0.28, -1.1, 1.1);
         this.goalie.x += (desired - this.goalie.x) * Math.min(1, step * 0.07);
       }
-      if (this.defenders.some(d => distance(d, this.puck) < 1.05)) { this.fail('PICKED OFF. Bend around the red jerseys.'); break; }
+      if ((this.puck.height ?? 0) < 2.1 && this.defenders.some(d => distance(d, this.puck) < 1.05)) { this.fail('PICKED OFF. Bend around the red jerseys.'); break; }
       if (Math.abs(this.puck.x) > 10.5 || this.puck.z > 22 || this.puck.z < -21) { this.fail('OFF THE ICE. Keep the curve inside the boards.'); break; }
-      if (previous.z > this.goalie.z && this.puck.z <= this.goalie.z && Math.abs(this.puck.x - this.goalie.x) < 1.05) { this.save(); break; }
+      if (previous.z > this.goalie.z && this.puck.z <= this.goalie.z && (this.puck.height ?? 0) < 2.1 && Math.abs(this.puck.x - this.goalie.x) < 1.05) { this.save(); break; }
       if (previous.z > NET_Z && this.puck.z <= NET_Z) {
-        if (Math.abs(this.puck.x) < NET_HALF_WIDTH - 0.15) { this.phase = 'SUCCESS'; this.message = 'BAR DOWN!'; this.emit('goal'); }
-        else this.fail('WIDE OF THE NET. Aim inside the red posts.');
+        const crossing = mix(previous, this.puck, (NET_Z - previous.z) / (this.puck.z - previous.z));
+        if ((crossing.height ?? 0) > NET_HEIGHT - 0.15) this.fail('OVER THE BAR. Aim below the red crossbar.');
+        else if (Math.abs(crossing.x) >= NET_HALF_WIDTH - 0.15) this.fail('WIDE OF THE NET. Aim inside the red posts.');
+        else if (this.cornerCovered(crossing)) this.save();
+        else { this.phase = 'SUCCESS'; this.message = 'BAR DOWN!'; this.emit('goal'); }
         break;
       }
-      if (this.segmentOffset >= length - 0.00001) { this.segment++; this.segmentOffset = 0; }
+      if (this.segmentOffset >= length - 0.00001) {
+        this.segment++; this.segmentOffset = 0;
+        if (this.segment === this.path.length - 1) this.finishPath();
+      }
     }
-    this.addTrail();
+    if (!this.paused) this.addTrail();
   }
 
   private addTrail() {
     if (!this.trail.length || distance(this.trail[this.trail.length - 1], this.puck) > 0.15) this.trail.push(copy(this.puck));
     if (this.trail.length > 28) this.trail.shift();
+  }
+
+  private separateSkaters(pinned: number) {
+    const spaced = spaceSkaters([...this.attackers, ...this.defenders], pinned);
+    this.attackers = spaced.slice(0, 3);
+    this.defenders = spaced.slice(3);
   }
 
   private finishPath() {
@@ -233,18 +326,12 @@ export class Game {
       // A late pass stays in the shooting setup instead of adding a fourth stage.
       this.path = [];
       this.intent = { kind: 'loose' };
-      if (this.stage >= this.level.moments.length - 1) { this.phase = 'PAUSED_FOR_INPUT'; this.trail = []; this.impact = 0; this.message = 'Find the open corner and shoot.'; return; }
-      this.stage++;
-      if (this.level.instantReceive) {
-        this.phase = 'PAUSED_FOR_INPUT'; this.trail = []; this.message = this.moment.instruction;
-        this.emit('freeze', 0); return;
-      }
-      this.phase = 'AUTO_PLAY';
-      this.routeTime = 0;
-      this.fromAttack = this.attackers.map(copy);
-      this.fromDefense = this.defenders.map(copy);
-      this.message = 'NICE DISH. Keep it moving.';
-      this.emit('pass', 0.5);
+      const latePass = this.stage >= this.level.moments.length - 1;
+      if (!latePass) this.stage++;
+      this.phase = 'PAUSED_FOR_INPUT';
+      this.trail = [];
+      this.message = latePass ? 'Find the open corner and shoot.' : this.moment.instruction;
+      this.emit('pass', 0);
     } else this.fail('LOOSE PUCK. Finish on a teammate or inside the net.');
   }
 
