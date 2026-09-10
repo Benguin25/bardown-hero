@@ -52,7 +52,8 @@ export const MOMENTS = [
   { title: 'PICK YOUR CORNER', instruction: 'Aim high or low into a gold corner. Red is covered.', carrier: { x: -4, z: -10 }, support: [{ x: 7, z: -10 }, { x: -7, z: -14 }], defense: [{ x: -1, z: -4 }, { x: 4, z: -6 }] },
 ] as const;
 
-type Moment = { title: string; instruction: string; carrier: Point; support: readonly Point[]; defense: readonly Point[] };
+export type Powerup = 'fire' | 'curve' | 'freeze';
+type Moment = { title: string; instruction: string; carrier: Point; support: readonly Point[]; defense: readonly Point[]; powerup?: Powerup };
 type Level = { title: string; moments: readonly Moment[] };
 export const LEVELS: readonly Level[] = [
   { title: 'THE OPENING RUSH', moments: MOMENTS },
@@ -73,7 +74,41 @@ export const LEVELS: readonly Level[] = [
     { title: 'SET UP THE SAVE', instruction: 'Pass to the middle to set up a rebound test.', carrier: { x: -6, z: -5 }, support: [{ x: 0, z: -10 }, { x: 7, z: -9 }], defense: [{ x: -5, z: -12 }, { x: 5, z: -6 }] },
     { title: 'TEST THE PADS', instruction: 'Shoot at the goalie for a guided rebound, then pick a corner.', carrier: { x: 0, z: -10 }, support: [{ x: 6, z: -11.5 }, { x: -7, z: -10 }], defense: [{ x: -5, z: -13 }, { x: 5, z: -6 }] },
   ] },
+  { title: 'BREAKAWAY HEAT', moments: [
+    { title: 'SPRING THE WINGER', instruction: 'Lead the right wing into open ice.', carrier: { x: -5, z: 2 }, support: [{ x: 5, z: -10 }, { x: -7, z: -8 }], defense: [{ x: -8, z: 5 }, { x: 8, z: 4 }] },
+    { title: 'LIGHT THE LAMP', instruction: 'Tap FIRE PUCK, then rip a shot into a corner.', carrier: { x: 5, z: -10 }, support: [{ x: -5, z: -9 }, { x: -7, z: -5 }], defense: [{ x: -8, z: 2 }, { x: 8, z: 1 }], powerup: 'fire' },
+  ] },
+  { title: 'THE BIG BENDER', moments: [
+    { title: 'LOAD THE SLINGSHOT', instruction: 'Feed the left wing for a ridiculous finish.', carrier: { x: 6, z: 1 }, support: [{ x: -6, z: -10 }, { x: 7, z: -8 }], defense: [{ x: -8, z: 4 }, { x: 8, z: 5 }] },
+    { title: 'BEND SPACE', instruction: 'Tap MEGA CURVE. Draw a bend; the preview amplifies it.', carrier: { x: -6, z: -10 }, support: [{ x: 6, z: -7 }, { x: -8, z: -5 }], defense: [{ x: -8, z: 2 }, { x: 8, z: 1 }], powerup: 'curve' },
+  ] },
+  { title: 'COLD SNAP', moments: [
+    { title: 'ICE THE DEFENSE', instruction: 'Tap FREEZE to hold the defenders. Pass through the middle.', carrier: { x: -6, z: 2 }, support: [{ x: 5, z: -9 }, { x: -7, z: -9 }], defense: [{ x: -4, z: -5 }, { x: 4, z: 2 }], powerup: 'freeze' },
+    { title: 'THAW THE NET', instruction: 'Finish high before the goalie gets across.', carrier: { x: 5, z: -9 }, support: [{ x: -6, z: -8 }, { x: 7, z: -4 }], defense: [{ x: -7, z: -3 }, { x: 7, z: 1 }] },
+  ] },
+  { title: 'NEEDLE & THREAD', moments: [
+    { title: 'THE NARROW WINDOW', instruction: 'Thread the middle between two red jerseys.', carrier: { x: 0, z: 6 }, support: [{ x: 0, z: -6 }, { x: -7, z: -8 }], defense: [{ x: -2, z: 0 }, { x: 2, z: 0 }] },
+    { title: 'SEND IT WIDE', instruction: 'Find the left wing, then bring it home.', carrier: { x: 0, z: -6 }, support: [{ x: -7, z: -10 }, { x: 7, z: -9 }], defense: [{ x: -3, z: 1 }, { x: 3, z: 1 }] },
+    { title: 'SHELF SERVICE', instruction: 'Pick a high corner from the wing.', carrier: { x: -7, z: -10 }, support: [{ x: 0, z: -7 }, { x: 7, z: -9 }], defense: [{ x: -4, z: -3 }, { x: 4, z: -3 }] },
+  ] },
+  { title: 'LIGHTS OUT FINAL', moments: [
+    { title: 'WIN THE ENTRY', instruction: 'Freeze the coverage and find the right wing.', carrier: { x: -5, z: 8 }, support: [{ x: 6, z: 0 }, { x: -7, z: -5 }], defense: [{ x: -6, z: 2 }, { x: 4, z: -5 }], powerup: 'freeze' },
+    { title: 'CROSS THE ICE', instruction: 'Swing a pass across to the left wing.', carrier: { x: 6, z: 0 }, support: [{ x: -6, z: -8 }, { x: 7, z: -10 }], defense: [{ x: -7, z: 3 }, { x: 7, z: 3 }] },
+    { title: 'THE LAST FEED', instruction: 'Send it right for the final one-timer.', carrier: { x: -6, z: -8 }, support: [{ x: 6, z: -11 }, { x: -8, z: -3 }], defense: [{ x: -7, z: 2 }, { x: 7, z: 2 }] },
+    { title: 'BRING THE HEAT', instruction: 'Fire Puck is ready. End this with a high-corner rocket.', carrier: { x: 6, z: -11 }, support: [{ x: -6, z: -8 }, { x: -8, z: -3 }], defense: [{ x: -7, z: 2 }, { x: 7, z: 2 }], powerup: 'fire' },
+  ] },
 ];
+
+export type Objective = 'goal' | 'top' | 'curve' | 'passes' | 'rebound' | 'fire' | 'freeze';
+export const OBJECTIVES: readonly (readonly Objective[])[] = [
+  ['goal', 'passes', 'top'], ['goal', 'curve', 'top'], ['goal', 'passes', 'top'],
+  ['goal', 'curve', 'passes'], ['goal', 'rebound', 'top'], ['goal', 'fire', 'top'],
+  ['goal', 'curve', 'top'], ['goal', 'freeze', 'top'], ['goal', 'passes', 'top'], ['goal', 'fire', 'freeze'],
+];
+export const OBJECTIVE_LABELS: Record<Objective, string> = {
+  goal: 'Score a goal', top: 'Score top shelf', curve: 'Complete a curved pass or shot',
+  passes: 'Complete every setup pass', rebound: 'Score on the rebound', fire: 'Score with Fire Puck', freeze: 'Complete a frozen action',
+};
 
 // Translate the gesture in screen space before projecting onto the ice.
 // This preserves the visible shape even when the finger starts below the puck.
@@ -141,6 +176,29 @@ export class Game {
   impact = 0;
   eventId = 0;
   event = '';
+  callout = '';
+  terminalTime = 0;
+  armed: Powerup | null = null;
+  actionPower: Powerup | null = null;
+  private usedPowerups = new Set<string>();
+  passes = 0;
+  curvedActions = 0;
+  frozenActions = 0;
+  goalHeight = 0;
+  private actionCurved = false;
+  get availablePowerup() { return this.paused && !this.reboundUsed && !this.usedPowerups.has(String(this.stage)) ? this.moment.powerup : undefined; }
+  activatePowerup() {
+    if (!this.availablePowerup || this.armed) return;
+    this.armed = this.availablePowerup;
+    this.cancel();
+  }
+  get objectives() {
+    return OBJECTIVES[this.levelIndex].map(id => ({ id, label: OBJECTIVE_LABELS[id], complete: this.phase === 'SUCCESS' && (
+      id === 'goal' || id === 'top' && this.goalHeight >= 3 || id === 'curve' && this.curvedActions > 0 ||
+      id === 'passes' && this.passes >= this.level.moments.length - 1 || id === 'rebound' && this.reboundUsed ||
+      id === 'fire' && this.actionPower === 'fire' || id === 'freeze' && this.frozenActions > 0
+    ) }));
+  }
   message = 'Here comes the rush…';
   private routeTime = 0;
   private fromAttack = this.attackers.map(copy);
@@ -180,6 +238,13 @@ export class Game {
       if (enteredNet > 0) stroke = [...raw.slice(0, enteredNet), target];
     }
     this.preview = cleanPath([copy(this.puck), ...stroke.slice(1).map(p => ({ x: p.x, z: p.z }))], end);
+    if (this.armed === 'curve' && this.preview.length > 2) {
+      const start = this.preview[0], finish = this.preview[this.preview.length - 1];
+      this.preview = this.preview.map((p, i, a) => {
+        const baseline = mix(start, finish, i / (a.length - 1));
+        return { ...p, x: clamp(baseline.x + (p.x - baseline.x) * 1.8, -10, 10), z: clamp(baseline.z + (p.z - baseline.z) * 1.8, -20, 21) };
+      });
+    }
     if (this.intent.kind === 'shot' && target.height !== undefined) {
       const total = this.preview.reduce((sum, p, i, a) => sum + (i ? distance(a[i - 1], p) : 0), 0);
       let traveled = 0;
@@ -202,6 +267,18 @@ export class Game {
     this.aim(raw);
     const length = this.preview.reduce((sum, p, i, a) => sum + (i ? distance(a[i - 1], p) : 0), 0);
     if (length < 1) { this.cancel(); return; }
+    if (this.armed === 'fire' && this.intent.kind !== 'shot') {
+      this.cancel(); this.message = 'Fire Puck needs a shot. Finish your swipe in the net.'; return;
+    }
+    this.actionPower = this.armed;
+    if (this.armed) this.usedPowerups.add(String(this.stage));
+    this.armed = null;
+    const start = this.preview[0], end = this.preview[this.preview.length - 1];
+    const direct = distance(start, end);
+    // Recognize visible lateral bends as well as loops; a useful hook need not
+    // add a large percentage to a long cross-ice pass.
+    this.actionCurved = this.preview.some(p => Math.abs((p.x - start.x) * (end.z - start.z) - (p.z - start.z) * (end.x - start.x)) / Math.max(direct, 0.01) >= 1.5)
+      || length > direct * 1.12 + 0.6;
     this.path = this.preview.map(copy);
     // Shots ending just in front of the net continue on their final heading.
     if (this.intent.kind === 'shot') {
@@ -216,6 +293,7 @@ export class Game {
     this.segment = 0;
     this.segmentOffset = 0;
     this.speed = 23 + clamp(length / Math.max(seconds, 0.1) / 20, 0, 5);
+    if (this.actionPower === 'fire') this.speed *= 2.8;
     this.actionDistance = 0;
     this.goalieShotTime = 0;
     this.actionLength = this.path.reduce((sum, p, i, a) => sum + (i ? distance(a[i - 1], p) : 0), 0);
@@ -234,7 +312,8 @@ export class Game {
     this.toAttack = spaceSkaters(this.toAttack, receiver);
     this.phase = 'EXECUTING_ACTION';
     this.message = this.intent.kind === 'pass' ? 'THREAD IT.' : this.intent.kind === 'shot' ? 'LET IT RIP.' : 'LOOSE PUCK…';
-    this.emit('release', 0.35);
+    this.callout = this.actionPower === 'fire' ? 'FIRE PUCK!' : this.actionPower === 'curve' ? 'MEGA CURVE!' : this.actionPower === 'freeze' ? 'ICE COLD!' : '';
+    this.emit('release', this.actionPower === 'fire' ? 1.6 : 0.35);
   }
 
   private emit(event: string, impact = 1) { this.event = event; this.eventId++; this.impact = impact; }
@@ -246,9 +325,9 @@ export class Game {
     const dt = Number.isFinite(realDt) ? clamp(realDt, 0, 0.05) : 0;
     const slow = (this.phase === 'EXECUTING_ACTION' && this.puck.z < -14) || this.phase === 'REBOUND' ? 0.42 : 1;
     this.elapsed += dt;
-    this.motion += dt * slow;
+    this.motion += dt * (this.phase === 'SUCCESS' ? 0.35 : slow);
     this.impact = Math.max(0, this.impact - dt * 1.8);
-    if (this.terminal) return;
+    if (this.terminal) { this.terminalTime += dt; return; }
     if (this.phase === 'AUTO_PLAY') {
       this.routeTime += dt;
       const t = Math.min(1, this.routeTime / 1.15);
@@ -289,7 +368,7 @@ export class Game {
       travel -= step;
       this.actionDistance += step;
       const flightTime = this.actionDistance / this.speed;
-      this.defenders = this.fromDefense.map((p, i) => mix(p, this.toDefense[i], Math.min(1, flightTime * 4 / Math.max(0.001, distance(p, this.toDefense[i])))));
+      this.defenders = this.fromDefense.map((p, i) => this.actionPower === 'freeze' ? copy(p) : mix(p, this.toDefense[i], Math.min(1, flightTime * 4 / Math.max(0.001, distance(p, this.toDefense[i])))));
       this.attackers = this.fromAttack.map((p, i) => mix(p, this.toAttack[i], Math.min(1, this.actionDistance / this.actionLength)));
       this.separateSkaters(this.intent.kind === 'pass' ? this.intent.target : this.carrier);
       this.puck = mix(a, b, this.segmentOffset / length);
@@ -304,7 +383,14 @@ export class Game {
         const crossing = mix(previous, this.puck, (NET_Z - previous.z) / (this.puck.z - previous.z));
         if ((crossing.height ?? 0) > NET_HEIGHT - 0.15) this.fail('OVER THE BAR. Aim below the red crossbar.');
         else if (Math.abs(crossing.x) >= NET_HALF_WIDTH - 0.15) this.fail('WIDE OF THE NET. Aim inside the red posts.');
-        else { this.phase = 'SUCCESS'; this.message = 'BAR DOWN!'; this.emit('goal'); }
+        else {
+          this.goalHeight = crossing.height ?? 0;
+          if (this.actionCurved) this.curvedActions++;
+          if (this.actionPower === 'freeze') this.frozenActions++;
+          this.phase = 'SUCCESS';
+          this.callout = this.goalHeight >= 3.8 ? 'BAR DOWN!' : this.goalHeight >= 3 ? 'TOP SHELF!' : this.actionCurved ? 'FILTHY!' : 'LIGHT THE LAMP!';
+          this.message = this.callout; this.emit('goal', this.actionPower === 'fire' ? 1.6 : 1);
+        }
         break;
       }
       if (this.segmentOffset >= length - 0.00001) {
@@ -323,7 +409,7 @@ export class Game {
   private separateSkaters(pinned: number) {
     const spaced = spaceSkaters([...this.attackers, ...this.defenders], pinned);
     this.attackers = spaced.slice(0, 3);
-    this.defenders = spaced.slice(3);
+    if (!(this.phase === 'EXECUTING_ACTION' && this.actionPower === 'freeze')) this.defenders = spaced.slice(3);
   }
 
   private goalieCovers(p: Point) {
@@ -367,6 +453,11 @@ export class Game {
 
   private finishPath() {
     if (this.intent.kind === 'pass') {
+      this.passes++;
+      if (this.actionCurved) this.curvedActions++;
+      if (this.actionPower === 'freeze') this.frozenActions++;
+      this.callout = this.actionCurved ? 'FILTHY!' : 'THREAD THE NEEDLE!';
+      this.actionPower = null;
       this.carrier = this.intent.target;
       this.puck = copy(this.attackers[this.carrier]);
       // A late pass stays in the shooting setup instead of adding a fourth stage.
@@ -383,6 +474,8 @@ export class Game {
 
   private save() {
     this.emit('save');
+    this.callout = 'SECOND CHANCE!';
+    this.actionPower = null;
     this.goalieRecovery = 0.65;
     if (this.reboundUsed) { this.fail('DENIED. Try the other corner.'); return; }
     this.reboundUsed = true;

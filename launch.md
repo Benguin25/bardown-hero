@@ -1,6 +1,6 @@
 # Run Bardown Hero on your iPhone
 
-This is an Expo + React Native + TypeScript prototype. It opens into the original rush, with five selectable test scenarios. Your Windows PC runs the development server; your iPhone runs the game in Expo Go.
+This is an Expo + React Native + TypeScript arcade game. It opens into a ten-level menu with local progress and three stars per level. Your Windows PC runs the development server; your iPhone runs the game in Expo Go. Android is also supported through Expo Go; iOS is the first playtest target.
 
 ## 1. Install these once
 
@@ -35,7 +35,7 @@ Wait for the terminal’s QR code, then:
 1. Open the **Camera** app on your iPhone.
 2. Scan the QR code and tap **Open in Expo Go**.
 3. If prompted, allow Expo Go access to your local network.
-4. Keep the phone in portrait. The game automatically begins the opening rush.
+4. Keep the phone in portrait. Select the first unlocked level to begin.
 
 Leave the terminal open while testing. Save code changes to reload the app. Press **r** in the Expo terminal to reload manually; press **Ctrl+C** to stop the server.
 
@@ -63,7 +63,9 @@ This PATH change lasts only for the current terminal. `.tooling` is ignored by G
 - You can draw large curves and loops. Stay inside the boards and avoid red defenders.
 - Tap **RETRY** at any time, or **RUN IT BACK** after the result, to immediately reset the scenario.
 
-Use the temporary **TEST 1–5** buttons to switch scenarios. Retry restarts the selected level. Level 1 keeps the opening breakout, curved pass, and shot. Level 2 tests a pass around a defender; level 3 pauses immediately on a cross-ice reception for a one-timer; level 4 tests two blocked lanes and a curved shot around traffic; level 5 sets up a center shot for a guided rebound. Each authored route has 2–3 decisions, with at most one extra rebound. A second save ends the attempt. These are open test setups: you can still shoot early or choose another teammate.
+Use **LEVELS** to return to the menu. A goal unlocks the next level regardless of stars. Each level has three objectives shown on its card and results screen. Stars must be earned together in one run; only the best run is saved, and tied runs do not merge objectives. Retry restarts the selected level with fresh powerups. The five opening scenarios cover breakout, hooked passes, one-timers, traffic, and rebounds. Levels 6–10 add Fire Puck, Mega Curve, Freeze, tight lanes, and a four-decision finale. A second save ends the attempt. You can still shoot early or choose another teammate.
+
+At designated decisions, tap **ACTIVATE** before drawing. Fire Puck requires a shot and makes it extremely fast; Mega Curve amplifies the bend shown in the preview; Freeze holds defenders in place during the next action, but they can still intercept. Charges survive canceled swipes. Powerups are granted by the scenario, with no inventory or purchases.
 
 ## 4. Quick playtest checklist
 
@@ -74,6 +76,9 @@ Use the temporary **TEST 1–5** buttons to switch scenarios. Retry restarts the
 5. **Save/rebound:** retry and shoot toward the middle of the net. The save should kick the puck to the right teammate and pause again. Shoot to a corner to finish. Another center shot should be saved and end the run.
 6. **Failure:** try shooting outside a post or ending a pass on empty ice. Check the failure message and instant retry.
 7. **Interruption:** background and reopen Expo Go while drawing. The unfinished stroke should cancel, and the decision should remain available.
+8. **Progress:** finish a level, inspect objectives and stars, then close and relaunch the app. The next level and best single-run stars should remain available. Retry for a different two-star combination and verify it does not become three stars.
+9. **Powerups:** reach levels 6–8, activate each contextual button, cancel a stroke, then execute. Verify Fire Puck needs a shot, Mega Curve preview matches flight, and Freeze lasts for one action. Retry restores the grant.
+10. **Small screens:** scroll level selection and results, tap next level, return to the menu repeatedly, and verify the rink reloads and the net stays visible. Repeat on Android after iOS.
 
 ## Troubleshooting
 
@@ -126,9 +131,10 @@ npm.cmd run typecheck
 npm.cmd test
 npx.cmd expo-doctor
 npx.cmd expo export --platform ios
+npx.cmd expo export --platform android
 ```
 
-The tests cover the three decisions, curve preservation, full simulation freeze, interception, scoring, save/rebound behavior, missed shots, canceled input, and retry state. The export checks the iOS production bundle; it does not install an app on your phone.
+The tests cover three-star routes through all ten levels, single-run persistence rules, unlocks, powerup lifetimes, curve preservation, full simulation freeze, interception, scoring, save/rebound behavior, missed shots, canceled input, retry state, and phone-size camera projection. Exports check production bundles; they do not install an app on your phone.
 
 Automated checks and iOS bundling were run during implementation. Physical iPhone rendering, touch feel, and frame rate still need the device playtest above.
 
@@ -137,6 +143,7 @@ Automated checks and iOS bundling were run during implementation. Physical iPhon
 - `src/game.ts`: authored formations, path cleanup, input intent, state machine, collisions, goalie, and rebound.
 - `src/rink.ts`: 3D rink and placeholder models, camera, trails, and reactions.
 - `App.tsx`: touch input, game loop, lifecycle handling, and gameplay HUD.
+- `src/progress.ts`: local-save schema, best-run selection, and sequential unlock rules.
 - `tests/game.test.cjs`: deterministic gameplay checks.
 
-The renderer uses Three.js with Expo GL, procedural geometry, and fixed effect pools. Gameplay uses authored movement and simple collision zones; there is no general physics engine, backend, menu system, or external asset download.
+The renderer uses Three.js with Expo GL, procedural geometry, and fixed effect pools. Gameplay uses authored movement and simple collision zones; there is no general physics engine, backend, or external asset download. AsyncStorage saves progress locally on the device.

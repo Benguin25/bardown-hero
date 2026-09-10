@@ -1,6 +1,21 @@
 # SPEC.md
 
 ## Game
+
+## Current playable scope (September 2026)
+
+The current request supersedes the original vertical-slice exclusions below.
+
+- Ten authored portrait levels with 2–4 intended decision moments per run, including optional guided rebounds.
+- Completing a level unlocks its successor, regardless of stars. World/league star thresholds are deferred.
+- Each level has three objectives. Results show the current run; the menu retains the best single successful run. Objectives never accumulate across runs, including tied two-star results.
+- Local AsyncStorage persistence only. Save writes are serialized and failures shown with a retry action. Failed loading does not silently overwrite existing progress.
+- Contextual buttons arm Fire Puck (shot only), Mega Curve (amplified preview bend), or Freeze (stationary defenders for the next action). Canceling or making a tiny swipe preserves the charge; retry restores scenario grants. Freeze does not remove interception collisions or freeze the goalie.
+- Results offer retry and next level; the header returns to level selection. Goals get a short celebration before the scrollable results appear.
+- Preserve Expo / React Native / TypeScript / Three r162, anchored relative swipe input, authored movement, and reactive goalie behavior. iOS is the first playtest target; Android is also supported.
+- Presentation includes camera punch, danger-shot and goal slow motion, net shake, colored powerup trails, ice spray, impact particles, goalie knockback, jumping celebrations, and animated callouts.
+
+Validation: `npm run typecheck`, `npm test`, and Expo native bundle export. Physical-device checks remain necessary for GL rendering, touch feel, background/resume, menu navigation, and save/relaunch behavior.
 Portrait mobile arcade hockey inspired by stop-and-swipe sports games, but intentionally exaggerated and non-realistic.
 
 Core loop:
@@ -90,10 +105,10 @@ Flow:
 8. Save may produce one guided rebound opportunity.
 9. Turnover/miss = fail and restart.
 
-No menus, accounts, economy, customization, career UI, multiplayer, or purchases.
+Original vertical slice excluded menus. The current scope adds level selection and local progression; accounts, economy, customization, multiplayer, and purchases remain excluded.
 
 ## Progression Later
-User priority: finish and tune the core mechanics before adding powerups, more levels, leagues, or progression. The ideas below are deferred, not current implementation tasks.
+Ten levels, local stars, and scenario powerups are now in scope. The larger career ideas below remain deferred.
 
 Career chapters:
 - Rookie

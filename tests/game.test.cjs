@@ -1,5 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const { emptyProgress, parseProgress, recordRun, isUnlocked, stars } = require('../.test-build/progress.js');
 const { Game, LEVELS, relativeAim, cleanPath, distance, GOAL_CORNERS, NET_HEIGHT, spaceSkaters, SKATER_SPACING } = require('../.test-build/game.js');
 
 function until(game, predicate, limit = 4000) {
@@ -14,11 +15,83 @@ function shootingSetup() {
   pause(g); assert.equal(g.stage, 2); return g;
 }
 
+test('local progress keeps one best run, unlocks on any goal, and rejects corrupt saves', () => {
+  const blank = emptyProgress();
+  assert.ok(isUnlocked(blank, 0)); assert.ok(!isUnlocked(blank, 1));
+  assert.deepEqual(recordRun(blank, 1, [true, true, true]), blank);
+  let saved = recordRun(blank, 0, [true, true, false]);
+  saved = recordRun(saved, 0, [true, false, true]);
+  assert.equal(stars(saved.runs[0]), 2);
+  assert.deepEqual(saved.runs[0], [true, true, false]);
+  assert.ok(isUnlocked(saved, 1)); assert.ok(!isUnlocked(saved, 2));
+  saved = recordRun(saved, 1, [true, false, false]);
+  assert.ok(isUnlocked(saved, 2));
+  assert.deepEqual(parseProgress(JSON.stringify(saved)), saved);
+  assert.throws(() => parseProgress('{bad'));
+  assert.throws(() => parseProgress('{"version":1,"runs":{"0":[true,"yes",false]}}'));
+  assert.deepEqual(parseProgress(null), blank);
+});
+
+const newRoutes = [
+  [[{ x: 5, z: -10 }], [{ x: -2.25, z: -18, height: 3.5 }]],
+  [[{ x: -6, z: -10 }], [{ x: -7, z: -14 }, { x: 2.25, z: -18, height: 3.5 }]],
+  [[{ x: 5, z: -9 }], [{ x: -2.25, z: -18, height: 3.5 }]],
+  [[{ x: 0, z: -6 }], [{ x: -7, z: -10 }], [{ x: -2.25, z: -18, height: 3.5 }]],
+  [[{ x: 6, z: 0 }], [{ x: -6, z: -8 }], [{ x: 6, z: -11 }], [{ x: -2.25, z: -18, height: 3.5 }]],
+];
+newRoutes.forEach((route, i) => test(`new level ${i + 6} has a three-star route with powerups and 2–4 decisions`, () => {
+  const g = new Game(i + 5);
+  for (const points of route) {
+    pause(g);
+    if (g.availablePowerup) g.activatePowerup();
+    g.release([g.puck, ...points], 0.3);
+  }
+  until(g, x => x.terminal);
+  assert.equal(g.phase, 'SUCCESS', g.message);
+  assert.equal(g.objectives.filter(o => o.complete).length, 3, JSON.stringify(g.objectives));
+  assert.ok(route.length >= 2 && route.length <= 4);
+}));
+
+test('powerups require an eligible pause, survive canceled input, and consume only one action', () => {
+  const g = new Game(7);
+  g.activatePowerup(); assert.equal(g.armed, null);
+  pause(g); g.activatePowerup(); assert.equal(g.armed, 'freeze');
+  g.release([g.puck]); assert.equal(g.armed, 'freeze');
+  const defense = g.defenders.map(p => ({ ...p }));
+  g.release([g.puck, { x: 5, z: -9 }]);
+  while (g.phase === 'EXECUTING_ACTION') { g.update(1 / 60); assert.deepEqual(g.defenders, defense); }
+  assert.ok(g.paused); assert.equal(g.frozenActions, 1); assert.equal(g.actionPower, null);
+  assert.equal(g.availablePowerup, undefined);
+  const retry = new Game(7); assert.equal(retry.frozenActions, 0); pause(retry); assert.equal(retry.availablePowerup, 'freeze');
+});
+
+test('Fire Puck rejects a pass without consuming the charge and keeps swept collisions', () => {
+  const g = new Game(5); pause(g); g.release([g.puck, { x: 5, z: -10 }]); pause(g);
+  g.activatePowerup(); g.release([g.puck, g.targets[0]]);
+  assert.ok(g.paused); assert.equal(g.armed, 'fire');
+  g.defenders = [{ x: 3.1, z: -13 }, { x: -9, z: 4 }];
+  g.release([g.puck, { x: 0, z: -18 }], 0.1);
+  until(g, x => x.terminal || x.phase === 'REBOUND');
+  assert.equal(g.phase, 'FAIL'); assert.match(g.message, /PICKED OFF/);
+});
+
+test('Mega Curve preview amplifies bends, preserves endpoints, and matches execution', () => {
+  const g = new Game(6); pause(g); g.release([g.puck, { x: -6, z: -10 }]); pause(g);
+  const raw = [g.puck, { x: -7, z: -14 }, { x: -2.25, z: -18, height: 3.5 }];
+  g.aim(raw); const normal = g.preview.map(p => ({ ...p }));
+  g.activatePowerup(); g.aim(raw);
+  assert.ok(g.preview[1].x < normal[1].x);
+  assert.deepEqual(g.preview[0], normal[0]); assert.deepEqual(g.preview.at(-1), normal.at(-1));
+  const preview = g.preview.map(p => ({ ...p })); g.release(raw);
+  assert.deepEqual(g.path, preview);
+});
+
 test('three authored decisions, assisted passing, then a corner goal', () => {
   const g = shootingSetup();
   g.release([g.puck, { x: -2.25, z: -18, height: 3.5 }], 0.3);
   until(g, x => x.terminal);
   assert.equal(g.phase, 'SUCCESS');
+  assert.ok(g.objectives.every(o => o.complete));
 });
 test('full freeze includes every simulation field while waiting and drawing', () => {
   const g = new Game(); pause(g);
@@ -136,6 +209,15 @@ routes.forEach((route, i) => test(`handcrafted level ${i + 2} has a playable rou
   assert.equal(g.phase, 'SUCCESS', g.message);
   assert.ok(decisions >= 2 && decisions <= 4);
   assert.equal(g.reboundUsed, i === 3);
+}));
+
+routes.forEach((route, i) => test(`original level ${i + 2} can earn all three stars in one run`, () => {
+  const g = new Game(i + 1);
+  const threeStarRoute = i === 1 ? [route[0], [{ x: 2.25, z: -18, height: 3.5 }]] : route;
+  for (const points of threeStarRoute) { pause(g); g.release([g.puck, ...points], 0.3); }
+  until(g, x => x.terminal);
+  assert.equal(g.phase, 'SUCCESS', g.message);
+  assert.ok(g.objectives.every(o => o.complete), JSON.stringify(g.objectives));
 }));
 
 test('retry every level clears action, rebound, goalie, timers, and preview state', () => {

@@ -4,5 +4,5 @@
     "outDir": "../.test-build", "rootDir": "../src", "skipLibCheck": true,
     "types": []
   },
-  "include": ["../src/game.ts", "../src/rink.ts"]
+  "include": ["../src/game.ts", "../src/rink.ts", "../src/progress.ts"]
 }

@@ -9,7 +9,7 @@ export function frameRink(camera: THREE.OrthographicCamera, width: number, heigh
   const follow = Math.max(-5, Math.min(1, game.puck.z * 0.22));
   camera.position.set(Math.sin(game.motion * 57) * game.impact * 0.16, 37, 24 + follow);
   camera.lookAt(0, 0, follow - 2);
-  camera.zoom = 1 + game.impact * 0.065;
+  camera.zoom = 1 + game.impact * 0.10 + (game.phase === 'SUCCESS' ? Math.min(game.terminalTime, 0.8) * 0.12 : 0);
   camera.updateMatrixWorld();
   // Fit the whole cage (including its back/top), puck, and skaters below the
   // status overlay. Shift framing first; widen only when both ends need room.
@@ -47,6 +47,8 @@ export class Rink {
   private preview: THREE.Mesh[] = [];
   private trail: THREE.Mesh[] = [];
   private particles: THREE.Mesh[] = [];
+  private net = new THREE.Group();
+  private spray: THREE.Mesh[] = [];
   private ray = new THREE.Raycaster();
   private plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.14);
   private goalPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -NET_Z);
@@ -88,6 +90,7 @@ export class Rink {
     const dot = new THREE.SphereGeometry(1, 7, 5);
     this.trail = Array.from({ length: 28 }, () => { const m = this.mesh(dot, C.teal, true); this.scene.add(m); return m; });
     this.particles = Array.from({ length: 20 }, () => { const m = this.mesh(new THREE.BoxGeometry(0.16, 0.16, 0.4), C.gold, true); this.scene.add(m); return m; });
+    this.spray = Array.from({ length: 30 }, () => { const m = this.mesh(dot, 0xffffff, true); this.scene.add(m); return m; });
   }
 
   private mesh(geometry: THREE.BufferGeometry, color: number, unlit = false) {
@@ -124,12 +127,15 @@ export class Rink {
     crease.rotation.x = -Math.PI / 2; crease.rotation.z = Math.PI;
     crease.position.set(0, 0.025, -18); this.scene.add(crease);
     // Exaggerated upright goal face: top and bottom corners are real targets.
+    const beforeNet = this.scene.children.length;
     this.box(0.16, NET_HEIGHT, 0.16, -NET_HALF_WIDTH, NET_HEIGHT / 2, NET_Z, C.red);
     this.box(0.16, NET_HEIGHT, 0.16, NET_HALF_WIDTH, NET_HEIGHT / 2, NET_Z, C.red);
     this.box(6.25, 0.16, 0.16, 0, NET_HEIGHT, NET_Z, C.red);
     for (let x = -3; x <= 3; x += 0.5) this.box(0.025, NET_HEIGHT, 0.025, x, NET_HEIGHT / 2, -20, 0x9fbcc8);
     for (let y = 0.2; y <= NET_HEIGHT; y += 0.4) this.box(6, 0.025, 0.025, 0, y, -20, 0x9fbcc8);
     for (const x of [-3, 3]) for (const z of [-18.5, -19, -19.5, -20]) this.box(0.035, NET_HEIGHT, 0.035, x, NET_HEIGHT / 2, z, 0x9fbcc8);
+    this.scene.children.slice(beforeNet).forEach(object => this.net.add(object));
+    this.scene.add(this.net);
     this.corners = GOAL_CORNERS.map(p => {
       const ring = this.ring(0.46, 0.6, C.gold);
       ring.rotation.x = 0;
@@ -190,7 +196,8 @@ export class Rink {
     [...game.attackers, ...game.defenders].forEach((p, i) => {
       const model = this.players[i];
       model.position.set(p.x, 0, p.z);
-      const skating = game.phase === 'AUTO_PLAY' || game.phase === 'REBOUND' || (game.phase === 'EXECUTING_ACTION' && (i >= 3 || (game.intent.kind === 'pass' && i !== game.intent.target)));
+      const skating = !(i >= 3 && game.actionPower === 'freeze') && (game.phase === 'AUTO_PLAY' || game.phase === 'REBOUND' || (game.phase === 'EXECUTING_ACTION' && (i >= 3 || (game.intent.kind === 'pass' && i !== game.intent.target))));
+      (model.children[0] as THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial>).material.color.setHex(i < 3 ? C.teal : game.actionPower === 'freeze' ? 0x69dfff : C.red);
       model.rotation.z = skating ? Math.sin(game.motion * 13 + i) * 0.09 : 0;
       model.rotation.y = i >= 3 ? Math.PI : -0.1;
       if (game.phase === 'SUCCESS' && i < 3) model.position.y = Math.abs(Math.sin(game.motion * 10 + i)) * 1.2;
@@ -200,6 +207,9 @@ export class Rink {
     this.goalie.position.set(game.goalie.x, 0, game.goalie.z);
     this.goalie.rotation.y = Math.PI;
     this.goalie.rotation.z = -game.goalieVelocity * 0.055;
+    this.goalie.rotation.x = game.phase === 'SUCCESS' ? -Math.min(1.35, game.terminalTime * (game.actionPower === 'fire' ? 6 : 2)) : game.phase === 'REBOUND' ? -0.35 : 0;
+    if (game.phase === 'SUCCESS' && game.actionPower === 'fire') this.goalie.position.z -= Math.min(1.4, game.terminalTime * 4);
+    this.net.position.z = game.phase === 'SUCCESS' ? Math.sin(game.terminalTime * 48) * Math.exp(-game.terminalTime * 3) * (game.actionPower === 'fire' ? 0.65 : 0.35) : 0;
     const cover = game.goalieGlove;
     this.glove.position.set(cover.x, (cover.height ?? 0) + 0.14, cover.z);
     const shoulder = new THREE.Vector3(game.goalie.x, 1.4, game.goalie.z);
@@ -229,14 +239,22 @@ export class Rink {
     });
     this.trail.forEach((m, i) => {
       const p = game.trail[i]; m.visible = !!p && !game.paused;
-      if (p) { m.position.set(p.x, 0.15 + (p.height ?? 0), p.z); m.scale.setScalar(0.04 + i / 28 * 0.23); }
+      if (p) { m.position.set(p.x, 0.15 + (p.height ?? 0), p.z); m.scale.setScalar((0.04 + i / 28 * 0.23) * (game.actionPower === 'fire' ? 3 : 1)); }
+      (m.material as THREE.MeshBasicMaterial).color.setHex(game.actionPower === 'fire' ? (i % 2 ? 0xff5722 : C.gold) : game.actionPower === 'curve' ? 0xc180ff : C.teal);
     });
     this.particles.forEach((m, i) => {
       m.visible = game.impact > 0.1 && !game.paused;
-      const age = 1 - game.impact, angle = i * 2.399;
+      const age = 1 - Math.min(1, game.impact), angle = i * 2.399;
       m.position.set(game.puck.x + Math.cos(angle) * age * 4, 0.2 + Math.sin(age * Math.PI) * (1 + i % 3), game.puck.z + Math.sin(angle) * age * 4);
       m.rotation.set(age * 6, angle, age * 3);
       m.scale.setScalar(game.impact);
+    });
+    this.spray.forEach((m, i) => {
+      const skater = Math.floor(i / 6), p = [...game.attackers, ...game.defenders][skater];
+      const age = (game.motion * 2 + (i % 6) / 6) % 1;
+      m.visible = !game.paused && !game.terminal && !(skater >= 3 && game.actionPower === 'freeze');
+      m.position.set(p.x + Math.sin(i * 2.4) * age * 0.7, 0.08 + Math.sin(age * Math.PI) * 0.35, p.z + age * 1.5);
+      m.scale.setScalar((1 - age) * 0.12);
     });
     this.renderer.render(this.scene, this.camera);
     this.gl.endFrameEXP();
