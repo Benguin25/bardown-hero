@@ -1,0 +1,205 @@
+import * as THREE from 'three';
+import type { ExpoWebGLRenderingContext } from 'expo-gl';
+import { Game, Point } from './game';
+
+const C = { ice: 0xdceef0, teal: 0x18dcb6, red: 0xef4d65, ink: 0x10293c, gold: 0xffcf5a };
+
+export class Rink {
+  private scene = new THREE.Scene();
+  private camera = new THREE.OrthographicCamera(-14, 14, 24, -24, 0.1, 150);
+  private renderer: THREE.WebGLRenderer;
+  private players: THREE.Group[] = [];
+  private goalie: THREE.Group;
+  private puck: THREE.Mesh;
+  private halo: THREE.Mesh;
+  private targets: THREE.Mesh[] = [];
+  private preview: THREE.Mesh[] = [];
+  private trail: THREE.Mesh[] = [];
+  private particles: THREE.Mesh[] = [];
+  private ray = new THREE.Raycaster();
+  private plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.14);
+  private width = 1;
+  private height = 1;
+
+  constructor(private gl: ExpoWebGLRenderingContext) {
+    // Keep Three pinned to r162: Expo's native context can satisfy the WebGL1
+    // instanceof check even when it exposes WebGL2 methods. r163+ rejects it.
+    // A TypeScript cast cannot change those runtime capabilities/prototypes.
+    // GLView supplies the context; Three needs only a canvas facade.
+    const canvas = {
+      width: gl.drawingBufferWidth, height: gl.drawingBufferHeight,
+      clientWidth: gl.drawingBufferWidth, clientHeight: gl.drawingBufferHeight,
+      style: {}, addEventListener() {}, removeEventListener() {},
+      setAttribute() {}, getContext: () => gl,
+    } as unknown as HTMLCanvasElement;
+    this.renderer = new THREE.WebGLRenderer({ canvas, context: gl, antialias: true, alpha: false });
+    this.renderer.setSize(gl.drawingBufferWidth, gl.drawingBufferHeight, false);
+    this.renderer.setClearColor(0x071624);
+    this.scene.add(new THREE.HemisphereLight(0xe6fbff, 0x304555, 2.1));
+    const light = new THREE.DirectionalLight(0xffffff, 2.5);
+    light.position.set(-8, 20, 10);
+    this.scene.add(light);
+    this.buildIce();
+    this.players = [0, 1, 2, 3, 4].map(i => this.player(i < 3 ? C.teal : C.red));
+    this.goalie = this.player(C.gold, true);
+    this.puck = this.mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.16, 16), C.ink);
+    this.scene.add(this.puck);
+    this.halo = this.ring(0.65, 0.83, C.gold);
+    this.targets = Array.from({ length: 3 }, () => this.ring(1.05, 1.16, C.teal));
+    // Fixed pools: no mesh allocation/disposal in the animation loop.
+    const segmentGeometry = new THREE.BoxGeometry(1, 1, 1);
+    this.preview = Array.from({ length: 512 }, () => {
+      const m = this.mesh(segmentGeometry, C.gold, true); m.visible = false; this.scene.add(m); return m;
+    });
+    const dot = new THREE.SphereGeometry(1, 7, 5);
+    this.trail = Array.from({ length: 28 }, () => { const m = this.mesh(dot, C.teal, true); this.scene.add(m); return m; });
+    this.particles = Array.from({ length: 20 }, () => { const m = this.mesh(new THREE.BoxGeometry(0.16, 0.16, 0.4), C.gold, true); this.scene.add(m); return m; });
+  }
+
+  private mesh(geometry: THREE.BufferGeometry, color: number, unlit = false) {
+    return new THREE.Mesh(geometry, unlit ? new THREE.MeshBasicMaterial({ color }) : new THREE.MeshStandardMaterial({ color, roughness: 0.75 }));
+  }
+
+  private box(w: number, h: number, d: number, x: number, y: number, z: number, color: number, parent: THREE.Object3D = this.scene) {
+    const m = this.mesh(new THREE.BoxGeometry(w, h, d), color);
+    m.position.set(x, y, z); parent.add(m); return m;
+  }
+
+  private ring(inner: number, outer: number, color: number, x = 0, z = 0) {
+    const m = this.mesh(new THREE.RingGeometry(inner, outer, 48), color, true);
+    m.rotation.x = -Math.PI / 2; m.position.set(x, 0.04, z); this.scene.add(m); return m;
+  }
+
+  private buildIce() {
+    this.box(23, 0.6, 46, 0, -0.34, 0, C.ice);
+    for (const x of [-11.3, 11.3]) {
+      this.box(0.5, 1.1, 46, x, 0.5, 0, 0xf3f7f8);
+      this.box(0.55, 0.18, 46, x, 1.06, 0, 0x32677c);
+      this.box(0.56, 0.16, 46, x, 0.08, 0, C.gold);
+      this.box(1.7, 0.7, 45, x * 1.12, -0.15, 0, 0x153448);
+    }
+    for (const z of [-23, 23]) this.box(23, 1.1, 0.4, 0, 0.5, z, 0xf3f7f8);
+    for (const z of [-7, 7]) this.box(22, 0.012, 0.22, 0, 0.01, z, 0x5597c5);
+    for (const z of [-18, 0, 18]) this.box(22, 0.012, 0.12, 0, 0.015, z, 0xe98697);
+    this.ring(2.7, 2.78, 0x75a6b9);
+    for (const x of [-6, 6]) for (const z of [-12, 12]) {
+      this.ring(2.25, 2.31, 0xd58f9d, x, z);
+      this.ring(0, 0.14, 0xd58f9d, x, z);
+    }
+    const crease = this.mesh(new THREE.CircleGeometry(3.2, 48, 0, Math.PI), 0xa5d6e5, true);
+    crease.rotation.x = -Math.PI / 2; crease.rotation.z = Math.PI;
+    crease.position.set(0, 0.025, -18); this.scene.add(crease);
+    // Open red posts and visible mesh cage; finger can aim at the ice in the mouth.
+    this.box(0.16, 2.1, 0.16, -3.05, 1.05, -18, C.red);
+    this.box(0.16, 2.1, 0.16, 3.05, 1.05, -18, C.red);
+    this.box(6.25, 0.16, 0.16, 0, 2.1, -18, C.red);
+    for (let x = -3; x <= 3; x += 0.5) this.box(0.025, 2, 0.025, x, 1, -20, 0x9fbcc8);
+    for (let y = 0.2; y <= 2; y += 0.3) this.box(6, 0.025, 0.025, 0, y, -20, 0x9fbcc8);
+    for (const x of [-3, 3]) for (const z of [-18.5, -19, -19.5, -20]) this.box(0.035, 2, 0.035, x, 1, z, 0x9fbcc8);
+    for (const x of [-2.35, 2.35]) this.ring(0.32, 0.43, C.gold, x, -18.1);
+  }
+
+  private player(color: number, keeper = false) {
+    const group = new THREE.Group();
+    this.box(keeper ? 1.25 : 0.85, 0.85, 0.6, 0, 1.18, 0, color, group);
+    this.box(0.87, 0.12, 0.62, 0, 0.93, 0, 0xffffff, group);
+    const head = this.mesh(new THREE.SphereGeometry(0.35, 12, 10), C.ink);
+    head.position.set(0, 1.95, 0); group.add(head);
+    this.box(0.5, 0.16, 0.15, 0, 1.88, -0.3, 0xa9d5de, group);
+    for (const x of [-0.3, 0.3]) {
+      const leg = this.box(keeper ? 0.5 : 0.27, 0.63, keeper ? 0.45 : 0.27, x, 0.48, 0, keeper ? 0xf1eee4 : C.ink, group);
+      leg.name = 'leg';
+      this.box(0.21, 0.13, 0.65, x, 0.1, -0.1, C.ink, group);
+    }
+    for (const x of [-0.65, 0.65]) this.box(0.3, 0.6, 0.3, x, 1.05, -0.14, color, group);
+    const stick = this.box(0.075, 1.2, 0.075, 0.8, 0.57, -0.35, 0x435967, group); stick.rotation.x = -0.5;
+    this.box(0.6, 0.09, 0.13, 0.6, 0.1, -0.7, C.ink, group);
+    const shadow = this.mesh(new THREE.CircleGeometry(0.75, 20), 0x95b9c5, true);
+    shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.035; group.add(shadow);
+    this.scene.add(group); return group;
+  }
+
+  resize(width: number, height: number) {
+    this.width = width; this.height = height;
+  }
+
+  screenPoint(point: Point) {
+    const p = new THREE.Vector3(point.x, 0.14, point.z).project(this.camera);
+    return { x: (p.x + 1) * this.width / 2, y: (1 - p.y) * this.height / 2 };
+  }
+
+  icePoint(x: number, y: number): Point | null {
+    this.ray.setFromCamera(new THREE.Vector2(x / this.width * 2 - 1, 1 - y / this.height * 2), this.camera);
+    const hit = this.ray.ray.intersectPlane(this.plane, new THREE.Vector3());
+    return hit ? { x: hit.x, z: hit.z } : null;
+  }
+
+  render(game: Game) {
+    const aspect = this.width / this.height;
+    const halfWidth = Math.max(12.8, 20 * aspect);
+    this.camera.left = -halfWidth; this.camera.right = halfWidth;
+    this.camera.top = halfWidth / aspect; this.camera.bottom = -halfWidth / aspect;
+    // Tracking is derived only from simulation state, so aiming never moves the ice.
+    const follow = Math.max(-5, Math.min(1, game.puck.z * 0.22));
+    this.camera.position.set(Math.sin(game.motion * 57) * game.impact * 0.16, 37, 29 + follow);
+    this.camera.lookAt(0, 0, follow - 2);
+    this.camera.zoom = 1 + game.impact * 0.065;
+    this.camera.updateProjectionMatrix(); this.camera.updateMatrixWorld();
+    [...game.attackers, ...game.defenders].forEach((p, i) => {
+      const model = this.players[i];
+      model.position.set(p.x, 0, p.z);
+      const skating = game.phase === 'AUTO_PLAY' || game.phase === 'REBOUND';
+      model.rotation.z = skating ? Math.sin(game.motion * 13 + i) * 0.09 : 0;
+      model.rotation.y = i >= 3 ? Math.PI : -0.1;
+      if (game.phase === 'SUCCESS' && i < 3) model.position.y = Math.abs(Math.sin(game.motion * 10 + i)) * 1.2;
+      if (game.phase === 'FAIL' && i === game.carrier) model.rotation.z = -Math.min(1.2, game.elapsed * 0.4);
+      model.children.filter(child => child.name === 'leg').forEach((leg, j) => { leg.rotation.x = skating ? Math.sin(game.motion * 14 + j * Math.PI) * 0.4 : 0; });
+    });
+    this.goalie.position.set(game.goalie.x, 0, game.goalie.z);
+    this.goalie.rotation.y = Math.PI;
+    this.goalie.rotation.z = game.reboundUsed ? -0.8 * Math.max(0.2, game.impact) : (game.puck.x - game.goalie.x) * 0.025;
+    this.puck.position.set(game.puck.x, 0.17 + (game.phase === 'REBOUND' ? Math.abs(Math.sin(game.motion * 8)) * 0.5 : 0), game.puck.z);
+    this.halo.visible = game.paused;
+    this.halo.position.set(game.puck.x, 0.08, game.puck.z);
+    this.targets.forEach((m, i) => {
+      m.visible = game.paused && i !== game.carrier;
+      m.position.set(game.attackers[i].x, 0.065, game.attackers[i].z);
+    });
+    this.preview.forEach((m, i) => {
+      const a = game.preview[i], b = game.preview[i + 1];
+      m.visible = !!a && !!b;
+      if (!a || !b) return;
+      const dx = b.x - a.x, dz = b.z - a.z;
+      m.position.set((a.x + b.x) / 2, 0.16, (a.z + b.z) / 2);
+      m.scale.set(0.12, 0.06, Math.hypot(dx, dz) + 0.08);
+      m.rotation.y = Math.atan2(dx, dz);
+      (m.material as THREE.MeshBasicMaterial).color.setHex(game.intent.kind === 'pass' ? C.teal : game.intent.kind === 'shot' ? C.gold : 0xf18ca0);
+    });
+    this.trail.forEach((m, i) => {
+      const p = game.trail[i]; m.visible = !!p && !game.paused;
+      if (p) { m.position.set(p.x, 0.15, p.z); m.scale.setScalar(0.04 + i / 28 * 0.23); }
+    });
+    this.particles.forEach((m, i) => {
+      m.visible = game.impact > 0.1 && !game.paused;
+      const age = 1 - game.impact, angle = i * 2.399;
+      m.position.set(game.puck.x + Math.cos(angle) * age * 4, 0.2 + Math.sin(age * Math.PI) * (1 + i % 3), game.puck.z + Math.sin(angle) * age * 4);
+      m.rotation.set(age * 6, angle, age * 3);
+      m.scale.setScalar(game.impact);
+    });
+    this.renderer.render(this.scene, this.camera);
+    this.gl.endFrameEXP();
+  }
+
+  dispose() {
+    const geometries = new Set<THREE.BufferGeometry>();
+    const materials = new Set<THREE.Material>();
+    this.scene.traverse(object => {
+      if (object instanceof THREE.Mesh) {
+        geometries.add(object.geometry);
+        (Array.isArray(object.material) ? object.material : [object.material]).forEach(m => materials.add(m));
+      }
+    });
+    geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose());
+    this.renderer.dispose();
+  }
+}
