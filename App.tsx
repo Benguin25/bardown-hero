@@ -101,15 +101,12 @@ export default function App() {
     <SafeAreaView style={s.root} {...gesture.panHandlers}>
       <StatusBar barStyle="light-content" />
       <View style={s.header}>
-        <View><Text style={s.eyebrow}>ONE RUSH. MAKE IT COUNT.</Text><Text style={s.brand}>BARDOWN<Text style={s.hero}> HERO</Text></Text></View>
+        <Text style={s.brand}>BARDOWN<Text style={s.hero}> HERO</Text></Text>
         <Pressable accessibilityRole="button" accessibilityLabel="Restart the play" onPress={retry} style={s.retry}><Text style={s.retryText}>↻ RETRY</Text></Pressable>
       </View>
       <View style={s.levels}>
         <Text style={s.eyebrow}>TEST</Text>
         {LEVELS.map((level, i) => <Pressable key={level.title} accessibilityRole="button" accessibilityLabel={`Test level ${i + 1}: ${level.title}`} accessibilityState={{ selected: i === g.levelIndex }} onPress={() => selectLevel(i)} style={[s.levelButton, i === g.levelIndex && s.levelSelected]}><Text style={s.retryText}>{i + 1}</Text></Pressable>)}
-      </View>
-      <View style={s.progress}>
-        {g.level.moments.map((moment, i) => <View key={moment.title} style={[s.step, i <= g.stage && s.stepOn]}><Text style={[s.stepText, i === g.stage && s.stepCurrent]}>{String(i + 1).padStart(2, '0')}  {i === g.level.moments.length - 1 ? 'FINISH' : 'PASS'}</Text></View>)}
       </View>
       <View style={s.arena} onLayout={e => { stroke.current = []; game.current.cancel(); size.current = e.nativeEvent.layout; rink.current?.resize(size.current.width, size.current.height); sync(); }}>
         <GLView style={StyleSheet.absoluteFill} onContextCreate={contextCreated} msaaSamples={4} />
@@ -140,20 +137,15 @@ export default function App() {
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#071624' },
-  header: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 18, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  header: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 4, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   eyebrow: { color: '#8ba6b6', fontSize: 9, fontWeight: '800', letterSpacing: 2 },
-  brand: { color: '#f2f8fa', fontSize: 23, fontWeight: '900', letterSpacing: -1, marginTop: 5 },
+  brand: { color: '#f2f8fa', fontSize: 20, fontWeight: '900', letterSpacing: -1 },
   hero: { color: '#23dcb6' },
-  retry: { padding: 10, borderWidth: 1, borderColor: '#314a5b', borderRadius: 6 },
+  retry: { paddingHorizontal: 10, minHeight: 44, justifyContent: 'center', borderWidth: 1, borderColor: '#314a5b', borderRadius: 6 },
   retryText: { color: '#dcecf1', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
-  levels: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 20, paddingBottom: 8 },
+  levels: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 16, paddingBottom: 4 },
   levelButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 5, backgroundColor: '#1b3547' },
   levelSelected: { backgroundColor: '#267463' },
-  progress: { flexDirection: 'row', gap: 6, paddingHorizontal: 20, paddingBottom: 10 },
-  step: { flex: 1, borderTopWidth: 2, borderColor: '#213a4b', paddingTop: 8 },
-  stepOn: { borderColor: '#23dcb6' },
-  stepText: { color: '#688795', fontSize: 9, fontWeight: '800', letterSpacing: 0.6 },
-  stepCurrent: { color: '#e1f4f4' },
   arena: { flex: 1, minHeight: 240, overflow: 'hidden' },
   arenaTop: { position: 'absolute', top: 7, left: 20, right: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   badge: { backgroundColor: '#1b3547', paddingHorizontal: 9, paddingVertical: 6, borderRadius: 4 },
@@ -173,8 +165,8 @@ const s = StyleSheet.create({
   teal: { color: '#23dcb6', fontSize: 8, fontWeight: '700' },
   red: { color: '#ef7387', fontSize: 8, fontWeight: '700' },
   goldText: { color: '#ffcf5a', fontSize: 8, fontWeight: '700' },
-  footer: { paddingHorizontal: 22, paddingTop: 17, paddingBottom: 18, borderTopWidth: 1, borderColor: '#203648' },
-  title: { color: '#eff7f8', fontSize: 23, fontWeight: '900', letterSpacing: -0.5, marginTop: 6 },
-  instruction: { color: '#bbced8', fontSize: 13, lineHeight: 19, marginTop: 7, minHeight: 38 },
-  hint: { color: '#68909f', fontSize: 8, fontWeight: '800', letterSpacing: 1, marginTop: 12 },
+  footer: { paddingHorizontal: 16, paddingVertical: 8, borderTopWidth: 1, borderColor: '#203648' },
+  title: { color: '#eff7f8', fontSize: 18, fontWeight: '900', letterSpacing: -0.5, marginTop: 3 },
+  instruction: { color: '#bbced8', fontSize: 12, lineHeight: 17, marginTop: 4, minHeight: 34 },
+  hint: { color: '#68909f', fontSize: 8, fontWeight: '800', letterSpacing: 0.6, marginTop: 5 },
 });
