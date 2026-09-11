@@ -1,6 +1,6 @@
 # Run Bardown Hero on your iPhone
 
-This is an Expo + React Native + TypeScript arcade game. It opens into a ten-level menu with local progress and three stars per level. Your Windows PC runs the development server; your iPhone runs the game in Expo Go. Android is also supported through Expo Go; iOS is the first playtest target.
+This is an Expo + React Native + TypeScript arcade game. It opens into a sixteen-level campaign with four chapters, local progress, and 48 stars to chase. Your Windows PC runs the development server; your iPhone runs the game in Expo Go. Android is also supported through Expo Go; iOS is the first playtest target.
 
 ## 1. Install these once
 
@@ -55,7 +55,7 @@ This PATH change lasts only for the current terminal. `.tooling` is ignored by G
 ## 3. Play
 
 - **Teal** players are your team. **Red** players intercept. **Gold** is the goalie.
-- When **TIME FROZEN** appears, drag anywhere on the screen, including the lower instruction area. Your finger's movement draws a trajectory anchored to the gold puck ring. Start below the puck to keep the preview visible, then lift to execute. Taps do nothing; a second finger cancels the stroke.
+- When the play pauses, drag anywhere on the screen, including the lower instruction area. Your finger's movement draws a trajectory anchored to the gold puck ring. Start below the puck to keep the preview visible, then lift to execute. Taps on the ice do nothing; a second finger cancels the stroke.
 - Draw past or ahead of a teal teammate. **PASS INTO REACH** means a teammate is near the endpoint; **OPEN ICE** lets you play into space. Teammates skate toward reachable pickup points and can collect anywhere along the path. Their ice rings show pickup reach. There is no endpoint lock or guaranteed reception.
 - Finish toward the net: the preview turns gold and says **SHOT ON NET**. Aim inside the red posts; the gold ice rings mark the corners.
 - Aim into the upright net's four rings for high-left, high-right, low-left, or low-right shots. Gold rings show current gaps; red rings show current goalie coverage. The goalie reads the puck's heading after a short reaction delay, slides with momentum, and reaches with the glove. A gold target is not a guaranteed goal: quick shots, close-range passes, and late bends can beat the reaction. Saves leave a short recovery period. The preview and puck rise to the selected height, and shots above the crossbar miss.
@@ -65,11 +65,17 @@ This PATH change lasts only for the current terminal. `.tooling` is ignored by G
 - Each start/retry shows the level objectives and counts down **3–2–1** before the rush begins.
 - For a **BANK PASS**, draw toward a side or end board. The preview stops at the first collision. On release, the incoming angle determines the rebound; extra drawing beyond that collision has no effect. Teammates chase reachable pickups after the bounce. Bank around the outside of the cage; the puck cannot travel through its back. Ordinary missed shots still end the attempt.
 
-Use **LEVELS** to return to the menu. A goal unlocks the next level regardless of stars. Each level has three objectives shown on its card and results screen. Stars must be earned together in one run; only the best run is saved, and tied runs do not merge objectives. Retry restarts the selected level with fresh powerups. The five opening scenarios cover breakout, hooked passes, one-timers, traffic, and rebounds. Levels 6–10 add Fire Puck, Mega Curve, Freeze, tight lanes, and a four-decision finale. A second save ends the attempt. You can still shoot early or choose another teammate.
+Use the **‹** back button to return to the campaign. A goal unlocks the next level regardless of stars. Each level has three objectives shown on its card and results screen. Stars must be earned together in one run; only the best run is saved, and tied runs do not merge objectives. Retry restarts the selected level with fresh powerups. The five opening scenarios cover breakout, hooked passes, one-timers, traffic, and rebounds. Levels 6–10 add Fire Puck, Mega Curve, Freeze, tight lanes, and a four-decision combo. Levels 11–16 build on those skills with lead retrieval, banks, receiver choices, rebound finishes, traffic, and a finale. A second save ends the attempt. You can still shoot early or choose another teammate.
 
-At designated decisions, tap **ACTIVATE** before drawing. Fire Puck requires a shot and makes it extremely fast; Mega Curve amplifies the bend shown in the preview; Freeze holds defenders in place during the next action, but they can still intercept. Charges survive canceled swipes. Powerups are granted by the scenario, with no inventory or purchases.
+At designated decisions, tap the yellow **TAP TO CHARGE** powerup button before drawing. Fire Puck requires a shot and makes it extremely fast; Mega Curve amplifies the bend shown in the preview; Freeze holds defenders in place during the next action, but they can still intercept. Charges survive canceled swipes. Powerups are granted by the scenario, with no inventory or purchases.
 
 ## 4. Quick playtest checklist
+
+Campaign polish: check cleared, next, and locked cards; try the continue button; open star objectives with **☆ 3** during a decision. Check the compact countdown, fading instructions during flight, result-star animation, and haptics. Repeat with the device’s reduced-motion setting enabled. Old ten-level saves should retain every star and unlock level 11 after level 10.
+
+New highlights: levels 11–16 introduce open-ice lead retrieval, a bank-to-cross-ice combo, two receiver options, a rebound finish, a shot through traffic, and a four-touch bank/lead/one-timer finale. Bank and lead stars require the puck to be collected, not just aimed at the desired spot.
+
+For a development-only browser preview, run `npm.cmd run preview`. The web dependencies are development dependencies; the native Expo app remains the primary playtest target.
 
 1. **Breakout:** pass to the teammate on the right. Try the same stroke from the puck, empty ice, and the lower instruction area. The preview should always start at the puck and follow the same relative shape.
 2. **Curve:** draw toward the left teammate while bending around the center defender. A straight pass to that teammate should be intercepted. Retry and try a wide curve.
@@ -136,7 +142,7 @@ npx.cmd expo export --platform ios
 npx.cmd expo export --platform android
 ```
 
-The tests cover three-star routes through all ten levels, single-run persistence rules, unlocks, powerup lifetimes, curve preservation, full simulation freeze, interception, scoring, save/rebound behavior, missed shots, canceled input, retry state, and phone-size camera projection. Exports check production bundles; they do not install an app on your phone.
+The tests cover three-star routes through all sixteen levels, both receiver choices in Double Take, old-save compatibility, single-run persistence rules, unlocks, powerup lifetimes, curve preservation, full simulation freeze, interception, scoring, save/rebound behavior, missed shots, canceled input, retry state, and phone-size camera projection. Exports check production bundles; they do not install an app on your phone.
 
 Automated checks and iOS bundling were run during implementation. Physical iPhone rendering, touch feel, and frame rate still need the device playtest above.
 

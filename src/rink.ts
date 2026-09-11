@@ -11,8 +11,8 @@ export function frameRink(camera: THREE.OrthographicCamera, width: number, heigh
   camera.lookAt(0, 0, follow - 2);
   camera.zoom = 1 + game.impact * 0.10 + (game.phase === 'SUCCESS' ? Math.min(game.terminalTime, 0.8) * 0.12 : 0);
   camera.updateMatrixWorld();
-  // Fit the whole cage (including its back/top), puck, and skaters below the
-  // status overlay. Shift framing first; widen only when both ends need room.
+  // The compact HUD now lives outside the rink. Fit the cage, boards, puck,
+  // and skaters with a small visual margin instead of reserving a status panel.
   const bounds = [
     // Both end boards must be visible before drawing: changing the camera in
     // response to the preview would move the swipe's anchored projection.
@@ -22,7 +22,7 @@ export function frameRink(camera: THREE.OrthographicCamera, width: number, heigh
     ...[...game.attackers, ...game.defenders].flatMap(p => [0, 2.4].map(y => new THREE.Vector3(p.x, y, p.z))),
   ].map(p => p.applyMatrix4(camera.matrixWorldInverse));
   const minY = Math.min(...bounds.map(p => p.y)), maxY = Math.max(...bounds.map(p => p.y));
-  const topPadding = Math.min(48, height * 0.18), bottomPadding = Math.min(24, height * 0.08);
+  const topPadding = Math.min(16, height * 0.06), bottomPadding = Math.min(16, height * 0.06);
   const usable = 1 - (topPadding + bottomPadding) / height;
   const halfHeight = Math.max(Math.max(11.8 / aspect, 18) / camera.zoom, (maxY - minY) / (2 * usable));
   const lowerCenter = maxY - halfHeight + 2 * halfHeight * topPadding / height;

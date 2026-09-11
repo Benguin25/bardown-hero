@@ -13,7 +13,11 @@ Board-bank and presentation update:
 
 The current request supersedes the original vertical-slice exclusions below.
 
-- Ten authored portrait levels with 2–4 intended decision moments per run, including optional guided rebounds.
+- Sixteen authored portrait levels, grouped into four campaign chapters. Six new highlights cover lead retrieval, board assists, multiple receiver options, cross-ice combinations, rebounds, screened curved shots, and a four-touch finale. Intended routes take 2–4 decisions, with guided rebounds where authored.
+- Campaign cards show distinct cleared/current/locked states, short objectives, and best-run stars. Continue selects the next uncompleted unlocked level. Totals use all 48 available stars, with the original ten level indices and save schema preserved.
+- Gameplay uses a single compact navigation row, play-progress pips, a fading instruction strip, and an optional objectives sheet. The intro is a compact 3–2–1 overlay; results use staggered star animation and prominent next/retry actions. Existing dark/teal/yellow branding is retained.
+- Local haptics accompany taps, collected passes, board contact, goals, and failure. UI motion respects the system reduced-motion preference. Unsupported haptics do not block gameplay.
+- New bank/lead stars require actual bank-pass collection and at least 1.25 rink units of receiver movement during a successful pass. No new input mode, AI system, currency, or progression gate.
 - Completing a level unlocks its successor, regardless of stars. World/league star thresholds are deferred.
 - Each level has three objectives. Results show the current run; the menu retains the best single successful run. Objectives never accumulate across runs, including tied two-star results.
 - Local AsyncStorage persistence only. Save writes are serialized and failures shown with a retry action. Failed loading does not silently overwrite existing progress.
@@ -117,7 +121,7 @@ Flow:
 Original vertical slice excluded menus. The current scope adds level selection and local progression; accounts, economy, customization, multiplayer, and purchases remain excluded.
 
 ## Progression Later
-Ten levels, local stars, and scenario powerups are now in scope. The larger career ideas below remain deferred.
+Sixteen levels, local stars, campaign chapters, and scenario powerups are in scope. The larger career ideas below remain deferred.
 
 Career chapters:
 - Rookie

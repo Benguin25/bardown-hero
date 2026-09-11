@@ -10,6 +10,56 @@ function until(game, predicate, limit = 4000) {
 }
 function pause(game) { until(game, g => g.paused || g.terminal); assert.equal(game.phase, 'PAUSED_FOR_INPUT'); }
 
+const highlightRoutes = [
+  [[{ x: 5, z: -7 }], [{ x: 2.25, z: -18, height: 3.5 }]],
+  [[{ x: 15.5, z: -5 }], [{ x: -6, z: -10 }], [{ x: -2.25, z: -18, height: 3.5 }]],
+  [[{ x: -7, z: 5 }, { x: -9, z: 0 }, { x: -7, z: -3 }], [{ x: 7, z: -10 }], [{ x: 2.25, z: -18, height: 3.5 }]],
+  [[{ x: 0, z: -10 }], [{ x: 0, z: -18 }], [{ x: -2.25, z: -18, height: 3.5 }]],
+  [[{ x: 6, z: -5 }], [{ x: -6, z: -9 }], [{ x: -8, z: -16 }, { x: -2.25, z: -18, height: 3.5 }]],
+  [[{ x: 15.5, z: -5 }], [{ x: -6, z: -9 }], [{ x: 6, z: -9 }], [{ x: -2.25, z: -18, height: 3.5 }]],
+];
+highlightRoutes.forEach((route, i) => test(`highlight level ${i + 11} has a three-star route using its named play`, () => {
+  for (const dt of [1 / 60, 0.05]) {
+    const g = new Game(i + 10);
+    const advance = () => { for (let n = 0; n < 4000 && !g.paused && !g.terminal; n++) g.update(dt); };
+    advance();
+    for (const points of route) {
+      assert.ok(g.paused, g.message);
+      if (g.availablePowerup) g.activatePowerup();
+      g.release([g.puck, ...points], 0.3); advance();
+    }
+    assert.equal(g.phase, 'SUCCESS', g.message);
+    assert.ok(g.objectives.every(o => o.complete), JSON.stringify(g.objectives));
+    assert.ok(route.length >= 2 && route.length <= 4);
+    if (i === 0 || i === 5) assert.ok(g.leadPasses > 0);
+    if (i === 1 || i === 5) assert.ok(g.bankPasses > 0);
+    if (i === 3) assert.ok(g.reboundUsed);
+    const retry = new Game(i + 10); assert.equal(retry.bankPasses, 0); assert.equal(retry.leadPasses, 0);
+  }
+}));
+
+test('the expanded campaign preserves old saves and unlocks level eleven after ten', () => {
+  const { HIGHLIGHTS, OBJECTIVES, CHAPTERS } = require('../.test-build/game.js');
+  assert.equal(LEVELS.length, 16); assert.equal(HIGHLIGHTS.length, LEVELS.length);
+  assert.equal(CHAPTERS.length * 4, LEVELS.length); assert.equal(OBJECTIVES.length, LEVELS.length);
+  const saved = emptyProgress();
+  for (let i = 0; i < 10; i++) saved.runs[i] = [true, false, false];
+  const loaded = parseProgress(JSON.stringify(saved));
+  assert.deepEqual(loaded, saved); assert.ok(isUnlocked(loaded, 10)); assert.ok(!isUnlocked(loaded, 11));
+});
+
+test('Double Take supports either first receiver and a three-star cross-ice finish', () => {
+  for (const side of [-1, 1]) {
+    const g = new Game(12); pause(g);
+    g.release([g.puck, { x: side * 7, z: 5 }, { x: side * 9, z: 0 }, { x: side * 7, z: -3 }], 0.3); pause(g);
+    assert.equal(g.carrier, side < 0 ? 1 : 2);
+    const opposite = g.targets.find(p => Math.sign(p.x) !== side);
+    assert.ok(opposite); g.release([g.puck, { x: opposite.x, z: opposite.z }], 0.3); pause(g);
+    g.release([g.puck, GOAL_CORNERS[side < 0 ? 3 : 2]], 0.3); until(g, x => x.terminal);
+    assert.equal(g.phase, 'SUCCESS'); assert.ok(g.objectives.every(o => o.complete));
+  }
+});
+
 test('bank preview clips sparse swipes at the first side, end, or corner contact', () => {
   for (const end of [{ x: 18, z: 4 }, { x: -18, z: 4 }, { x: 4, z: 35 }, { x: 4, z: -35 }, { x: BOARD_X * 2, z: BOARD_Z * 2 }, { x: 60, z: 100 }]) {
     const path = bankPath([{ x: 0, z: 0 }, end]);

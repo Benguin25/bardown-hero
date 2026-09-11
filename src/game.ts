@@ -79,7 +79,7 @@ export const LEVELS: readonly Level[] = [
     { title: 'AROUND TRAFFIC', instruction: 'Bend outside the defender and back inside the right post.', carrier: { x: 6, z: -9 }, support: [{ x: -7, z: -10 }, { x: 8, z: -5 }], defense: [{ x: 4, z: -13.5 }, { x: -1, z: -12 }] },
   ] },
   { title: 'SAVE & SCRAMBLE', moments: [
-    { title: 'SET UP THE SAVE', instruction: 'Pass to the middle to set up a rebound test.', carrier: { x: -6, z: -5 }, support: [{ x: 0, z: -10 }, { x: 7, z: -9 }], defense: [{ x: -5, z: -12 }, { x: 5, z: -6 }] },
+    { title: 'SET UP THE SAVE', instruction: 'Feed the slot. Crash the crease for the second chance.', carrier: { x: -6, z: -5 }, support: [{ x: 0, z: -10 }, { x: 7, z: -9 }], defense: [{ x: -5, z: -12 }, { x: 5, z: -6 }] },
     { title: 'TEST THE PADS', instruction: 'Shoot at the goalie for a guided rebound, then pick a corner.', carrier: { x: 0, z: -10 }, support: [{ x: 6, z: -11.5 }, { x: -7, z: -10 }], defense: [{ x: -5, z: -13 }, { x: 5, z: -6 }] },
   ] },
   { title: 'BREAKAWAY HEAT', moments: [
@@ -105,17 +105,56 @@ export const LEVELS: readonly Level[] = [
     { title: 'THE LAST FEED', instruction: 'Send it right for the final one-timer.', carrier: { x: -6, z: -8 }, support: [{ x: 6, z: -11 }, { x: -8, z: -3 }], defense: [{ x: -7, z: 2 }, { x: 7, z: 2 }] },
     { title: 'BRING THE HEAT', instruction: 'Fire Puck is ready. End this with a high-corner rocket.', carrier: { x: 6, z: -11 }, support: [{ x: -6, z: -8 }, { x: -8, z: -3 }], defense: [{ x: -7, z: 2 }, { x: 7, z: 2 }], powerup: 'fire' },
   ] },
+  { title: 'INTO THE GAP', moments: [
+    { title: 'LEAD THE RUSH', instruction: 'Send it ahead of the right wing. Let them skate onto it.', carrier: { x: -5, z: 5 }, support: [{ x: 5, z: -3 }, { x: -7, z: -8 }], defense: [{ x: -7, z: 2 }, { x: 8, z: 4 }] },
+    { title: 'CATCH & RELEASE', instruction: 'Collected in stride. Rip a high corner.', carrier: { x: 5, z: -7 }, support: [{ x: -5, z: -6 }, { x: -7, z: -10 }], defense: [{ x: -8, z: 2 }, { x: 8, z: 1 }] },
+  ] },
+  { title: 'RIM & RIP', moments: [
+    { title: 'USE THE WALL', instruction: 'Bank off the right boards toward the waiting wing.', carrier: { x: -4, z: 10 }, support: [{ x: 6, z: -5 }, { x: -7, z: -7 }], defense: [{ x: -3, z: -1 }, { x: -7, z: 5 }] },
+    { title: 'ACROSS THE SEAM', instruction: 'Switch to the left wing for the finish.', carrier: { x: 6, z: 2 }, support: [{ x: -6, z: -10 }, { x: 7, z: -9 }], defense: [{ x: -8, z: 4 }, { x: 8, z: 5 }] },
+    { title: 'RIP IT HOME', instruction: 'High corner. Make the boards your best assist.', carrier: { x: -6, z: -10 }, support: [{ x: 6, z: -6 }, { x: 8, z: -10 }], defense: [{ x: -8, z: 3 }, { x: 8, z: 3 }] },
+  ] },
+  { title: 'DOUBLE TAKE', moments: [
+    { title: 'SELL THE FAKE', instruction: 'Two receivers. Curl outside the coverage to either wing.', carrier: { x: 0, z: 6 }, support: [{ x: -7, z: -3 }, { x: 7, z: -3 }], defense: [{ x: -3, z: 1 }, { x: 3, z: 1 }] },
+    { title: 'SWITCH THE PLAY', instruction: 'Find the opposite wing. Make the goalie turn twice.', carrier: { x: -7, z: -3 }, support: [{ x: 7, z: -10 }, { x: -7, z: -11 }], defense: [{ x: -3, z: 2 }, { x: 3, z: 2 }] },
+    { title: 'ONE TOUCH', instruction: 'Catch, shoot, celebrate. Pick a high corner.', carrier: { x: 7, z: -10 }, support: [{ x: -7, z: -10 }, { x: 0, z: -6 }], defense: [{ x: -4, z: -3 }, { x: 4, z: -3 }] },
+  ] },
+  { title: 'SECOND HELPING', moments: [
+    { title: 'FEED THE CREASE', instruction: 'Find the center. A pad save is your invitation.', carrier: { x: -7, z: -3 }, support: [{ x: 0, z: -10 }, { x: 7, z: -10 }], defense: [{ x: -7, z: -12 }, { x: 6, z: -3 }] },
+    { title: 'CRASH THE NET', instruction: 'Shoot low at the pads, then bury the rebound upstairs.', carrier: { x: 0, z: -10 }, support: [{ x: 6, z: -11.5 }, { x: -7, z: -10 }], defense: [{ x: -6, z: -13 }, { x: 6, z: -3 }] },
+  ] },
+  { title: 'THROUGH THE CROWD', moments: [
+    { title: 'DRAW THEM IN', instruction: 'Slip a pass to the right wing.', carrier: { x: -6, z: 4 }, support: [{ x: 6, z: -5 }, { x: -7, z: -7 }], defense: [{ x: -6, z: -2 }, { x: 0, z: -8 }] },
+    { title: 'FIND THE SHOOTER', instruction: 'Curl across the slot to the left wing.', carrier: { x: 6, z: -5 }, support: [{ x: -6, z: -9 }, { x: 7, z: -12 }], defense: [{ x: 0, z: -9 }, { x: 4, z: -12 }] },
+    { title: 'BEND IT LATE', instruction: 'Loop outside the screen, then cut back inside the post.', carrier: { x: -6, z: -9 }, support: [{ x: 6, z: -10 }, { x: 7, z: -6 }], defense: [{ x: -3, z: -13 }, { x: 2, z: -12 }] },
+  ] },
+  { title: 'THE ENCORE', moments: [
+    { title: 'OFF THE WALL', instruction: 'Bank right. Start your final highlight with a bounce.', carrier: { x: -4, z: 10 }, support: [{ x: 6, z: -5 }, { x: -7, z: -6 }], defense: [{ x: -3, z: -1 }, { x: -7, z: 5 }] },
+    { title: 'CHASE THE SPACE', instruction: 'Lead the left wing deeper into the zone.', carrier: { x: 6, z: 2 }, support: [{ x: -6, z: -5 }, { x: 7, z: -10 }], defense: [{ x: -8, z: 4 }, { x: 8, z: 5 }] },
+    { title: 'THE FINAL FEED', instruction: 'Cross-ice to the right wing. One last touch.', carrier: { x: -6, z: -9 }, support: [{ x: 6, z: -11 }, { x: -8, z: -3 }], defense: [{ x: -7, z: 2 }, { x: 7, z: 2 }] },
+    { title: 'TAKE A BOW', instruction: 'Light up Fire Puck. Send the crowd home happy.', carrier: { x: 6, z: -11 }, support: [{ x: -6, z: -8 }, { x: -8, z: -3 }], defense: [{ x: -7, z: 2 }, { x: 7, z: 2 }], powerup: 'fire' },
+  ] },
 ];
 
-export type Objective = 'goal' | 'top' | 'curve' | 'passes' | 'rebound' | 'fire' | 'freeze';
+export const CHAPTERS = ['FIRST TRACKS', 'HEAT CHECK', 'PLAYMAKERS', 'HIGHLIGHT REEL'];
+export const HIGHLIGHTS = [
+  'Break out. Bend it. Bury it.', 'A hook pass with bad intentions.', 'Across the ice. Off the blade.', 'Two closed lanes. Find a third.',
+  'The second chance is the best chance.', 'Open ice. A puck on fire.', 'A finish that bends the rules.', 'Freeze the lane. Heat up the net.',
+  'A pass through the smallest window.', 'Four touches. Lights out.', 'Put it where they’re going.', 'The boards get the assist.',
+  'Two wings. One very confused goalie.', 'A pad save is just the beginning.', 'Make your own shooting lane.', 'Bank. Chase. Cross. Bury.',
+];
+export type Objective = 'goal' | 'top' | 'curve' | 'passes' | 'rebound' | 'fire' | 'freeze' | 'bank' | 'lead';
 export const OBJECTIVES: readonly (readonly Objective[])[] = [
   ['goal', 'passes', 'top'], ['goal', 'curve', 'top'], ['goal', 'passes', 'top'],
   ['goal', 'curve', 'passes'], ['goal', 'rebound', 'top'], ['goal', 'fire', 'top'],
   ['goal', 'curve', 'top'], ['goal', 'freeze', 'top'], ['goal', 'passes', 'top'], ['goal', 'fire', 'freeze'],
+  ['goal', 'lead', 'top'], ['goal', 'bank', 'passes'], ['goal', 'curve', 'passes'],
+  ['goal', 'rebound', 'top'], ['goal', 'curve', 'top'], ['goal', 'bank', 'lead'],
 ];
 export const OBJECTIVE_LABELS: Record<Objective, string> = {
-  goal: 'Score a goal', top: 'Score top shelf', curve: 'Complete a curved pass or shot',
-  passes: 'Complete every setup pass', rebound: 'Score on the rebound', fire: 'Score with Fire Puck', freeze: 'Complete a frozen action',
+  goal: 'Score a goal', top: 'Go top shelf', curve: 'Land a curved play',
+  passes: 'Make every setup pass', rebound: 'Bury a rebound', fire: 'Score with Fire Puck', freeze: 'Make a frozen play',
+  bank: 'Complete a bank pass', lead: 'Lead a skater into space',
 };
 
 // Translate the gesture in screen space before projecting onto the ice.
@@ -226,6 +265,9 @@ export class Game {
   actionPower: Powerup | null = null;
   private usedPowerups = new Set<string>();
   passes = 0;
+  bankPasses = 0;
+  leadPasses = 0;
+  private actionBanked = false;
   curvedActions = 0;
   frozenActions = 0;
   goalHeight = 0;
@@ -240,7 +282,8 @@ export class Game {
     return OBJECTIVES[this.levelIndex].map(id => ({ id, label: OBJECTIVE_LABELS[id], complete: this.phase === 'SUCCESS' && (
       id === 'goal' || id === 'top' && this.goalHeight >= 3 || id === 'curve' && this.curvedActions > 0 ||
       id === 'passes' && this.passes >= this.level.moments.length - 1 || id === 'rebound' && this.reboundUsed ||
-      id === 'fire' && this.actionPower === 'fire' || id === 'freeze' && this.frozenActions > 0
+      id === 'fire' && this.actionPower === 'fire' || id === 'freeze' && this.frozenActions > 0 ||
+      id === 'bank' && this.bankPasses > 0 || id === 'lead' && this.leadPasses > 0
     ) }));
   }
   message = 'Here comes the rush…';
@@ -334,6 +377,7 @@ export class Game {
       this.cancel(); this.message = 'Fire Puck needs a shot. Finish your swipe in the net.'; return;
     }
     this.actionPower = this.armed;
+    this.actionBanked = false;
     if (this.armed) this.usedPowerups.add(String(this.stage));
     this.armed = null;
     const start = this.preview[0], end = this.preview[this.preview.length - 1];
@@ -575,6 +619,7 @@ export class Game {
 
   private bounce(flipX: boolean, flipZ: boolean) {
     if (!this.freeVelocity) return;
+    this.actionBanked = true;
     this.freeVelocity.x *= (flipX ? -1 : 1) * this.reception.boardRetention;
     this.freeVelocity.z *= (flipZ ? -1 : 1) * this.reception.boardRetention;
     this.path = []; this.segment = 0; this.segmentOffset = 0;
@@ -633,6 +678,8 @@ export class Game {
 
   private receive(receiver: number) {
     this.passes++;
+    if (this.actionBanked) this.bankPasses++;
+    if (distance(this.fromAttack[receiver], this.attackers[receiver]) >= 1.25) this.leadPasses++;
     if (this.actionCurved) this.curvedActions++;
     if (this.actionPower === 'freeze') this.frozenActions++;
     this.callout = this.actionCurved ? 'FILTHY!' : 'THREAD THE NEEDLE!';

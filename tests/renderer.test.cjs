@@ -54,7 +54,7 @@ test('screen aiming hits each elevated corner at multiple phone viewport sizes',
   }
 });
 
-test('entire cage clears the HUD at every puck distance, including opening rush and camera impact', () => {
+test('entire cage clears the compact rink margin at every puck distance and camera impact', () => {
   const camera = new THREE.OrthographicCamera(-14, 14, 24, -24, 0.1, 150);
   for (const [width, height] of [[320, 240], [320, 420], [390, 500], [430, 680]]) {
     LEVELS.forEach((_, i) => {
@@ -65,7 +65,7 @@ test('entire cage clears the HUD at every puck distance, including opening rush 
         for (const x of [-3.2, 3.2]) for (const netZ of [-20.1, NET_Z + 0.1]) for (const y of [0, NET_HEIGHT + 0.2]) {
           const p = new THREE.Vector3(x, y, netZ).project(camera);
           const pixelY = (1 - p.y) * height / 2;
-          assert.ok(pixelY >= Math.min(48, height * 0.18) - 0.001, `Cage under HUD: ${width}x${height}, puck ${z}, y ${pixelY}`);
+          assert.ok(pixelY >= Math.min(16, height * 0.06) - 0.001, `Cage clipped: ${width}x${height}, puck ${z}, y ${pixelY}`);
           assert.ok(pixelY < height - 20);
           assert.ok(Math.abs(p.x) < 1);
         }

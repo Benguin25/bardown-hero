@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, AppState, PanResponder, Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { Animated, AppState, PanResponder, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GLView, type ExpoWebGLRenderingContext } from 'expo-gl';
-import { Game, LEVELS, OBJECTIVES, OBJECTIVE_LABELS, Point, distance, relativeAim } from './src/game';
+import { Game, LEVELS, Point, distance, relativeAim } from './src/game';
 import { Rink } from './src/rink';
+import { Button, Campaign, MotionProvider, Quiet, Rise, Stars, feedback, s, useReducedMotion } from './src/ui';
 import { emptyProgress, isUnlocked, parseProgress, recordRun, stars } from './src/progress';
 
 const SAVE_KEY = 'bardown.progress.v1';
@@ -12,6 +13,7 @@ const powerNames = { fire: 'FIRE PUCK', curve: 'MEGA CURVE', freeze: 'FREEZE' };
 
 function Callout({ text, eventId }: { text: string; eventId: number }) {
   const animation = useRef(new Animated.Value(0)).current;
+  const reduced = useReducedMotion();
   useEffect(() => {
     animation.setValue(0);
     const motion = Animated.timing(animation, { toValue: 1, duration: 1000, useNativeDriver: true });
@@ -19,11 +21,11 @@ function Callout({ text, eventId }: { text: string; eventId: number }) {
   }, [text, eventId, animation]);
   return <Animated.View pointerEvents="none" style={[s.callout, {
     opacity: animation.interpolate({ inputRange: [0, 0.12, 0.7, 1], outputRange: [0, 1, 1, 0] }),
-    transform: [{ translateY: animation.interpolate({ inputRange: [0, 1], outputRange: [15, -25] }) }, { scale: animation.interpolate({ inputRange: [0, 0.15, 1], outputRange: [0.75, 1.12, 1] }) }],
+    transform: [{ translateY: animation.interpolate({ inputRange: [0, 1], outputRange: reduced ? [0, 0] : [15, -25] }) }, { scale: animation.interpolate({ inputRange: [0, 0.15, 1], outputRange: reduced ? [1, 1, 1] : [0.75, 1.12, 1] }) }],
   }]}><Text style={s.calloutText}>{text}</Text></Animated.View>;
 }
 
-export default function App() {
+function GameApp() {
   const game = useRef(new Game());
   const rink = useRef<Rink | null>(null);
   const frame = useRef(0);
@@ -35,6 +37,8 @@ export default function App() {
   const saveQueue = useRef(Promise.resolve());
   const [loaded, setLoaded] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [showObjectives, setShowObjectives] = useState(false);
+  const lastFeedback = useRef<{ game: Game | null; event: number }>({ game: null, event: -1 });
   const size = useRef({ width: 1, height: 1 });
   const stroke = useRef<Point[]>([]);
   const started = useRef(0);
@@ -74,7 +78,7 @@ export default function App() {
   }, []);
 
   function contextCreated(gl: ExpoWebGLRenderingContext) {
-    if (!mounted.current) return;
+    if (!mounted.current || screen.current !== 'game') return;
     try {
       cancelAnimationFrame(frame.current);
       rink.current?.dispose();
@@ -112,6 +116,7 @@ export default function App() {
         return screen.current === 'game' && active.current && game.current.paused && !!rink.current && event.nativeEvent.touches.length === 1 && Math.hypot(state.dx, state.dy) > 5;
       },
       onPanResponderGrant: (_, state) => {
+        setShowObjectives(false);
         anchor.current = rink.current!.screenPoint(game.current.puck);
         stroke.current = [{ ...game.current.puck }]; started.current = performance.now();
         add(state.dx, state.dy);
@@ -133,134 +138,100 @@ export default function App() {
 
   const selectLevel = (index: number) => {
     if (!loaded || !isUnlocked(progress.current, index)) return;
-    stroke.current = []; game.current = new Game(index); game.current.startPreview(); screen.current = 'game'; sync();
+    setShowObjectives(false); stroke.current = []; game.current = new Game(index); game.current.startPreview(); screen.current = 'game'; sync();
   };
   const retry = () => selectLevel(game.current.levelIndex);
-  const g = game.current;
-  const aiming = g.preview.length > 1;
-  const banking = g.preview.some(p => p.bounce);
-  const label = g.introRemaining > 0 ? 'GET READY' : aiming ? banking ? 'BANK PASS' : g.intent.kind === 'pass' ? 'PASS INTO REACH' : g.intent.kind === 'shot' ? 'SHOT ON NET' : 'OPEN ICE' : g.paused ? 'TIME FROZEN' : g.terminal ? 'PLAY COMPLETE' : 'LIVE PLAY';
+  const back = () => {
+    stroke.current = []; game.current.cancel(); screen.current = 'levels';
+    cancelAnimationFrame(frame.current); rink.current?.dispose(); rink.current = null;
+    setShowObjectives(false); setReady(false); sync();
+  };
+  const g = game.current, aiming = g.preview.length > 1, banking = g.preview.some(p => p.bounce);
+  const live = !g.paused && !g.terminal && g.introRemaining <= 0;
+  const prompt = g.introRemaining > 0 ? 'Your next highlight starts here'
+    : g.terminal ? g.phase === 'SUCCESS' ? 'That belongs on the reel.' : 'You’ve got the next one.'
+    : aiming ? banking ? 'Off the boards' : g.intent.kind === 'shot' ? 'Pick your corner' : 'Put it into space'
+    : g.reboundUsed ? 'Bury the rebound' : g.moment.title;
+  const hint = g.introRemaining > 0 ? 'Three stars. One run.'
+    : g.terminal ? '' : aiming ? banking ? 'Release and let the wing chase the bounce.'
+    : g.intent.kind === 'shot' ? g.cornerCovered(g.preview[g.preview.length - 1]) ? 'Glove is there. Try the other corner.' : 'There’s the gap. Let it rip.'
+    : 'Lead your teammate. Release to send it.' : g.paused ? g.message : ' ';
+  const count = g.objectives.filter(o => o.complete).length;
+  const victory = g.phase === 'SUCCESS';
 
   if (screen.current === 'levels') return <SafeAreaView style={s.root}>
     <StatusBar barStyle="light-content" />
-    <ScrollView contentContainerStyle={s.menu}>
-      <Text style={s.eyebrow}>TEN RUSHES. ONE HIGHLIGHT REEL.</Text>
-      <Text style={s.menuTitle}>BARDOWN<Text style={s.hero}> HERO</Text></Text>
-      <Text style={s.instruction}>Draw the play. Bend the rules. Light the lamp.</Text>
-      <View style={s.progressRow}><Text style={s.goldText}>{Object.values(progress.current.runs).reduce((sum, run) => sum + stars(run), 0)} / 30 STARS</Text><Text style={s.eyebrow}>LOCAL PROGRESS</Text></View>
-      {!!saveError && <Pressable onPress={() => { if (loaded) persist(); }}><Text style={s.errorText}>{saveError}</Text></Pressable>}
-      {!loaded && <Text style={s.instruction}>{saveError ? 'Your saved progress has not been overwritten.' : 'Loading your progress…'}</Text>}
-      {LEVELS.map((level, i) => {
-        const unlocked = loaded && isUnlocked(progress.current, i);
-        return <Pressable key={level.title} disabled={!unlocked} accessibilityRole="button" accessibilityLabel={`${i + 1}. ${level.title}. ${unlocked ? `${stars(progress.current.runs[i])} stars` : 'Locked'}`} onPress={() => selectLevel(i)} style={[s.levelCard, !unlocked && s.locked]}>
-          <View style={s.progressRow}><Text style={s.levelNumber}>{String(i + 1).padStart(2, '0')}</Text><Text style={s.stars}>{unlocked ? starText(stars(progress.current.runs[i])) : 'LOCKED'}</Text></View>
-          <Text style={s.title}>{level.title}</Text>
-          <Text style={s.instruction}>{unlocked ? OBJECTIVES[i].map(id => OBJECTIVE_LABELS[id]).join(' · ') : `Complete level ${i} to unlock`}</Text>
-        </Pressable>;
-      })}
-      <Text style={s.hint}>BEST SINGLE RUN COUNTS · UNLIMITED RETRIES</Text>
-    </ScrollView>
+    <Campaign progress={progress.current} loaded={loaded} error={saveError} save={() => { if (loaded) persist(); }} select={selectLevel} />
   </SafeAreaView>;
 
-  return (
-    <SafeAreaView style={s.root} {...gesture.panHandlers}>
-      <StatusBar barStyle="light-content" />
-      <View style={s.header}>
-        <Text style={s.brand}>BARDOWN<Text style={s.hero}> HERO</Text></Text>
-        <Pressable accessibilityRole="button" accessibilityLabel="Restart the play" onPress={retry} style={s.retry}><Text style={s.retryText}>↻ RETRY</Text></Pressable>
-      </View>
-      <View style={s.levels}>
-        <Pressable accessibilityRole="button" onPress={() => { stroke.current = []; g.cancel(); screen.current = 'levels'; cancelAnimationFrame(frame.current); rink.current?.dispose(); rink.current = null; setReady(false); sync(); }} style={s.retry}><Text style={s.retryText}>‹ LEVELS</Text></Pressable>
-        <Text style={s.eyebrow}>RUSH {g.levelIndex + 1} / 10</Text>
-        <Text style={s.stars}>{starText(stars(progress.current.runs[g.levelIndex]))}</Text>
-      </View>
-      <View style={s.arena} onLayout={e => { stroke.current = []; game.current.cancel(); size.current = e.nativeEvent.layout; rink.current?.resize(size.current.width, size.current.height); sync(); }}>
-        <GLView style={StyleSheet.absoluteFill} onContextCreate={contextCreated} msaaSamples={4} />
-        <View style={StyleSheet.absoluteFill} accessibilityLabel="Hockey rink. Drag anywhere on the screen to draw a pass or shot from the puck." />
-        <View pointerEvents="none" style={s.arenaTop}>
-          <View style={[s.badge, g.paused && s.frozen]}><Text style={[s.badgeText, g.paused && s.darkText]}>{label}</Text></View>
-          <Text style={s.scenario}>{g.level.title}</Text>
+  return <SafeAreaView style={s.root} {...gesture.panHandlers}>
+    <StatusBar barStyle="light-content" />
+    <View style={s.header}>
+      <Button style={s.navButton} label="Back to campaign" onPress={back}><Text style={s.navGlyph}>‹</Text></Button>
+      <View style={s.headerCopy}>
+        <Text numberOfLines={1} style={s.levelTitle}>{g.level.title}</Text>
+        <View accessibilityLabel={`Play ${g.stage + 1} of ${g.level.moments.length}`} style={s.playProgress}>
+          {g.level.moments.map((_, i) => <View key={i} style={[s.dot, i < g.stage && s.dotDone, i === g.stage && s.dotCurrent]} />)}
+          <Text style={s.levelIndex}>{g.levelIndex + 1} / {LEVELS.length}</Text>
         </View>
-        {!ready && !error && <View pointerEvents="none" style={s.center}><Text style={s.resultTitle}>FLOODING THE ICE…</Text></View>}
-        {ready && !error && g.introRemaining > 0 && <ScrollView style={s.result} contentContainerStyle={s.resultContent}>
-          <Text style={s.resultKicker}>YOUR OBJECTIVES</Text>
-          <Text style={s.title}>{g.level.title}</Text>
+      </View>
+      <Button style={s.navButton} label="Retry level" onPress={retry}><Text style={s.navGlyph}>↻</Text></Button>
+    </View>
+    <View style={s.arena} onLayout={e => {
+      const { width, height } = e.nativeEvent.layout;
+      // Native layout notifications can repeat during HUD updates. Only a real
+      // viewport resize invalidates the screen-space anchor of an active swipe.
+      if (width === size.current.width && height === size.current.height) return;
+      stroke.current = []; game.current.cancel(); size.current = { width, height };
+      rink.current?.resize(width, height); sync();
+    }}>
+      <GLView style={StyleSheet.absoluteFill} onContextCreate={contextCreated} msaaSamples={4} />
+      <View style={s.arenaTouch} accessibilityLabel="Drag anywhere to draw a pass or shot from the puck." />
+      {!ready && !error && <View pointerEvents="none" style={s.center}><Text style={s.body}>Hitting the ice…</Text></View>}
+      {ready && !error && g.introRemaining > 0 && <View style={s.overlay}>
+        <Rise style={s.intro}>
           <Text accessibilityLiveRegion="polite" style={s.countdown}>{Math.ceil(g.introRemaining)}</Text>
-          {g.objectives.map(o => <Text key={o.id} style={s.objectiveDone}>☆ {o.label}</Text>)}
-          <Text style={s.resultBody}>Three stars. One run. Make it count.</Text>
-        </ScrollView>}
-        {!!error && <View style={s.result}><Text style={s.resultTitle}>RINK COULDN’T LOAD</Text><Text style={s.resultBody}>{error}</Text><Text style={s.resultBody}>Share this error for debugging. See the rink troubleshooting steps in launch.md.</Text></View>}
-        {!!g.callout && (!g.terminal || g.terminalTime < 1.1) && <Callout text={g.callout} eventId={g.eventId} />}
-        {g.terminal && g.terminalTime >= 1.1 && !error && <ScrollView style={s.result} contentContainerStyle={s.resultContent}>
-          <Text style={s.resultKicker}>{g.phase === 'SUCCESS' ? 'TOP SHELF. NO APOLOGIES.' : 'ONE MORE RUSH.'}</Text>
-          <Text style={[s.resultTitle, g.phase === 'SUCCESS' && s.goal]}>{g.phase === 'SUCCESS' ? 'LEVEL COMPLETE' : 'DENIED.'}</Text>
-          <Text style={s.stars}>{starText(g.objectives.filter(o => o.complete).length)}</Text>
-          {g.objectives.map(o => <Text key={o.id} style={o.complete ? s.objectiveDone : s.resultBody}>{o.complete ? '★' : '☆'} {o.label}</Text>)}
-          <Text style={s.resultBody}>{g.phase === 'SUCCESS' ? 'Stars earned together in this run.' : g.message}</Text>
-          {!!saveError && <Pressable onPress={persist}><Text style={s.errorText}>{saveError}</Text></Pressable>}
-          <Pressable accessibilityRole="button" onPress={retry} style={s.playAgain}><Text style={s.playAgainText}>↻  RUN IT BACK</Text></Pressable>
-          {g.phase === 'SUCCESS' && g.levelIndex < LEVELS.length - 1 && <Pressable accessibilityRole="button" onPress={() => selectLevel(g.levelIndex + 1)} style={s.playAgain}><Text style={s.playAgainText}>NEXT LEVEL →</Text></Pressable>}
-          {g.phase === 'SUCCESS' && g.levelIndex === LEVELS.length - 1 && <Text style={s.objectiveDone}>ALL TEN RUSHES COMPLETE! Replay for 30 stars.</Text>}
-        </ScrollView>}
-        <View pointerEvents="none" style={s.legend}><Text style={s.teal}>● YOUR TEAM</Text><Text style={s.red}>● DEFENDERS</Text><Text style={s.goldText}>● GOALIE</Text></View>
+          <View style={s.introCopy}><Text style={s.kicker}>MAKE IT COUNT</Text>
+            {g.objectives.map(o => <Text key={o.id} style={s.introObjective}>☆ {o.label}</Text>)}
+          </View>
+        </Rise>
+      </View>}
+      {!!error && <View style={s.overlay}><View style={s.resultContent}><Text style={s.resultTitle}>ICE DELAY</Text><Text style={s.body}>The rink couldn’t load. Reopen the level to try again.</Text><Text selectable style={s.errorText}>{error}</Text><Button style={s.primary} onPress={back}><Text style={s.primaryText}>BACK TO CAMPAIGN</Text></Button></View></View>}
+      {!!g.callout && (!g.terminal || g.terminalTime < 1.1) && <Callout text={g.callout} eventId={g.eventId} />}
+      {showObjectives && g.paused && <Rise style={s.objectivesSheet}>
+        <Text style={s.kicker}>CHASE THREE STARS</Text>
+        {g.objectives.map(o => <Text key={o.id} style={s.introObjective}>☆ {o.label}</Text>)}
+        <Button style={s.secondary} onPress={() => setShowObjectives(false)}><Text style={s.secondaryText}>GOT IT · BACK TO THE PLAY</Text></Button>
+      </Rise>}
+      {g.terminal && g.terminalTime >= 1.1 && !error && <View style={s.overlay}>
+        <ScrollView style={s.resultScroll} contentContainerStyle={s.resultContent} showsVerticalScrollIndicator={false}>
+          <Rise><Text style={s.kicker}>{victory ? count === 3 ? 'PERFECT HIGHLIGHT' : 'ON THE REEL' : 'ONE MORE RUSH'}</Text>
+            <Text style={[s.resultTitle, !victory && s.failTitle]}>{victory ? count === 3 ? 'BAR DOWN!' : 'WHAT A FINISH!' : 'SO CLOSE.'}</Text>
+          </Rise>
+          {victory && <Stars count={count} animate />}
+          <Text style={s.body}>{victory ? g.level.title : g.message}</Text>
+          {g.objectives.map(o => <View key={o.id} style={s.objectiveRow}><Text style={[s.objectiveMark, !o.complete && s.muted]}>{o.complete ? '★' : '☆'}</Text><Text style={s.objectiveText}>{o.label}</Text></View>)}
+          {!!saveError && <Button onPress={persist}><Text style={s.errorText}>{saveError}</Text></Button>}
+          {victory && g.levelIndex < LEVELS.length - 1
+            ? <Button style={s.primary} onPress={() => selectLevel(g.levelIndex + 1)}><Text style={s.primaryText}>NEXT RUSH  →</Text></Button>
+            : <Button style={s.primary} onPress={victory ? back : retry}><Text style={s.primaryText}>{victory ? 'CAMPAIGN CLEARED  ★' : 'RUN IT BACK  ↻'}</Text></Button>}
+          {victory && <Button style={s.secondary} onPress={retry}><Text style={s.secondaryText}>{count === 3 ? 'DO IT AGAIN' : 'CHASE THREE STARS'}  ↻</Text></Button>}
+          <Text style={s.body}>{victory ? `Best run: ${stars(progress.current.runs[g.levelIndex])} / 3 stars` : 'Fresh ice. Fresh chance.'}</Text>
+        </ScrollView>
+      </View>}
+    </View>
+    <Quiet live={live}>
+      <View style={s.bottom}>
+        {!!g.availablePowerup && <Button style={s.powerButton} disabled={!!g.armed} onPress={() => { stroke.current = []; g.activatePowerup(); sync(); }}><Text style={s.powerText}>{g.armed ? 'READY · ' : '⚡ '}{powerNames[g.availablePowerup]}{g.armed ? '' : ' · TAP TO CHARGE'}</Text></Button>}
+        <View style={s.promptRow}>
+          <View style={s.promptCopy}><Text numberOfLines={1} style={s.promptTitle}>{prompt}</Text>{!!hint && <Text numberOfLines={2} style={s.promptBody}>{hint}</Text>}</View>
+          {g.paused && <Button style={s.objectiveButton} label="View the three star objectives" onPress={() => setShowObjectives(value => !value)}><Text style={s.objectiveGlyph}>☆ 3</Text></Button>}
+        </View>
       </View>
-      <View style={s.footer}>
-        {!!g.availablePowerup && <Pressable accessibilityRole="button" accessibilityState={{ disabled: !!g.armed }} disabled={!!g.armed} onPress={() => { stroke.current = []; g.activatePowerup(); sync(); }} style={s.powerButton}><Text style={s.playAgainText}>{g.armed ? 'ARMED · ' : 'ACTIVATE · '}{powerNames[g.availablePowerup]} · NEXT ACTION</Text></Pressable>}
-        <Text style={s.eyebrow}>{g.reboundUsed ? 'BONUS CHANCE / REBOUND' : `DECISION ${g.stage + 1} / ${g.level.moments.length}`}</Text>
-        <Text style={s.title}>{g.reboundUsed ? 'CLEAN UP THE REBOUND' : g.moment.title}</Text>
-        <Text style={s.instruction}>{aiming ? banking ? 'Release to bank it. The bounce follows your approach angle.' : g.intent.kind === 'pass' ? 'Play it into reach. Your teammate will skate to collect.' : g.intent.kind === 'shot' ? g.cornerCovered(g.preview[g.preview.length - 1]) ? 'Covered right now. Bend late or change corners.' : 'A gap for now. Shoot quickly or bend it late.' : 'Lead a teammate into space. Keep it within skating reach.' : g.message}</Text>
-        <Text style={s.hint}>{g.paused ? 'DRAG ANYWHERE · DRAW PAST BOARDS TO BANK · RELEASE' : 'TEAL ATTACKS ↑  •  NO LIMIT ON RETRIES'}</Text>
-      </View>
-    </SafeAreaView>
-  );
+    </Quiet>
+  </SafeAreaView>;
 }
 
-const s = StyleSheet.create({
-  countdown: { color: '#ffcf5a', fontSize: 56, fontWeight: '900', lineHeight: 64 },
-  menu: { padding: 22, gap: 12, paddingBottom: 40 },
-  menuTitle: { color: '#f2f8fa', fontSize: 34, fontWeight: '900', letterSpacing: -1.5, marginTop: 12 },
-  progressRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginVertical: 8 },
-  levelCard: { backgroundColor: '#102a3c', padding: 18, borderRadius: 16, borderWidth: 1, borderColor: '#28596a' },
-  locked: { opacity: 0.5 },
-  levelNumber: { color: '#23dcb6', fontSize: 24, fontWeight: '900' },
-  stars: { color: '#ffcf5a', fontSize: 23, fontWeight: '900', letterSpacing: 3 },
-  errorText: { color: '#ffaf9f', fontSize: 12, lineHeight: 18, padding: 8 },
-  objectiveDone: { color: '#23dcb6', fontSize: 13, lineHeight: 19, textAlign: 'center' },
-  powerButton: { backgroundColor: '#ffcf5a', borderRadius: 8, minHeight: 44, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  callout: { position: 'absolute', top: '21%', left: 0, right: 0, alignItems: 'center' },
-  calloutText: { fontSize: 27, fontWeight: '900', fontStyle: 'italic', color: '#ffcf5a', textShadowColor: '#071624', textShadowRadius: 4, textShadowOffset: { width: 2, height: 3 } },
-  resultContent: { padding: 18, alignItems: 'center', gap: 10 },
-  root: { flex: 1, backgroundColor: '#071624' },
-  header: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 4, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  eyebrow: { color: '#8ba6b6', fontSize: 9, fontWeight: '800', letterSpacing: 2 },
-  brand: { color: '#f2f8fa', fontSize: 20, fontWeight: '900', letterSpacing: -1 },
-  hero: { color: '#23dcb6' },
-  retry: { paddingHorizontal: 10, minHeight: 44, justifyContent: 'center', borderWidth: 1, borderColor: '#314a5b', borderRadius: 6 },
-  retryText: { color: '#dcecf1', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
-  levels: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 16, paddingBottom: 4 },
-  levelButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 5, backgroundColor: '#1b3547' },
-  levelSelected: { backgroundColor: '#267463' },
-  arena: { flex: 1, minHeight: 240, overflow: 'hidden' },
-  arenaTop: { position: 'absolute', top: 7, left: 20, right: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  badge: { backgroundColor: '#1b3547', paddingHorizontal: 9, paddingVertical: 6, borderRadius: 4 },
-  frozen: { backgroundColor: '#ffcf5a' },
-  badgeText: { fontSize: 9, fontWeight: '900', letterSpacing: 1, color: '#c4d9e2' },
-  darkText: { color: '#10293c' },
-  scenario: { color: '#708e9e', fontSize: 8, fontWeight: '800', letterSpacing: 1.2 },
-  center: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center' },
-  result: { position: 'absolute', top: 48, bottom: 30, left: 16, right: 16, backgroundColor: '#0a2032f5', borderRadius: 14, borderWidth: 1, borderColor: '#3a596b' },
-  resultKicker: { color: '#8ba6b6', fontSize: 9, fontWeight: '800', letterSpacing: 1.5 },
-  resultTitle: { color: '#f6f9fb', fontSize: 29, fontWeight: '900', textAlign: 'center' },
-  goal: { color: '#ffcf5a', fontSize: 26 },
-  resultBody: { color: '#b9ccd6', fontSize: 13, lineHeight: 19, textAlign: 'center' },
-  playAgain: { backgroundColor: '#23dcb6', paddingHorizontal: 25, paddingVertical: 15, borderRadius: 6, marginTop: 8 },
-  playAgainText: { color: '#071624', fontSize: 12, fontWeight: '900', letterSpacing: 1 },
-  legend: { position: 'absolute', bottom: 8, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 18 },
-  teal: { color: '#23dcb6', fontSize: 8, fontWeight: '700' },
-  red: { color: '#ef7387', fontSize: 8, fontWeight: '700' },
-  goldText: { color: '#ffcf5a', fontSize: 8, fontWeight: '700' },
-  footer: { paddingHorizontal: 16, paddingVertical: 8, borderTopWidth: 1, borderColor: '#203648' },
-  title: { color: '#eff7f8', fontSize: 18, fontWeight: '900', letterSpacing: -0.5, marginTop: 3 },
-  instruction: { color: '#bbced8', fontSize: 12, lineHeight: 17, marginTop: 4, minHeight: 34 },
-  hint: { color: '#68909f', fontSize: 8, fontWeight: '800', letterSpacing: 0.6, marginTop: 5 },
-});
+export default function App() {
+  return <MotionProvider><GameApp /></MotionProvider>;
+}

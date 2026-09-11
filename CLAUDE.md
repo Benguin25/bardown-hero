@@ -4,7 +4,7 @@
 Build a polished-feeling arcade hockey prototype, not a hockey simulator.
 
 ## Priorities
-Current user direction: expand the working prototype into a ten-level arcade game. Preserve the swipe controls, authored routes, goalie behavior, and architecture. Add local progression, three objectives per level, contextual powerup buttons, results, and exaggerated presentation. iOS comes first; Android remains supported. League/world star gates are deferred.
+Current user direction: a polished sixteen-level arcade campaign in the established dark/teal/yellow identity. Preserve swipe controls, authored movement, live receiver retrieval, board reflection, and goalie behavior. Keep the rink prominent, chrome compact, objectives readable, and campaign states clear. Use subtle transitions, star celebrations, and haptics, respecting reduced motion. iOS comes first; Android remains supported. League/world star gates and monetization remain deferred.
 
 1. Core swipe gameplay
 2. Juice / responsiveness
