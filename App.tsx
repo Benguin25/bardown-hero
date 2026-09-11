@@ -139,7 +139,7 @@ export default function App() {
   const g = game.current;
   const aiming = g.preview.length > 1;
   const banking = g.preview.some(p => p.bounce);
-  const label = g.introRemaining > 0 ? 'GET READY' : aiming ? g.intent.kind === 'pass' ? banking ? 'BANK PASS' : 'ASSISTED PASS' : g.intent.kind === 'shot' ? 'SHOT ON NET' : banking ? 'BANK · NO TARGET' : 'NO TARGET' : g.paused ? 'TIME FROZEN' : g.terminal ? 'PLAY COMPLETE' : 'LIVE PLAY';
+  const label = g.introRemaining > 0 ? 'GET READY' : aiming ? banking ? 'BANK PASS' : g.intent.kind === 'pass' ? 'PASS INTO REACH' : g.intent.kind === 'shot' ? 'SHOT ON NET' : 'OPEN ICE' : g.paused ? 'TIME FROZEN' : g.terminal ? 'PLAY COMPLETE' : 'LIVE PLAY';
 
   if (screen.current === 'levels') return <SafeAreaView style={s.root}>
     <StatusBar barStyle="light-content" />
@@ -208,7 +208,7 @@ export default function App() {
         {!!g.availablePowerup && <Pressable accessibilityRole="button" accessibilityState={{ disabled: !!g.armed }} disabled={!!g.armed} onPress={() => { stroke.current = []; g.activatePowerup(); sync(); }} style={s.powerButton}><Text style={s.playAgainText}>{g.armed ? 'ARMED · ' : 'ACTIVATE · '}{powerNames[g.availablePowerup]} · NEXT ACTION</Text></Pressable>}
         <Text style={s.eyebrow}>{g.reboundUsed ? 'BONUS CHANCE / REBOUND' : `DECISION ${g.stage + 1} / ${g.level.moments.length}`}</Text>
         <Text style={s.title}>{g.reboundUsed ? 'CLEAN UP THE REBOUND' : g.moment.title}</Text>
-        <Text style={s.instruction}>{aiming ? g.intent.kind === 'pass' ? 'Teammate locked. Release to send your curve.' : g.intent.kind === 'shot' ? g.cornerCovered(g.preview[g.preview.length - 1]) ? 'Covered right now. Bend late or change corners.' : 'A gap for now. Shoot quickly or bend it late.' : 'Finish near a teammate or toward the net.' : g.message}</Text>
+        <Text style={s.instruction}>{aiming ? banking ? 'Release to bank it. The bounce follows your approach angle.' : g.intent.kind === 'pass' ? 'Play it into reach. Your teammate will skate to collect.' : g.intent.kind === 'shot' ? g.cornerCovered(g.preview[g.preview.length - 1]) ? 'Covered right now. Bend late or change corners.' : 'A gap for now. Shoot quickly or bend it late.' : 'Lead a teammate into space. Keep it within skating reach.' : g.message}</Text>
         <Text style={s.hint}>{g.paused ? 'DRAG ANYWHERE · DRAW PAST BOARDS TO BANK · RELEASE' : 'TEAL ATTACKS ↑  •  NO LIMIT ON RETRIES'}</Text>
       </View>
     </SafeAreaView>

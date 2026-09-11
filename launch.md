@@ -56,14 +56,14 @@ This PATH change lasts only for the current terminal. `.tooling` is ignored by G
 
 - **Teal** players are your team. **Red** players intercept. **Gold** is the goalie.
 - When **TIME FROZEN** appears, drag anywhere on the screen, including the lower instruction area. Your finger's movement draws a trajectory anchored to the gold puck ring. Start below the puck to keep the preview visible, then lift to execute. Taps do nothing; a second finger cancels the stroke.
-- Finish near a teal teammate: the preview turns teal and says **ASSISTED PASS**. The endpoint snaps to that teammate while your curve remains.
+- Draw past or ahead of a teal teammate. **PASS INTO REACH** means a teammate is near the endpoint; **OPEN ICE** lets you play into space. Teammates skate toward reachable pickup points and can collect anywhere along the path. Their ice rings show pickup reach. There is no endpoint lock or guaranteed reception.
 - Finish toward the net: the preview turns gold and says **SHOT ON NET**. Aim inside the red posts; the gold ice rings mark the corners.
 - Aim into the upright net's four rings for high-left, high-right, low-left, or low-right shots. Gold rings show current gaps; red rings show current goalie coverage. The goalie reads the puck's heading after a short reaction delay, slides with momentum, and reaches with the glove. A gold target is not a guaranteed goal: quick shots, close-range passes, and late bends can beat the reaction. Saves leave a short recovery period. The preview and puck rise to the selected height, and shots above the crossbar miss.
-- A pink path with **NO TARGET** will leave a loose puck unless you redirect its endpoint before releasing.
+- Blue **OPEN ICE** paths are valid lead passes. The puck coasts briefly if nobody collects it along the drawn path, but a pass too far from skating reach still fails.
 - You can draw large curves and loops. Stay inside the boards and avoid red defenders.
 - Tap **RETRY** at any time, or **RUN IT BACK** after the result, to immediately reset the scenario.
 - Each start/retry shows the level objectives and counts down **3–2–1** before the rush begins.
-- For a bank pass, keep drawing past a side or end board. The visible path reflects back onto the ice. Adjust until its reflected endpoint locks onto a teammate and the HUD reads **BANK PASS**, then release. Bank around the outside of the cage; the puck cannot travel through its back. Ordinary missed shots still end the attempt.
+- For a **BANK PASS**, draw toward a side or end board. The preview stops at the first collision. On release, the incoming angle determines the rebound; extra drawing beyond that collision has no effect. Teammates chase reachable pickups after the bounce. Bank around the outside of the cage; the puck cannot travel through its back. Ordinary missed shots still end the attempt.
 
 Use **LEVELS** to return to the menu. A goal unlocks the next level regardless of stars. Each level has three objectives shown on its card and results screen. Stars must be earned together in one run; only the best run is saved, and tied runs do not merge objectives. Retry restarts the selected level with fresh powerups. The five opening scenarios cover breakout, hooked passes, one-timers, traffic, and rebounds. Levels 6–10 add Fire Puck, Mega Curve, Freeze, tight lanes, and a four-decision finale. A second save ends the attempt. You can still shoot early or choose another teammate.
 

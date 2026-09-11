@@ -6,7 +6,7 @@
 
 Board-bank and presentation update:
 
-- Draw past either side board or either end board to reflect the ground trajectory back onto the rink. The preview inserts exact reflection points; pass assistance targets the reflected endpoint and preserves board contacts. Execution follows that same preview at constant arcade speed. Excessively long paths are rejected rather than executed beyond the visible preview budget.
+- Draw toward either side or end board. The preview stops at first contact, with no reflected path. Release executes that approach, then reflects the incoming velocity at the board with arcade speed retention. Drawing beyond the first collision cannot steer the rebound. The puck coasts and teammates attempt normal pickups after impact.
 - End-board passes may travel beside the goal but cannot pass through its cage. Ordinary shots keep their save/goal/miss rules.
 - Slightly lower camera; both end boards remain framed before aiming. Net uses round posts, a tapered rear frame, and roof/side/back mesh. The goalie has a padded blocker and a catching glove with a laced pocket, without changing save zones.
 - Every level start and retry shows its three objectives during a three-second countdown. Gameplay starts afterward; backgrounding pauses the countdown through the existing active-app loop.
@@ -31,7 +31,7 @@ Core loop:
 2. At key moments, everything freezes.
 3. Player drags anywhere to draw a relative pass or shot path anchored to the puck.
 4. The path is previewed while dragging.
-5. On release, the path is lightly cleaned/snapped.
+5. On release, the path is lightly smoothed with only a small near-miss correction.
 6. The puck follows the drawn path, including ridiculous curves.
 7. Play continues until the next decision, goal, turnover, or rebound.
 
@@ -61,9 +61,11 @@ Do not optimize for hockey simulation.
 One-finger swipe/draw anywhere on screen, with the preview anchored to the puck.
 
 ### Pass
-- Endpoint near a teammate snaps/assists toward them.
-- Player-drawn curve still strongly influences puck path.
-- Generous touch tolerance.
+- The drawn curve is the primary trajectory; no endpoint lock guarantees a pass.
+- Teammates have a configurable pickup radius and skate toward reachable points along the projected puck path. A teammate can collect before the endpoint or receive a lead pass into space.
+- Only obvious near-misses receive a small correction (at most 0.2 rink units by default). An endpoint already within pickup reach stays as drawn.
+- Uncollected passes coast briefly and slow down. Unreachable passes still fail; defenders retain interception priority in contested lanes. Reception freezes play at the actual contact point without teleporting the puck.
+- Tune `DEFAULT_RECEPTION` in `src/game.ts`, or pass overrides as the second `Game` constructor argument. Defaults: pickup radius 0.9, pursuit radius 6, skating speed 7 units/second, board speed retention 0.84, and a 2.2-second loose-puck window in simulation time.
 
 ### Shot
 - Endpoint toward the net becomes a shot.
@@ -75,7 +77,7 @@ One-finger swipe/draw anywhere on screen, with the preview anchored to the puck.
 ## Gameplay Rules
 - Time fully freezes during input.
 - Teammates and defenders mostly follow authored routes.
-- Defenders move on release; reception freezes play immediately. Receivers remain stationary during passes. Skaters keep separate positions along routes and at reception.
+- Defenders move on release; reception freezes play immediately. Receivers skate to reachable pickup points while skaters retain separation along their routes and at reception.
 - Small reactions are allowed, but avoid general-purpose hockey AI.
 - Defender collision/interception can fail the play.
 - Bad shots can be saved.

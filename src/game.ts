@@ -19,6 +19,12 @@ const copy = (p: Point): Point => ({ ...p });
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
 export const SKATER_SPACING = 1.85;
+export const DEFAULT_RECEPTION = {
+  pickupRadius: 0.9, pursuitRadius: 6, skateSpeed: 7,
+  assistRadius: 1.4, assistStrength: 0.18, maxAssist: 0.2,
+  coastDrag: 16, looseTimeout: 2.2, boardRetention: 0.84,
+};
+export type ReceptionConfig = typeof DEFAULT_RECEPTION;
 // Keep the receiver fixed and give everyone else a distinct patch of ice.
 // The same small constraint is applied along routes, not only at their ends.
 export function spaceSkaters(points: Point[], pinned: number): Point[] {
@@ -138,45 +144,43 @@ export function cleanPath(raw: Point[], end?: Point): Point[] {
   return smooth;
 }
 
-// Fold a drawn path through mirrored copies of the rink. Split at every wall
-// before folding, so a sparse swipe still has exact, sharp reflection points.
+export function boardHit(a: Point, b: Point): { point: Point; t: number; flipX: boolean; flipZ: boolean } | null {
+  let t = Infinity;
+  for (const [axis, half] of [['x', BOARD_X], ['z', BOARD_Z]] as const) {
+    const delta = b[axis] - a[axis];
+    if (Math.abs(delta) < 1e-9) continue;
+    const wall = delta > 0 ? half : -half;
+    if ((delta > 0 && b[axis] < wall - 1e-7) || (delta < 0 && b[axis] > wall + 1e-7)) continue;
+    const candidate = (wall - a[axis]) / delta;
+    if (candidate >= -1e-9 && candidate <= 1 + 1e-9) t = Math.min(t, Math.max(0, candidate));
+  }
+  if (!Number.isFinite(t)) return null;
+  const point = mix(a, b, t);
+  const flipX = Math.abs(Math.abs(point.x) - BOARD_X) < 1e-7;
+  const flipZ = Math.abs(Math.abs(point.z) - BOARD_Z) < 1e-7;
+  point.x = flipX ? Math.sign(point.x) * BOARD_X : clamp(point.x, -BOARD_X, BOARD_X);
+  point.z = flipZ ? Math.sign(point.z) * BOARD_Z : clamp(point.z, -BOARD_Z, BOARD_Z);
+  return { point: { ...point, bounce: true }, t, flipX, flipZ };
+}
+
+// A preview ends at its first board contact. Nothing beyond it is user-authored.
 export function bankPath(raw: Point[]): Point[] {
   if (!raw.length || raw.some(p => !Number.isFinite(p.x) || !Number.isFinite(p.z))) return [];
-  const fold = (v: number, half: number) => {
-    const span = half * 2, phase = ((v + half) % (span * 2) + span * 2) % (span * 2);
-    return phase <= span ? phase - half : span * 2 - phase - half;
-  };
-  const point = (p: Point): Point => ({ ...p, x: fold(p.x, BOARD_X), z: fold(p.z, BOARD_Z) });
-  const result = [point(raw[0])];
+  const result = [copy(raw[0])];
   for (let i = 1; i < raw.length; i++) {
-    const a = raw[i - 1], b = raw[i], cuts = [1];
-    for (const [axis, half] of [['x', BOARD_X], ['z', BOARD_Z]] as const) {
-      const delta = b[axis] - a[axis];
-      if (Math.abs(delta) < 1e-9) continue;
-      const low = Math.min(a[axis], b[axis]), high = Math.max(a[axis], b[axis]);
-      const first = Math.ceil((low - half) / (half * 2)), last = Math.floor((high - half) / (half * 2));
-      if (last - first > 512) return [];
-      for (let k = first; k <= last; k++) {
-        const t = (half + k * half * 2 - a[axis]) / delta;
-        if (t > 1e-8 && t < 1 - 1e-8) cuts.push(t);
-      }
-    }
-    cuts.sort((a, b) => a - b);
-    for (let j = 0; j < cuts.length; j++) {
-      if (j && Math.abs(cuts[j] - cuts[j - 1]) < 1e-8) continue;
-      const p = point(mix(a, b, cuts[j]));
-      if (Math.abs(Math.abs(p.x) - BOARD_X) < 1e-7 || Math.abs(Math.abs(p.z) - BOARD_Z) < 1e-7) p.bounce = true;
-      result.push(p);
-      // Same fixed budget as the rendered preview; never execute invisible tails.
-      if (result.length > 512) return [];
-    }
+    const hit = boardHit(raw[i - 1], raw[i]);
+    result.push(hit ? hit.point : copy(raw[i]));
+    if (hit) break;
+    if (result.length >= 512) break;
   }
   return result;
 }
 
 export class Game {
   readonly levelIndex: number;
-  constructor(levelIndex = 0) {
+  readonly reception: ReceptionConfig;
+  constructor(levelIndex = 0, reception: Partial<ReceptionConfig> = {}) {
+    this.reception = { ...DEFAULT_RECEPTION, ...reception };
     this.levelIndex = Number.isInteger(levelIndex) && LEVELS[levelIndex] ? levelIndex : 0;
     this.goalieGlove = { ...this.coveredCorner, z: this.goalie.z };
     if (this.levelIndex !== 0) {
@@ -248,6 +252,12 @@ export class Game {
   private speed = 22;
   private actionDistance = 0;
   private actionLength = 1;
+  private actionTime = 0;
+  private freeVelocity: Point | null = null;
+  private looseTime = 0;
+  private pickupPlans: (Point | null)[] = [null, null, null];
+  private pickupReplan = 0;
+  private lastHeading: Point = { x: 0, z: -1 };
   private toDefense: Point[] = [];
   private toAttack: Point[] = [];
   private reboundStart: Point = { x: 0, z: 0 };
@@ -268,56 +278,42 @@ export class Game {
   aim(raw: Point[]) {
     if (!this.paused || !raw.length) return;
     if (raw.some(p => !Number.isFinite(p.x) || !Number.isFinite(p.z))) { this.cancel(); return; }
-    // A swipe through a wall is a ground bank path. Direct goal-face aiming
-    // keeps its existing height and shot behavior.
-    const banking = raw.some(p => Math.abs(p.x) > BOARD_X || Math.abs(p.z) > BOARD_Z);
-    if (banking) {
-      let path = cleanPath([copy(this.puck), ...raw.slice(1).map(p => ({ x: p.x, z: p.z }))]);
-      if (this.armed === 'curve' && path.length > 2) {
-        const first = path[0], last = path[path.length - 1];
-        path = path.map((p, i) => { const base = mix(first, last, i / (path.length - 1)); return { x: base.x + (p.x - base.x) * 1.8, z: base.z + (p.z - base.z) * 1.8 }; });
+    // Clip before smoothing so hidden strokes beyond the board cannot alter
+    // the approach angle or steer the later rebound.
+    let stroke = bankPath([copy(this.puck), ...raw.slice(1)]);
+    const banking = !!stroke[stroke.length - 1]?.bounce;
+    const target = stroke[stroke.length - 1];
+    if (!target) { this.cancel(); return; }
+    this.intent = banking ? { kind: 'loose' } : this.classify(target);
+    let end: Point | undefined;
+    if (!banking && this.intent.kind === 'pass') {
+      const teammate = this.attackers[this.intent.target], miss = distance(target, teammate);
+      if (miss > this.reception.pickupRadius && miss < this.reception.assistRadius) {
+        end = mix(target, teammate, Math.min(this.reception.maxAssist / miss, this.reception.assistStrength));
       }
-      this.preview = bankPath(path);
-      this.intent = { kind: 'loose' };
-      const finish = this.preview[this.preview.length - 1];
-      if (!finish) { this.message = 'Try a shorter bank swipe.'; return; }
-      const nearest = this.targets.sort((a, b) => distance(a, finish) - distance(b, finish))[0];
-      if (nearest && !finish.bounce && distance(nearest, finish) < 2.3) {
-        this.intent = { kind: 'pass', target: nearest.id };
-        // Assist only after the final reflection, preserving every wall contact.
-        const lastBounce = this.preview.reduce((last, p, i) => p.bounce ? i : last, 0);
-        const dx = nearest.x - finish.x, dz = nearest.z - finish.z;
-        this.preview = this.preview.map((p, i, points) => {
-          const weight = Math.max(0, (i - lastBounce) / Math.max(1, points.length - 1 - lastBounce));
-          return { ...p, x: p.x + dx * weight, z: p.z + dz * weight };
-        });
-      }
-      return;
     }
-    this.intent = this.classify(raw[raw.length - 1]);
-    const end = this.intent.kind === 'pass' ? this.attackers[this.intent.target] : undefined;
-    let stroke = raw;
-    const target = raw[raw.length - 1];
     if (this.intent.kind === 'shot' && target.height !== undefined) {
       // Dragging around the goal face adjusts the destination, rather than
       // executing an earlier crossing of the goal line at the wrong height.
-      const enteredNet = raw.findIndex((p, i) => i > 0 && p.height !== undefined);
-      if (enteredNet > 0) stroke = [...raw.slice(0, enteredNet), target];
+      const enteredNet = stroke.findIndex((p, i) => i > 0 && p.height !== undefined);
+      if (enteredNet > 0) stroke = [...stroke.slice(0, enteredNet), target];
     }
     this.preview = cleanPath([copy(this.puck), ...stroke.slice(1).map(p => ({ x: p.x, z: p.z }))], end);
     if (this.armed === 'curve' && this.preview.length > 2) {
       const start = this.preview[0], finish = this.preview[this.preview.length - 1];
       this.preview = this.preview.map((p, i, a) => {
         const baseline = mix(start, finish, i / (a.length - 1));
-        return { ...p, x: clamp(baseline.x + (p.x - baseline.x) * 1.8, -10, 10), z: clamp(baseline.z + (p.z - baseline.z) * 1.8, -20, 21) };
+        return { ...p, x: baseline.x + (p.x - baseline.x) * 1.8, z: baseline.z + (p.z - baseline.z) * 1.8 };
       });
     }
+    this.preview = bankPath(this.preview);
+    if (this.preview[this.preview.length - 1]?.bounce) this.intent = { kind: 'loose' };
     if (this.intent.kind === 'shot' && target.height !== undefined) {
       const total = this.preview.reduce((sum, p, i, a) => sum + (i ? distance(a[i - 1], p) : 0), 0);
       let traveled = 0;
       this.preview = this.preview.map((p, i, a) => {
         if (i) traveled += distance(a[i - 1], p);
-        return i === 0 ? p : { ...p, height: target.height! * traveled / Math.max(total, 0.001) };
+        return i === 0 ? p : { ...p, height: i === a.length - 1 ? target.height! : target.height! * traveled / Math.max(total, 0.001) };
       });
     }
   }
@@ -362,6 +358,10 @@ export class Game {
     this.speed = 23 + clamp(length / Math.max(seconds, 0.1) / 20, 0, 5);
     if (this.actionPower === 'fire') this.speed *= 2.8;
     this.actionDistance = 0;
+    this.actionTime = 0;
+    this.freeVelocity = null;
+    this.looseTime = 0;
+    this.pickupReplan = 0;
     this.goalieShotTime = 0;
     this.actionLength = this.path.reduce((sum, p, i, a) => sum + (i ? distance(a[i - 1], p) : 0), 0);
     this.fromDefense = this.defenders.map(copy);
@@ -377,8 +377,9 @@ export class Game {
     const others = [0, 1, 2].filter(i => i !== receiver);
     this.toAttack = this.attackers.map((p, i) => this.intent.kind === 'pass' && i !== receiver ? copy(next.support[others.indexOf(i)]) : copy(p));
     this.toAttack = spaceSkaters(this.toAttack, receiver);
+    this.planReception(this.path, this.speed);
     this.phase = 'EXECUTING_ACTION';
-    this.message = this.intent.kind === 'pass' ? 'THREAD IT.' : this.intent.kind === 'shot' ? 'LET IT RIP.' : 'LOOSE PUCK…';
+    this.message = this.intent.kind === 'pass' ? 'THREAD IT.' : this.intent.kind === 'shot' ? 'LET IT RIP.' : 'INTO SPACE.';
     this.callout = this.actionPower === 'fire' ? 'FIRE PUCK!' : this.actionPower === 'curve' ? 'MEGA CURVE!' : this.actionPower === 'freeze' ? 'ICE COLD!' : '';
     this.emit('release', this.actionPower === 'fire' ? 1.6 : 0.35);
   }
@@ -422,27 +423,49 @@ export class Game {
       if (t === 1) { this.puck = copy(this.attackers[this.carrier]); this.phase = 'PAUSED_FOR_INPUT'; this.trail = []; this.impact = 0; this.message = 'REBOUND! Aim for a gold corner. One more chance.'; this.emit('freeze', 0); }
       return;
     }
-    let travel = this.speed * dt * slow;
+    let remaining = dt * slow;
     // Swept substeps prevent fast shots tunneling through defenders or the goalie.
-    while (travel > 0 && this.phase === 'EXECUTING_ACTION') {
+    while (remaining > 0.000001 && this.phase === 'EXECUTING_ACTION') {
       const a = this.path[this.segment];
       const b = this.path[this.segment + 1];
-      if (!b) { this.finishPath(); break; }
-      const length = distance(a, b);
-      if (length < 0.0001) { this.segment++; this.segmentOffset = 0; continue; }
-      const step = Math.min(travel, 0.12, length - this.segmentOffset);
+      if (!this.freeVelocity && !b) { this.finishPath(); continue; }
+      const length = b && a ? distance(a, b) : 0;
+      if (!this.freeVelocity && length < 0.0001) { this.segment++; this.segmentOffset = 0; continue; }
       const previous = this.puck;
-      this.segmentOffset += step;
-      travel -= step;
+      let step: number, stepDt: number;
+      let hit: ReturnType<typeof boardHit> = null;
+      if (this.freeVelocity) {
+        const speed = distance(this.freeVelocity, { x: 0, z: 0 });
+        stepDt = Math.min(remaining, 0.02, 0.12 / Math.max(speed, 0.1));
+        const nextSpeed = Math.max(0, speed - this.reception.coastDrag * stepDt);
+        const travel = (speed + nextSpeed) * 0.5 * stepDt;
+        const direction = speed > 0 ? { x: this.freeVelocity.x / speed, z: this.freeVelocity.z / speed } : { x: 0, z: 0 };
+        const next = { x: previous.x + direction.x * travel, z: previous.z + direction.z * travel };
+        hit = boardHit(previous, next);
+        if (hit) stepDt *= hit.t;
+        this.puck = hit ? { x: hit.point.x, z: hit.point.z } : next;
+        const slowed = Math.max(0, speed - this.reception.coastDrag * stepDt);
+        this.freeVelocity = { x: direction.x * slowed, z: direction.z * slowed };
+        step = distance(previous, this.puck);
+        this.looseTime += stepDt;
+      } else {
+        step = Math.min(this.speed * remaining, 0.12, length - this.segmentOffset);
+        stepDt = step / this.speed;
+        this.segmentOffset += step;
+        this.puck = mix(a, b, this.segmentOffset / length);
+        this.lastHeading = { x: (b.x - a.x) / length, z: (b.z - a.z) / length };
+      }
+      remaining -= stepDt;
       this.actionDistance += step;
-      const flightTime = this.actionDistance / this.speed;
+      this.actionTime += stepDt;
+      const flightTime = this.actionTime;
       this.defenders = this.fromDefense.map((p, i) => this.actionPower === 'freeze' ? copy(p) : mix(p, this.toDefense[i], Math.min(1, flightTime * 4 / Math.max(0.001, distance(p, this.toDefense[i])))));
-      this.attackers = this.fromAttack.map((p, i) => mix(p, this.toAttack[i], Math.min(1, this.actionDistance / this.actionLength)));
-      this.separateSkaters(this.intent.kind === 'pass' ? this.intent.target : this.carrier);
-      this.puck = mix(a, b, this.segmentOffset / length);
-      this.moveGoalie(step / this.speed, this.intent.kind === 'shot' ? previous : undefined);
+      this.moveReceivers(stepDt);
+      const pursuing = this.targets.filter(p => this.pickupPlans[p.id]).sort((p, q) => distance(p, this.puck) - distance(q, this.puck))[0];
+      this.separateSkaters(pursuing?.id ?? (this.intent.kind === 'pass' ? this.intent.target : this.carrier));
+      this.moveGoalie(stepDt, this.intent.kind === 'shot' ? previous : undefined);
       if ((this.puck.height ?? 0) < 2.1 && this.defenders.some(d => distance(d, this.puck) < 1.05)) { this.fail('PICKED OFF. Bend around the red jerseys.'); break; }
-      if (Math.abs(this.puck.x) > BOARD_X + 0.001 || Math.abs(this.puck.z) > BOARD_Z + 0.001) { this.fail('OFF THE ICE. Draw past the boards to preview a bank pass.'); break; }
+      if (Math.abs(this.puck.x) > BOARD_X + 0.001 || Math.abs(this.puck.z) > BOARD_Z + 0.001) { this.fail('OFF THE ICE. Aim the bank inside the boards.'); break; }
       if (this.intent.kind !== 'shot' && this.puck.z < NET_Z - 0.1 && this.puck.z > -20.2 && Math.abs(this.puck.x) < NET_HALF_WIDTH + 0.15) { this.fail('HIT THE CAGE. Bank around the outside of the net.'); break; }
       if (previous.z > this.goalie.z && this.puck.z <= this.goalie.z) {
         const crossing = mix(previous, this.puck, (this.goalie.z - previous.z) / (this.puck.z - previous.z));
@@ -462,8 +485,21 @@ export class Game {
         }
         break;
       }
-      if (this.segmentOffset >= length - 0.00001) {
-        if (b.bounce) { this.callout = 'OFF THE BOARDS!'; this.emit('bank', 0.45); this.addTrail(); }
+      // Defense gets first contact in a contested lane. Reception depends on
+      // actual proximity, never on which teammate the gesture was labeled for.
+      if (this.intent.kind !== 'shot' && (this.puck.height ?? 0) <= 0.65) {
+        const receiver = this.targets.sort((p, q) => distance(p, this.puck) - distance(q, this.puck))[0];
+        if (receiver && distance(receiver, this.puck) <= this.reception.pickupRadius) { this.receive(receiver.id); break; }
+      }
+      if (this.freeVelocity) {
+        if (hit) this.bounce(hit.flipX, hit.flipZ);
+        if (this.looseTime >= this.reception.looseTimeout) { this.fail('LOOSE PUCK. Play it within skating reach of a teammate.'); break; }
+      } else if (this.segmentOffset >= length - 0.00001) {
+        if (b.bounce) {
+          this.freeVelocity = { x: this.lastHeading.x * this.speed, z: this.lastHeading.z * this.speed };
+          this.bounce(Math.abs(Math.abs(b.x) - BOARD_X) < 0.001, Math.abs(Math.abs(b.z) - BOARD_Z) < 0.001);
+          continue;
+        }
         this.segment++; this.segmentOffset = 0;
         if (this.segment === this.path.length - 1) this.finishPath();
       }
@@ -480,6 +516,72 @@ export class Game {
     const spaced = spaceSkaters([...this.attackers, ...this.defenders], pinned);
     this.attackers = spaced.slice(0, 3);
     if (!(this.phase === 'EXECUTING_ACTION' && this.actionPower === 'freeze')) this.defenders = spaced.slice(3);
+  }
+
+  private planReception(path: Point[], speed: number) {
+    this.pickupPlans = this.attackers.map((player, id) => {
+      if (id === this.carrier || this.intent.kind === 'shot') return null;
+      let best: Point | null = null, bestDistance = Infinity, traveled = 0;
+      for (let i = 1; i < path.length; i++) {
+        const a = path[i - 1], b = path[i], length = distance(a, b);
+        const samples = Math.max(1, Math.ceil(length / 0.5));
+        // Include the exact nearest point as well as later reachable points.
+        const nearest = length > 0 ? clamp(((player.x - a.x) * (b.x - a.x) + (player.z - a.z) * (b.z - a.z)) / (length * length), 0, 1) : 1;
+        for (const t of [nearest, ...Array.from({ length: samples + 1 }, (_, j) => j / samples)]) {
+          const p = mix(a, b, t), d = distance(player, p);
+          const arrival = (traveled + length * t) / Math.max(speed, 0.5);
+          if (d > this.reception.pursuitRadius || d >= bestDistance || (p.height ?? 0) > 0.65) continue;
+          if (p.z < NET_Z && p.z > -20.5 && Math.abs(p.x) < NET_HALF_WIDTH + 0.5) continue;
+          if (d > this.reception.skateSpeed * arrival + this.reception.pickupRadius) continue;
+          best = { x: clamp(p.x, -9.6, 9.6), z: clamp(p.z, -21.3, 21.3) }; bestDistance = d;
+        }
+        traveled += length;
+      }
+      return best;
+    });
+  }
+
+  private planFreeReception() {
+    if (!this.freeVelocity) return;
+    const speed = distance(this.freeVelocity, { x: 0, z: 0 });
+    const duration = Math.min(1.2, Math.max(0, this.reception.looseTimeout - this.looseTime));
+    const stopTime = Math.min(duration, speed / this.reception.coastDrag);
+    const runout = speed * stopTime - 0.5 * this.reception.coastDrag * stopTime * stopTime;
+    const end = { x: this.puck.x + this.freeVelocity.x / Math.max(speed, 0.001) * runout, z: this.puck.z + this.freeVelocity.z / Math.max(speed, 0.001) * runout };
+    const path = bankPath([this.puck, end]);
+    this.planReception(path, Math.max(0.5, speed * 0.65));
+    // Once the puck settles, a nearby skater gets a short collection window.
+    if (speed < 2) this.pickupPlans = this.attackers.map((p, i) => i !== this.carrier && distance(p, this.puck) <= Math.min(this.reception.pursuitRadius, this.reception.skateSpeed * duration + this.reception.pickupRadius) ? copy(this.puck) : null);
+    this.pickupReplan = 0.12;
+  }
+
+  private moveReceivers(dt: number) {
+    if (this.freeVelocity) {
+      this.pickupReplan -= dt;
+      if (this.pickupReplan <= 0) this.planFreeReception();
+    }
+    this.attackers = this.attackers.map((p, i) => {
+      const pickup = this.pickupPlans[i];
+      if (pickup) {
+        const d = distance(p, pickup);
+        const next = mix(p, pickup, Math.min(1, this.reception.skateSpeed * dt / Math.max(d, 0.001)));
+        if (next.z < NET_Z + 0.5 && next.z > -20.5 && Math.abs(next.x) < NET_HALF_WIDTH + 0.5) return p;
+        return next;
+      }
+      if (this.freeVelocity) return p;
+      return mix(this.fromAttack[i], this.toAttack[i], Math.min(1, this.actionDistance / this.actionLength));
+    });
+  }
+
+  private bounce(flipX: boolean, flipZ: boolean) {
+    if (!this.freeVelocity) return;
+    this.freeVelocity.x *= (flipX ? -1 : 1) * this.reception.boardRetention;
+    this.freeVelocity.z *= (flipZ ? -1 : 1) * this.reception.boardRetention;
+    this.path = []; this.segment = 0; this.segmentOffset = 0;
+    this.intent = { kind: 'loose' };
+    this.actionCurved = true;
+    this.callout = 'OFF THE BOARDS!'; this.emit('bank', 0.45); this.addTrail();
+    this.planFreeReception();
   }
 
   private goalieCovers(p: Point) {
@@ -522,28 +624,38 @@ export class Game {
   }
 
   private finishPath() {
-    if (this.intent.kind === 'pass') {
-      this.passes++;
-      if (this.actionCurved) this.curvedActions++;
-      if (this.actionPower === 'freeze') this.frozenActions++;
-      this.callout = this.actionCurved ? 'FILTHY!' : 'THREAD THE NEEDLE!';
-      this.actionPower = null;
-      this.carrier = this.intent.target;
-      this.puck = copy(this.attackers[this.carrier]);
-      // A late pass stays in the shooting setup instead of adding a fourth stage.
-      this.path = [];
-      this.intent = { kind: 'loose' };
-      const latePass = this.stage >= this.level.moments.length - 1;
-      if (!latePass) this.stage++;
-      this.phase = 'PAUSED_FOR_INPUT';
-      this.trail = [];
-      this.message = latePass ? 'Find the open corner and shoot.' : this.moment.instruction;
-      this.emit('pass', 0);
-    } else this.fail('LOOSE PUCK. Finish on a teammate or inside the net.');
+    if (this.intent.kind === 'shot') { this.fail('LOOSE PUCK. Finish the shot inside the net.'); return; }
+    // A pass does not belong to anyone until a teammate actually reaches it.
+    this.freeVelocity = { x: this.lastHeading.x * this.speed * 0.72, z: this.lastHeading.z * this.speed * 0.72 };
+    this.path = []; this.segment = 0; this.segmentOffset = 0;
+    this.planFreeReception();
+  }
+
+  private receive(receiver: number) {
+    this.passes++;
+    if (this.actionCurved) this.curvedActions++;
+    if (this.actionPower === 'freeze') this.frozenActions++;
+    this.callout = this.actionCurved ? 'FILTHY!' : 'THREAD THE NEEDLE!';
+    this.actionPower = null;
+    this.carrier = receiver;
+    // Keep the puck at the actual contact point within stick reach.
+    this.freeVelocity = null;
+    this.pickupPlans = [null, null, null];
+    // A late pass stays in the shooting setup instead of adding another stage.
+    this.path = [];
+    this.intent = { kind: 'loose' };
+    const latePass = this.stage >= this.level.moments.length - 1;
+    if (!latePass) this.stage++;
+    this.phase = 'PAUSED_FOR_INPUT';
+    this.trail = [];
+    this.message = latePass ? 'Find the open corner and shoot.' : this.moment.instruction;
+    this.emit('pass', 0);
   }
 
   private save() {
     this.emit('save');
+    this.freeVelocity = null;
+    this.pickupPlans = [null, null, null];
     this.callout = 'SECOND CHANCE!';
     this.actionPower = null;
     this.goalieRecovery = 0.65;

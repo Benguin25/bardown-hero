@@ -261,7 +261,7 @@ export class Rink {
     [...game.attackers, ...game.defenders].forEach((p, i) => {
       const model = this.players[i];
       model.position.set(p.x, 0, p.z);
-      const skating = !(i >= 3 && game.actionPower === 'freeze') && (game.phase === 'AUTO_PLAY' || game.phase === 'REBOUND' || (game.phase === 'EXECUTING_ACTION' && (i >= 3 || (game.intent.kind === 'pass' && i !== game.intent.target))));
+      const skating = !(i >= 3 && game.actionPower === 'freeze') && (game.phase === 'AUTO_PLAY' || game.phase === 'REBOUND' || (game.phase === 'EXECUTING_ACTION' && (i >= 3 || game.intent.kind !== 'shot')));
       (model.children[0] as THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial>).material.color.setHex(i < 3 ? C.teal : game.actionPower === 'freeze' ? 0x69dfff : C.red);
       model.rotation.z = skating ? Math.sin(game.motion * 13 + i) * 0.09 : 0;
       model.rotation.y = i >= 3 ? Math.PI : -0.1;
@@ -293,6 +293,7 @@ export class Rink {
     this.targets.forEach((m, i) => {
       m.visible = game.paused && i !== game.carrier;
       m.position.set(game.attackers[i].x, 0.065, game.attackers[i].z);
+      m.scale.setScalar(game.reception.pickupRadius / 1.05);
     });
     this.preview.forEach((m, i) => {
       const a = game.preview[i], b = game.preview[i + 1];
@@ -302,7 +303,7 @@ export class Rink {
       m.position.set((a.x + b.x) / 2, 0.16 + ((a.height ?? 0) + (b.height ?? 0)) / 2, (a.z + b.z) / 2);
       m.scale.set(0.12, 0.06, Math.hypot(dx, dy, dz) + 0.08);
       m.lookAt(b.x, 0.16 + (b.height ?? 0), b.z);
-      (m.material as THREE.MeshBasicMaterial).color.setHex(game.intent.kind === 'pass' ? C.teal : game.intent.kind === 'shot' ? C.gold : 0xf18ca0);
+      (m.material as THREE.MeshBasicMaterial).color.setHex(game.intent.kind === 'pass' ? C.teal : game.intent.kind === 'shot' ? C.gold : 0x80bddb);
     });
     this.trail.forEach((m, i) => {
       const p = game.trail[i]; m.visible = !!p && !game.paused;
