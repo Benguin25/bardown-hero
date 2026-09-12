@@ -4,6 +4,12 @@
 
 ## Current playable scope (September 2026)
 
+Puck pursuit and onboarding update:
+
+- One nearby attacking skater pursues the pass or loose puck; the nearest defender pressures its current travel direction. Supporting skaters retain formation and shade toward the play. Defenders skate at 4.8 units/second (previously 4) and supporting coverage closes passing lanes.
+- Loose passes never expire. Skaters keep pursuing stopped pucks, route around the cage, and collect at actual stick reach. The original passer can recover a loose puck without advancing the play or earning pass objectives. Opponent collection still ends the run. Freeze still stops defender movement while preserving collisions.
+- First launch presents How to Play with a four-lesson interactive tutorial. The campaign keeps a How to Play button for replay. Lessons cover anchored swipes, curved passes, loose-puck races, and corner shots; tutorial runs never write campaign stars or unlocks.
+
 Board-bank and presentation update:
 
 - Draw toward either side or end board. The preview stops at first contact, with no reflected path. Release executes that approach, then reflects the incoming velocity at the board with arcade speed retention. Drawing beyond the first collision cannot steer the rebound. The puck coasts and teammates attempt normal pickups after impact.
@@ -68,8 +74,8 @@ One-finger swipe/draw anywhere on screen, with the preview anchored to the puck.
 - The drawn curve is the primary trajectory; no endpoint lock guarantees a pass.
 - Teammates have a configurable pickup radius and skate toward reachable points along the projected puck path. A teammate can collect before the endpoint or receive a lead pass into space.
 - Only obvious near-misses receive a small correction (at most 0.2 rink units by default). An endpoint already within pickup reach stays as drawn.
-- Uncollected passes coast briefly and slow down. Unreachable passes still fail; defenders retain interception priority in contested lanes. Reception freezes play at the actual contact point without teleporting the puck.
-- Tune `DEFAULT_RECEPTION` in `src/game.ts`, or pass overrides as the second `Game` constructor argument. Defaults: pickup radius 0.9, pursuit radius 6, skating speed 7 units/second, board speed retention 0.84, and a 2.2-second loose-puck window in simulation time.
+- Uncollected passes coast and slow down, then remain live until a skater collects them. Defenders retain interception priority in contested lanes. Reception freezes play at the actual contact point without teleporting the puck.
+- Tune `DEFAULT_RECEPTION` in `src/game.ts`, or pass overrides as the second `Game` constructor argument. Defaults: pickup radius 0.9, initial pursuit radius 6, skating speed 7 units/second, and board speed retention 0.84. Loose-puck retrieval has no distance limit or timeout.
 
 ### Shot
 - Endpoint toward the net becomes a shot.

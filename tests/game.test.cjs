@@ -3,6 +3,52 @@ const assert = require('node:assert/strict');
 const { bankPath, BOARD_X, BOARD_Z } = require('../.test-build/game.js');
 const { emptyProgress, parseProgress, recordRun, isUnlocked, stars } = require('../.test-build/progress.js');
 const { Game, LEVELS, relativeAim, cleanPath, distance, GOAL_CORNERS, NET_HEIGHT, spaceSkaters, SKATER_SPACING } = require('../.test-build/game.js');
+const { tutorialGame, lessonComplete } = require('../.test-build/tutorial.js');
+
+test('all guided lessons require their demonstrated action and can be completed at phone frame rates', () => {
+  const routes = [[{ x: 5, z: 1 }], [{ x: -3, z: 0 }, { x: 5, z: 1 }], [{ x: 1, z: 3 }], [{ x: 2.25, z: -18, height: 3.5 }]];
+  for (const dt of [1 / 120, 1 / 60, 0.05]) routes.forEach((route, lesson) => {
+    const g = tutorialGame(lesson);
+    assert.equal(lessonComplete(g, lesson, false), false);
+    g.release([g.puck, ...route], 0.3);
+    let chased = false;
+    for (let i = 0; i < 4000 && !g.paused && !g.terminal; i++) { g.update(dt); chased ||= g.loosePuck; }
+    assert.ok(lessonComplete(g, lesson, chased), `${lesson}: ${g.message}`);
+    if (lesson === 2) assert.equal(lessonComplete(g, lesson, false), false);
+    assert.equal(tutorialGame(lesson).passes, 0);
+  });
+});
+
+test('a stopped puck remains live beyond the old timeout and is collected without teleporting', () => {
+  for (const dt of [1 / 60, 0.05]) {
+    const g = passingSetup({ skateSpeed: 1, pursuitRadius: 1 });
+    g.attackers = [{ x: 0, z: 10 }, { x: 8, z: -10 }, { x: -8, z: -10 }];
+    g.release([g.puck, { x: 0, z: 0 }], 0.3); g.actionPower = 'freeze';
+    const defense = JSON.stringify(g.defenders);
+    for (let t = 0; t < 4; t += dt) g.update(dt);
+    assert.equal(g.phase, 'EXECUTING_ACTION'); assert.ok(g.loosePuck);
+    assert.equal(JSON.stringify(g.defenders), defense);
+    until(g, x => x.paused || x.terminal);
+    assert.ok(g.paused, g.message);
+    assert.ok(distance(g.puck, g.attackers[g.carrier]) <= g.reception.pickupRadius);
+  }
+});
+
+test('defenders win an open-ice race when the attacking skaters cannot reach it first', () => {
+  const g = passingSetup({ skateSpeed: 0 });
+  g.attackers[1] = { x: -8, z: -10 };
+  g.defenders = [{ x: 5, z: -3 }, { x: -8, z: -15 }];
+  g.release([g.puck, { x: 0, z: 0 }], 0.3);
+  until(g, x => x.terminal || x.paused);
+  assert.equal(g.phase, 'FAIL'); assert.match(g.message, /PICKED OFF/);
+});
+
+test('a puck stopped against the side boards stays within collection reach during a contested chase', () => {
+  const g = new Game(4); pause(g);
+  g.release([g.puck, { x: 2.0014023035764694, z: -1.3879204634577036 }], 0.3);
+  until(g, x => x.paused || x.terminal);
+  assert.ok(g.paused || /PICKED OFF/.test(g.message));
+});
 
 function until(game, predicate, limit = 4000) {
   for (let i = 0; i < limit && !predicate(game); i++) game.update(1 / 60);
@@ -90,15 +136,17 @@ test('side-board bank hides its rebound, then a teammate collects the reflected 
   }
 });
 
-test('end-board bank can travel beside the net and back to a teammate', () => {
+test('end-board banks are collected, including self-recovery without awarding pass stars', () => {
   for (const sign of [-1, 1]) {
     const g = new Game(); pause(g);
     g.attackers = [{ x: 7, z: sign * 10 }, { x: 7, z: sign * 5 }, { x: -7, z: 0 }];
     g.puck = { ...g.attackers[0] }; g.defenders = [{ x: -8, z: 5 }, { x: -6, z: 10 }];
     const raw = [g.puck, { x: 7, z: sign * (BOARD_Z * 2 - 5) }];
     g.aim(raw); assert.equal(g.intent.kind, 'loose'); assert.ok(g.preview.some(p => Math.abs(p.z) === BOARD_Z));
-    g.release(raw); pause(g); assert.equal(g.stage, 1); assert.equal(g.carrier, 1);
-    assert.ok(distance(g.puck, g.attackers[1]) <= g.reception.pickupRadius);
+    g.release(raw); pause(g);
+    assert.ok(distance(g.puck, g.attackers[g.carrier]) <= g.reception.pickupRadius);
+    assert.equal(g.stage, g.carrier === 0 ? 0 : 1);
+    assert.equal(g.bankPasses, g.carrier === 0 ? 0 : 1);
   }
 });
 
@@ -125,7 +173,7 @@ test('three-second introduction holds gameplay, rejects input, and resets on ret
 function passOne(game) { pause(game); game.release([game.puck, { x: 6, z: 4 }]); pause(game); }
 function shootingSetup() {
   const g = new Game(); passOne(g);
-  g.release([g.puck, { x: 4, z: 3 }, { x: -5, z: 2 }, { x: -7, z: -3 }, { x: -6, z: -7 }]);
+  g.release([g.puck, { x: 4, z: 6 }, { x: -8, z: 6 }, { x: -8, z: -7 }, { x: -6, z: -7 }]);
   pause(g); assert.equal(g.stage, 2); return g;
 }
 
@@ -150,7 +198,7 @@ const newRoutes = [
   [[{ x: 5, z: -10 }], [{ x: -2.25, z: -18, height: 3.5 }]],
   [[{ x: -6, z: -10 }], [{ x: -7, z: -14 }, { x: -2.25, z: -18, height: 3.5 }]],
   [[{ x: 5, z: -9 }], [{ x: -2.25, z: -18, height: 3.5 }]],
-  [[{ x: 0, z: -6 }], [{ x: -7, z: -10 }], [{ x: -2.25, z: -18, height: 3.5 }]],
+  [[{ x: -4, z: 1 }, { x: 0, z: -6 }], [{ x: -7, z: -10 }], [{ x: -2.25, z: -18, height: 3.5 }]],
   [[{ x: 6, z: 0 }], [{ x: -6, z: -8 }], [{ x: 6, z: -11 }], [{ x: -2.25, z: -18, height: 3.5 }]],
 ];
 newRoutes.forEach((route, i) => test(`new level ${i + 6} has a three-star route with powerups and 2–4 decisions`, () => {
@@ -202,7 +250,7 @@ test('Mega Curve preview amplifies bends, preserves endpoints, and matches execu
 
 test('three authored decisions, assisted passing, then a corner goal', () => {
   const g = shootingSetup();
-  g.release([g.puck, { x: 2.25, z: -18, height: 3.5 }], 0.3);
+  g.release([g.puck, { x: -4, z: -14 }, { x: 2.25, z: -18, height: 3.5 }], 0.3);
   until(g, x => x.terminal);
   assert.equal(g.phase, 'SUCCESS');
   assert.ok(g.objectives.every(o => o.complete));
@@ -214,9 +262,9 @@ test('full freeze includes every simulation field while waiting and drawing', ()
   for (let i = 0; i < 200; i++) g.update(0.05);
   assert.equal(JSON.stringify(g), before);
 });
-test('a straight second pass is intercepted; the curve avoids the defender', () => {
+test('a pass into live coverage is intercepted; a wide curve avoids the defender', () => {
   const g = new Game(); passOne(g);
-  g.release([g.puck, { x: -6, z: -7 }]); until(g, x => x.terminal);
+  g.release([g.puck, { ...g.defenders[0] }]); until(g, x => x.terminal);
   assert.equal(g.phase, 'FAIL'); assert.match(g.message, /PICKED OFF/);
   assert.equal(shootingSetup().stage, 2);
 });
@@ -234,11 +282,11 @@ test('second save ends the run instead of producing unlimited rebounds', () => {
   g.release([g.puck, { x: 0, z: -18 }]); until(g, x => x.terminal);
   assert.equal(g.phase, 'FAIL'); assert.match(g.message, /DENIED/);
 });
-test('wide shots and loose passes fail, and a new game immediately resets everything', () => {
+test('wide shots fail, loose passes stay recoverable, and retry resets everything', () => {
   const g = shootingSetup(); g.release([g.puck, { x: -7, z: -18 }]); until(g, x => x.terminal);
   assert.match(g.message, /WIDE/);
-  const fresh = new Game(); pause(fresh); fresh.release([fresh.puck, { x: -8, z: 10 }]); until(fresh, x => x.terminal);
-  assert.match(fresh.message, /LOOSE/);
+  const fresh = new Game(); pause(fresh); fresh.release([fresh.puck, { x: -8, z: 10 }]); until(fresh, x => x.terminal || x.paused);
+  assert.ok(fresh.paused || /PICKED OFF/.test(fresh.message));
   const retry = new Game(); assert.equal(retry.stage, 0); assert.equal(retry.reboundUsed, false); assert.equal(retry.phase, 'AUTO_PLAY');
 });
 test('pass assist preserves extravagant loops and snaps only the endpoint', () => {
@@ -252,7 +300,7 @@ test('tap and canceled strokes keep the decision open', () => {
   g.aim([g.puck, { x: 6, z: 4 }]); g.cancel(); assert.ok(g.paused); assert.equal(g.preview.length, 0);
 });
 test('fast execution still detects defender collision', () => {
-  const g = new Game(); passOne(g); g.release([g.puck, { x: -6, z: -7 }], 0.01);
+  const g = new Game(); passOne(g); g.release([g.puck, { ...g.defenders[0] }], 0.01);
   for (let i = 0; i < 100 && !g.terminal; i++) g.update(0.05);
   assert.equal(g.phase, 'FAIL'); assert.match(g.message, /PICKED OFF/);
 });
@@ -365,7 +413,7 @@ test('release moves defenders; reception freezes immediately without moving the 
   assert.deepEqual(g.defenders, defense);
   g.update(0.05);
   assert.ok(g.defenders.every((p, i) => distance(p, defense[i]) > 0));
-  assert.ok(g.defenders.every((p, i) => distance(p, defense[i]) <= 0.200001));
+  assert.ok(g.defenders.every((p, i) => distance(p, defense[i]) <= 0.240001));
   assert.deepEqual(g.attackers[1], receiver);
   while (g.phase === 'EXECUTING_ACTION') {
     g.update(1 / 60);
@@ -388,7 +436,7 @@ test('release moves defenders; reception freezes immediately without moving the 
 test('moving defender interception remains consistent across simulation frame sizes', () => {
   for (const dt of [1 / 120, 1 / 60, 0.05]) {
     const g = new Game(); passOne(g);
-    g.release([g.puck, { x: -6, z: -7 }], 0.1);
+    g.release([g.puck, { ...g.defenders[0] }], 0.1);
     for (let i = 0; i < 1000 && !g.terminal; i++) g.update(dt);
     assert.equal(g.phase, 'FAIL');
     assert.match(g.message, /PICKED OFF/);
@@ -558,7 +606,7 @@ test('lead pass stays drawn into open space while the teammate skates to collect
   }
 });
 
-test('pickup radius is configurable and unreachable space does not automatically succeed', () => {
+test('pickup radius is configurable and skaters can recover beyond initial pursuit range', () => {
   for (const radius of [0.4, 1.2]) {
     const g = passingSetup({ pickupRadius: radius, skateSpeed: 0 });
     g.attackers[1] = { x: 1, z: 4 };
@@ -570,7 +618,7 @@ test('pickup radius is configurable and unreachable space does not automatically
   const missed = passingSetup({ pursuitRadius: 1 });
   missed.release([missed.puck, { x: 3, z: -5 }]);
   until(missed, g => g.paused || g.terminal);
-  assert.equal(missed.phase, 'FAIL'); assert.equal(missed.passes, 0);
+  assert.equal(missed.phase, 'PAUSED_FOR_INPUT'); assert.equal(missed.passes, 1);
 });
 
 test('a teammate along the route receives before the teammate near the endpoint', () => {
@@ -623,7 +671,9 @@ test('runtime bank reflection preserves incoming angle at side and corner impact
   for (const end of [{ x: 18, z: 4 }, { x: BOARD_X * 2, z: BOARD_Z * 2 }]) {
     const g = passingSetup({ pickupRadius: 0.1, pursuitRadius: 0, skateSpeed: 0 });
     g.puck = { x: 0, z: 0 }; g.attackers[0] = { ...g.puck };
+    g.defenders = [{ x: -9, z: -12 }, { x: 9, z: -12 }];
     g.release([g.puck, end]);
+    g.actionPower = 'freeze'; // Isolate reflection from the new defender pursuit.
     until(g, x => x.event === 'bank' || x.terminal);
     assert.equal(g.event, 'bank');
     const after = { ...g.puck }; g.update(1 / 120);

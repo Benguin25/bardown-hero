@@ -259,12 +259,13 @@ export class Rink {
   render(game: Game) {
     frameRink(this.camera, this.width, this.height, game);
     [...game.attackers, ...game.defenders].forEach((p, i) => {
-      const model = this.players[i];
-      model.position.set(p.x, 0, p.z);
-      const skating = !(i >= 3 && game.actionPower === 'freeze') && (game.phase === 'AUTO_PLAY' || game.phase === 'REBOUND' || (game.phase === 'EXECUTING_ACTION' && (i >= 3 || game.intent.kind !== 'shot')));
+        const model = this.players[i];
+        const dx = p.x - model.position.x, dz = p.z - model.position.z;
+        model.position.set(p.x, 0, p.z);
+        const skating = !game.paused && !game.terminal && game.introRemaining <= 0 && !(i >= 3 && game.actionPower === 'freeze') && Math.hypot(dx, dz) > 0.00001;
       (model.children[0] as THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial>).material.color.setHex(i < 3 ? C.teal : game.actionPower === 'freeze' ? 0x69dfff : C.red);
       model.rotation.z = skating ? Math.sin(game.motion * 13 + i) * 0.09 : 0;
-      model.rotation.y = i >= 3 ? Math.PI : -0.1;
+        if (skating) model.rotation.y = Math.atan2(-dx, -dz);
       if (game.phase === 'SUCCESS' && i < 3) model.position.y = Math.abs(Math.sin(game.motion * 10 + i)) * 1.2;
       if (game.phase === 'FAIL' && i === game.carrier) model.rotation.z = -Math.min(1.2, game.elapsed * 0.4);
       model.children.filter(child => child.name === 'leg').forEach((leg, j) => { leg.rotation.x = skating ? Math.sin(game.motion * 14 + j * Math.PI) * 0.4 : 0; });

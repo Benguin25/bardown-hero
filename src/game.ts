@@ -22,13 +22,14 @@ export const SKATER_SPACING = 1.85;
 export const DEFAULT_RECEPTION = {
   pickupRadius: 0.9, pursuitRadius: 6, skateSpeed: 7,
   assistRadius: 1.4, assistStrength: 0.18, maxAssist: 0.2,
-  coastDrag: 16, looseTimeout: 2.2, boardRetention: 0.84,
+  coastDrag: 16, boardRetention: 0.84,
 };
 export type ReceptionConfig = typeof DEFAULT_RECEPTION;
 // Keep the receiver fixed and give everyone else a distinct patch of ice.
 // The same small constraint is applied along routes, not only at their ends.
-export function spaceSkaters(points: Point[], pinned: number): Point[] {
+export function spaceSkaters(points: Point[], pinned: number, fullRink = false): Point[] {
   const result = points.map(copy);
+  const edgeX = fullRink ? BOARD_X : 9.6, minZ = fullRink ? -BOARD_Z : -15.5, maxZ = fullRink ? BOARD_Z : 21;
   for (let iteration = 0; iteration < 24; iteration++) {
     let adjusted = false;
     for (let i = 0; i < result.length; i++) for (let j = i + 1; j < result.length; j++) {
@@ -40,13 +41,13 @@ export function spaceSkaters(points: Point[], pinned: number): Point[] {
       const shareA = i === pinned ? 0 : j === pinned ? 1 : 0.5;
       const shareB = 1 - shareA;
       // At the boards, separate along the ice instead of pushing into a wall.
-      if (Math.abs(dz) < 0.25 && (Math.abs(a.x - dx * push * shareA) > 9.6 || Math.abs(b.x + dx * push * shareB) > 9.6)) {
+      if (Math.abs(dz) < 0.25 && (Math.abs(a.x - dx * push * shareA) > edgeX || Math.abs(b.x + dx * push * shareB) > edgeX)) {
         dx = 0; dz = b.z >= a.z ? 1 : -1;
       }
-      a.x = clamp(a.x - dx * push * shareA, -9.6, 9.6);
-      a.z = clamp(a.z - dz * push * shareA, -15.5, 21);
-      b.x = clamp(b.x + dx * push * shareB, -9.6, 9.6);
-      b.z = clamp(b.z + dz * push * shareB, -15.5, 21);
+      a.x = clamp(a.x - dx * push * shareA, -edgeX, edgeX);
+      a.z = clamp(a.z - dz * push * shareA, minZ, maxZ);
+      b.x = clamp(b.x + dx * push * shareB, -edgeX, edgeX);
+      b.z = clamp(b.z + dz * push * shareB, minZ, maxZ);
       adjusted = true;
     }
     if (!adjusted) break;
@@ -297,7 +298,6 @@ export class Game {
   private actionLength = 1;
   private actionTime = 0;
   private freeVelocity: Point | null = null;
-  private looseTime = 0;
   private pickupPlans: (Point | null)[] = [null, null, null];
   private pickupReplan = 0;
   private lastHeading: Point = { x: 0, z: -1 };
@@ -307,8 +307,12 @@ export class Game {
   private reboundEnd: Point = { x: 6, z: -11 };
 
   get targets() { return this.attackers.map((p, i) => ({ ...p, id: i })).filter(p => p.id !== this.carrier); }
+  private get collectors() {
+    return this.loosePuck ? this.attackers.map((p, id) => ({ ...p, id })) : this.targets;
+  }
   get paused() { return this.phase === 'PAUSED_FOR_INPUT'; }
   get terminal() { return this.phase === 'SUCCESS' || this.phase === 'FAIL'; }
+  get loosePuck() { return this.phase === 'EXECUTING_ACTION' && this.freeVelocity !== null; }
 
   classify(end: Point): Intent {
     // The net zone takes precedence over an adjacent teammate.
@@ -404,7 +408,6 @@ export class Game {
     this.actionDistance = 0;
     this.actionTime = 0;
     this.freeVelocity = null;
-    this.looseTime = 0;
     this.pickupReplan = 0;
     this.goalieShotTime = 0;
     this.actionLength = this.path.reduce((sum, p, i, a) => sum + (i ? distance(a[i - 1], p) : 0), 0);
@@ -491,7 +494,6 @@ export class Game {
         const slowed = Math.max(0, speed - this.reception.coastDrag * stepDt);
         this.freeVelocity = { x: direction.x * slowed, z: direction.z * slowed };
         step = distance(previous, this.puck);
-        this.looseTime += stepDt;
       } else {
         step = Math.min(this.speed * remaining, 0.12, length - this.segmentOffset);
         stepDt = step / this.speed;
@@ -502,10 +504,9 @@ export class Game {
       remaining -= stepDt;
       this.actionDistance += step;
       this.actionTime += stepDt;
-      const flightTime = this.actionTime;
-      this.defenders = this.fromDefense.map((p, i) => this.actionPower === 'freeze' ? copy(p) : mix(p, this.toDefense[i], Math.min(1, flightTime * 4 / Math.max(0.001, distance(p, this.toDefense[i])))));
+      this.moveDefense(stepDt);
       this.moveReceivers(stepDt);
-      const pursuing = this.targets.filter(p => this.pickupPlans[p.id]).sort((p, q) => distance(p, this.puck) - distance(q, this.puck))[0];
+      const pursuing = this.collectors.filter(p => this.pickupPlans[p.id]).sort((p, q) => distance(p, this.puck) - distance(q, this.puck))[0];
       this.separateSkaters(pursuing?.id ?? (this.intent.kind === 'pass' ? this.intent.target : this.carrier));
       this.moveGoalie(stepDt, this.intent.kind === 'shot' ? previous : undefined);
       if ((this.puck.height ?? 0) < 2.1 && this.defenders.some(d => distance(d, this.puck) < 1.05)) { this.fail('PICKED OFF. Bend around the red jerseys.'); break; }
@@ -532,12 +533,11 @@ export class Game {
       // Defense gets first contact in a contested lane. Reception depends on
       // actual proximity, never on which teammate the gesture was labeled for.
       if (this.intent.kind !== 'shot' && (this.puck.height ?? 0) <= 0.65) {
-        const receiver = this.targets.sort((p, q) => distance(p, this.puck) - distance(q, this.puck))[0];
+        const receiver = this.collectors.sort((p, q) => distance(p, this.puck) - distance(q, this.puck))[0];
         if (receiver && distance(receiver, this.puck) <= this.reception.pickupRadius) { this.receive(receiver.id); break; }
       }
       if (this.freeVelocity) {
         if (hit) this.bounce(hit.flipX, hit.flipZ);
-        if (this.looseTime >= this.reception.looseTimeout) { this.fail('LOOSE PUCK. Play it within skating reach of a teammate.'); break; }
       } else if (this.segmentOffset >= length - 0.00001) {
         if (b.bounce) {
           this.freeVelocity = { x: this.lastHeading.x * this.speed, z: this.lastHeading.z * this.speed };
@@ -557,7 +557,7 @@ export class Game {
   }
 
   private separateSkaters(pinned: number) {
-    const spaced = spaceSkaters([...this.attackers, ...this.defenders], pinned);
+    const spaced = spaceSkaters([...this.attackers, ...this.defenders], pinned, this.loosePuck);
     this.attackers = spaced.slice(0, 3);
     if (!(this.phase === 'EXECUTING_ACTION' && this.actionPower === 'freeze')) this.defenders = spaced.slice(3);
   }
@@ -588,15 +588,43 @@ export class Game {
   private planFreeReception() {
     if (!this.freeVelocity) return;
     const speed = distance(this.freeVelocity, { x: 0, z: 0 });
-    const duration = Math.min(1.2, Math.max(0, this.reception.looseTimeout - this.looseTime));
+    const duration = 1.2;
     const stopTime = Math.min(duration, speed / this.reception.coastDrag);
     const runout = speed * stopTime - 0.5 * this.reception.coastDrag * stopTime * stopTime;
     const end = { x: this.puck.x + this.freeVelocity.x / Math.max(speed, 0.001) * runout, z: this.puck.z + this.freeVelocity.z / Math.max(speed, 0.001) * runout };
     const path = bankPath([this.puck, end]);
     this.planReception(path, Math.max(0.5, speed * 0.65));
-    // Once the puck settles, a nearby skater gets a short collection window.
-    if (speed < 2) this.pickupPlans = this.attackers.map((p, i) => i !== this.carrier && distance(p, this.puck) <= Math.min(this.reception.pursuitRadius, this.reception.skateSpeed * duration + this.reception.pickupRadius) ? copy(this.puck) : null);
+    // A stopped puck remains playable, even outside the initial passing reach.
+    const target = path[path.length - 1];
+    const closest = this.collectors.sort((a, b) => distance(a, this.puck) - distance(b, this.puck))[0];
+    this.pickupPlans = this.attackers.map((_, i) => i === closest?.id ? copy(target) : null);
     this.pickupReplan = 0.12;
+  }
+
+  private skateToward(p: Point, target: Point, speed: number, dt: number) {
+    let destination = { x: clamp(target.x, -BOARD_X, BOARD_X), z: clamp(target.z, -BOARD_Z, BOARD_Z) };
+    // Route around the cage instead of getting stuck against its front/back.
+    const side = (p.x || destination.x) < 0 ? -1 : 1;
+    const crossesNet = Math.min(p.z, destination.z) < -17.4 && Math.max(p.z, destination.z) > -21;
+    if (crossesNet && Math.min(Math.abs(p.x), Math.abs(destination.x)) < NET_HALF_WIDTH + 0.8) {
+      destination = Math.abs(p.x) < NET_HALF_WIDTH + 0.8
+        ? { x: side * (NET_HALF_WIDTH + 1), z: p.z }
+        : { x: p.x, z: destination.z };
+    }
+    return mix(p, destination, Math.min(1, speed * dt / Math.max(distance(p, destination), 0.001)));
+  }
+
+  private moveDefense(dt: number) {
+    if (this.actionPower === 'freeze') return;
+    const closest = this.defenders.reduce((best, p, i, all) => distance(p, this.puck) < distance(all[best], this.puck) ? i : best, 0);
+    const velocity = this.freeVelocity ?? { x: this.lastHeading.x * this.speed, z: this.lastHeading.z * this.speed };
+    const target = { x: this.puck.x + velocity.x * 0.18, z: this.puck.z + velocity.z * 0.18 };
+    this.defenders = this.defenders.map((p, i) => {
+      // Support shades toward the live passing lane while one player pressures.
+      const formation = this.toDefense[i] ?? p;
+      const cover = mix(formation, this.puck, 0.12);
+      return this.skateToward(p, i === closest ? target : cover, 4.8, dt);
+    });
   }
 
   private moveReceivers(dt: number) {
@@ -604,16 +632,16 @@ export class Game {
       this.pickupReplan -= dt;
       if (this.pickupReplan <= 0) this.planFreeReception();
     }
+    const planned = this.collectors.filter(p => this.pickupPlans[p.id]).sort((a, b) => distance(a, this.puck) - distance(b, this.puck))[0];
+    const closest = planned ?? this.collectors.sort((a, b) => distance(a, this.path[this.path.length - 1] ?? this.puck) - distance(b, this.path[this.path.length - 1] ?? this.puck))[0];
     this.attackers = this.attackers.map((p, i) => {
-      const pickup = this.pickupPlans[i];
+      const pickup = this.intent.kind !== 'shot' && i === closest?.id ? this.pickupPlans[i] ?? this.path[this.path.length - 1] ?? this.puck : null;
       if (pickup) {
-        const d = distance(p, pickup);
-        const next = mix(p, pickup, Math.min(1, this.reception.skateSpeed * dt / Math.max(d, 0.001)));
-        if (next.z < NET_Z + 0.5 && next.z > -20.5 && Math.abs(next.x) < NET_HALF_WIDTH + 0.5) return p;
-        return next;
+        return this.skateToward(p, pickup, this.reception.skateSpeed, dt);
       }
-      if (this.freeVelocity) return p;
-      return mix(this.fromAttack[i], this.toAttack[i], Math.min(1, this.actionDistance / this.actionLength));
+      const formation = this.toAttack[i] ?? p;
+      return this.freeVelocity ? this.skateToward(p, mix(formation, this.puck, 0.15), this.reception.skateSpeed, dt)
+        : mix(this.fromAttack[i], formation, Math.min(1, this.actionDistance / this.actionLength));
     });
   }
 
@@ -677,6 +705,12 @@ export class Game {
   }
 
   private receive(receiver: number) {
+    if (receiver === this.carrier) {
+      this.freeVelocity = null; this.pickupPlans = [null, null, null]; this.path = []; this.trail = [];
+      this.actionPower = null; this.intent = { kind: 'loose' }; this.phase = 'PAUSED_FOR_INPUT';
+      this.callout = 'RECOVERED!'; this.message = 'Back on your stick. Find a teammate or take the shot.';
+      this.emit('pass', 0); return;
+    }
     this.passes++;
     if (this.actionBanked) this.bankPasses++;
     if (distance(this.fromAttack[receiver], this.attackers[receiver]) >= 1.25) this.leadPasses++;

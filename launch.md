@@ -54,12 +54,16 @@ This PATH change lasts only for the current terminal. `.tooling` is ignored by G
 
 ## 3. Play
 
+New players see **How to Play** and can start four guided practice lessons. Reopen **HOW TO PLAY** from the campaign to replay them. Practice does not award campaign stars or unlock levels.
+
+One skater from each team chases the puck while supporting players move in formation. Defenders skate faster and close lanes. Loose pucks stay live until collected, including after they stop. Your original passer can recover one without earning a pass star; red possession ends the attempt.
+
 - **Teal** players are your team. **Red** players intercept. **Gold** is the goalie.
 - When the play pauses, drag anywhere on the screen, including the lower instruction area. Your finger's movement draws a trajectory anchored to the gold puck ring. Start below the puck to keep the preview visible, then lift to execute. Taps on the ice do nothing; a second finger cancels the stroke.
 - Draw past or ahead of a teal teammate. **PASS INTO REACH** means a teammate is near the endpoint; **OPEN ICE** lets you play into space. Teammates skate toward reachable pickup points and can collect anywhere along the path. Their ice rings show pickup reach. There is no endpoint lock or guaranteed reception.
 - Finish toward the net: the preview turns gold and says **SHOT ON NET**. Aim inside the red posts; the gold ice rings mark the corners.
 - Aim into the upright net's four rings for high-left, high-right, low-left, or low-right shots. Gold rings show current gaps; red rings show current goalie coverage. The goalie reads the puck's heading after a short reaction delay, slides with momentum, and reaches with the glove. A gold target is not a guaranteed goal: quick shots, close-range passes, and late bends can beat the reaction. Saves leave a short recovery period. The preview and puck rise to the selected height, and shots above the crossbar miss.
-- Blue **OPEN ICE** paths are valid lead passes. The puck coasts briefly if nobody collects it along the drawn path, but a pass too far from skating reach still fails.
+- Blue **OPEN ICE** paths are valid lead passes. The puck coasts if nobody collects it along the drawn path, then stays live while the nearest skaters compete to retrieve it.
 - You can draw large curves and loops. Stay inside the boards and avoid red defenders.
 - Tap **RETRY** at any time, or **RUN IT BACK** after the result, to immediately reset the scenario.
 - Each start/retry shows the level objectives and counts down **3–2–1** before the rush begins.
@@ -82,7 +86,7 @@ For a development-only browser preview, run `npm.cmd run preview`. The web depen
 3. **Freeze:** hold your finger down for several seconds. Players, goalie, camera, and effects should remain still. Lift to resume.
 4. **Goal:** at the third decision, shoot into a corner inside the posts. Check for the goal result, trail, camera punch, and player celebration.
 5. **Save/rebound:** retry and shoot toward the middle of the net. The save should kick the puck to the right teammate and pause again. Shoot to a corner to finish. Another center shot should be saved and end the run.
-6. **Failure:** try shooting outside a post or ending a pass on empty ice. Check the failure message and instant retry.
+6. **Failure and retrieval:** shoot outside a post or into red coverage and check instant retry. Then pass into empty ice: players should chase until one collects it, even after the puck stops. Self-recovery should not advance the level or award a pass star.
 7. **Interruption:** background and reopen Expo Go while drawing. The unfinished stroke should cancel, and the decision should remain available.
 8. **Progress:** finish a level, inspect objectives and stars, then close and relaunch the app. The next level and best single-run stars should remain available. Retry for a different two-star combination and verify it does not become three stars.
 9. **Powerups:** reach levels 6–8, activate each contextual button, cancel a stroke, then execute. Verify Fire Puck needs a shot, Mega Curve preview matches flight, and Freeze lasts for one action. Retry restores the grant.

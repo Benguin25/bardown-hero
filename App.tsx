@@ -6,8 +6,10 @@ import { Game, LEVELS, Point, distance, relativeAim } from './src/game';
 import { Rink } from './src/rink';
 import { Button, Campaign, MotionProvider, Quiet, Rise, Stars, feedback, s, useReducedMotion } from './src/ui';
 import { emptyProgress, isUnlocked, parseProgress, recordRun, stars } from './src/progress';
+import { LESSONS, lessonComplete, tutorialGame } from './src/tutorial';
 
 const SAVE_KEY = 'bardown.progress.v1';
+const TUTORIAL_KEY = 'bardown.tutorial.v1';
 const starText = (count: number) => '★'.repeat(count) + '☆'.repeat(3 - count);
 const powerNames = { fire: 'FIRE PUCK', curve: 'MEGA CURVE', freeze: 'FREEZE' };
 
@@ -32,6 +34,9 @@ function GameApp() {
   const mounted = useRef(true);
   const active = useRef(true);
   const screen = useRef<'levels' | 'game'>('levels');
+  const tutorial = useRef<number | null>(null);
+  const chased = useRef(false);
+  const [showHelp, setShowHelp] = useState(false);
   const progress = useRef(emptyProgress());
   const recorded = useRef<Game | null>(null);
   const saveQueue = useRef(Promise.resolve());
@@ -49,7 +54,8 @@ function GameApp() {
   const lastUI = useRef('');
   const sync = () => {
     const g = game.current;
-    if (g.phase === 'SUCCESS' && recorded.current !== g) {
+    if (g.loosePuck) chased.current = true;
+    if (tutorial.current === null && g.phase === 'SUCCESS' && recorded.current !== g) {
       recorded.current = g;
       progress.current = recordRun(progress.current, g.levelIndex, g.objectives.map(o => o.complete));
       persist();
@@ -67,6 +73,7 @@ function GameApp() {
 
   useEffect(() => {
     mounted.current = true;
+    AsyncStorage.getItem(TUTORIAL_KEY).then(value => { if (mounted.current && !value) setShowHelp(true); }).catch(() => {});
     AsyncStorage.getItem(SAVE_KEY).then(raw => { progress.current = parseProgress(raw); })
       .then(() => { if (mounted.current) setLoaded(true); })
       .catch(() => { if (mounted.current) setSaveError('Could not load your save. Close and reopen the app to retry.'); });
@@ -113,6 +120,7 @@ function GameApp() {
     };
     return PanResponder.create({
       onMoveShouldSetPanResponder: (event, state) => {
+        if (tutorial.current !== null && game.current.passes > 0) return false;
         return screen.current === 'game' && active.current && game.current.paused && !!rink.current && event.nativeEvent.touches.length === 1 && Math.hypot(state.dx, state.dy) > 5;
       },
       onPanResponderGrant: (_, state) => {
@@ -138,15 +146,25 @@ function GameApp() {
 
   const selectLevel = (index: number) => {
     if (!loaded || !isUnlocked(progress.current, index)) return;
+    tutorial.current = null;
     setShowObjectives(false); stroke.current = []; game.current = new Game(index); game.current.startPreview(); screen.current = 'game'; sync();
   };
-  const retry = () => selectLevel(game.current.levelIndex);
+  const startLesson = (lesson: number) => {
+    tutorial.current = lesson; chased.current = false; setShowHelp(false); setShowObjectives(false);
+    stroke.current = []; game.current = tutorialGame(lesson); screen.current = 'game';
+    lastUI.current = ''; sync();
+  };
+  const retry = () => tutorial.current === null ? selectLevel(game.current.levelIndex) : startLesson(tutorial.current);
+  const dismissHelp = () => { setShowHelp(false); void AsyncStorage.setItem(TUTORIAL_KEY, 'seen').catch(() => {}); };
   const back = () => {
+    tutorial.current = null;
     stroke.current = []; game.current.cancel(); screen.current = 'levels';
     cancelAnimationFrame(frame.current); rink.current?.dispose(); rink.current = null;
     setShowObjectives(false); setReady(false); sync();
   };
   const g = game.current, aiming = g.preview.length > 1, banking = g.preview.some(p => p.bounce);
+  const lesson = tutorial.current;
+  const practiced = lesson !== null && lessonComplete(g, lesson, chased.current);
   const live = !g.paused && !g.terminal && g.introRemaining <= 0;
   const prompt = g.introRemaining > 0 ? 'Your next highlight starts here'
     : g.terminal ? g.phase === 'SUCCESS' ? 'That belongs on the reel.' : 'You’ve got the next one.'
@@ -162,6 +180,16 @@ function GameApp() {
   if (screen.current === 'levels') return <SafeAreaView style={s.root}>
     <StatusBar barStyle="light-content" />
     <Campaign progress={progress.current} loaded={loaded} error={saveError} save={() => { if (loaded) persist(); }} select={selectLevel} />
+    <Button style={s.secondary} onPress={() => setShowHelp(true)}><Text style={s.secondaryText}>HOW TO PLAY</Text></Button>
+    {showHelp && <View style={[StyleSheet.absoluteFill, s.overlay]}><ScrollView style={s.resultScroll} contentContainerStyle={s.resultContent}>
+      <Text style={s.kicker}>WELCOME TO BARDOWN HERO</Text><Text style={s.resultTitle}>MAKE YOUR PLAY</Text>
+      <Text style={s.body}>Drag anywhere to draw from the puck. Lift to play. Time freezes while you aim.</Text>
+      <Text style={s.body}>Teal is your team. Red defenders race for passes and loose pucks. Lead a teammate into space or curve around pressure. A red pickup ends the rush.</Text>
+      <Text style={s.body}>Shoot inside the posts. Gold corners show gaps; the goalie can still react. Bank off boards to find a new lane.</Text>
+      <Text style={s.body}>Tap a yellow powerup before drawing when one is available. Goals unlock levels. Earn all three stars together in one run.</Text>
+      <Button style={s.primary} onPress={() => { dismissHelp(); startLesson(0); }}><Text style={s.primaryText}>TRY THE GUIDED TUTORIAL</Text></Button>
+      <Button style={s.secondary} onPress={dismissHelp}><Text style={s.secondaryText}>BACK TO CAMPAIGN</Text></Button>
+    </ScrollView></View>}
   </SafeAreaView>;
 
   return <SafeAreaView style={s.root} {...gesture.panHandlers}>
@@ -169,11 +197,11 @@ function GameApp() {
     <View style={s.header}>
       <Button style={s.navButton} label="Back to campaign" onPress={back}><Text style={s.navGlyph}>‹</Text></Button>
       <View style={s.headerCopy}>
-        <Text numberOfLines={1} style={s.levelTitle}>{g.level.title}</Text>
-        <View accessibilityLabel={`Play ${g.stage + 1} of ${g.level.moments.length}`} style={s.playProgress}>
+        <Text numberOfLines={1} style={s.levelTitle}>{lesson === null ? g.level.title : `PRACTICE ${lesson + 1} / ${LESSONS.length}`}</Text>
+        {lesson === null && <View accessibilityLabel={`Play ${g.stage + 1} of ${g.level.moments.length}`} style={s.playProgress}>
           {g.level.moments.map((_, i) => <View key={i} style={[s.dot, i < g.stage && s.dotDone, i === g.stage && s.dotCurrent]} />)}
           <Text style={s.levelIndex}>{g.levelIndex + 1} / {LEVELS.length}</Text>
-        </View>
+        </View>}
       </View>
       <Button style={s.navButton} label="Retry level" onPress={retry}><Text style={s.navGlyph}>↻</Text></Button>
     </View>
@@ -203,7 +231,15 @@ function GameApp() {
         {g.objectives.map(o => <Text key={o.id} style={s.introObjective}>☆ {o.label}</Text>)}
         <Button style={s.secondary} onPress={() => setShowObjectives(false)}><Text style={s.secondaryText}>GOT IT · BACK TO THE PLAY</Text></Button>
       </Rise>}
-      {g.terminal && g.terminalTime >= 1.1 && !error && <View style={s.overlay}>
+      {lesson !== null && (practiced || g.terminal || (g.paused && g.passes > 0)) && !error && <View style={s.overlay}>
+        <ScrollView style={s.resultScroll} contentContainerStyle={s.resultContent}>
+          <Text style={s.resultTitle}>{practiced ? 'NICE WORK!' : 'TRY IT AGAIN'}</Text>
+          <Text style={s.body}>{practiced ? LESSONS[lesson].success : g.terminal ? g.message : LESSONS[lesson].hint}</Text>
+          <Button style={s.primary} onPress={() => practiced ? lesson < LESSONS.length - 1 ? startLesson(lesson + 1) : back() : retry()}><Text style={s.primaryText}>{practiced ? lesson < LESSONS.length - 1 ? 'NEXT LESSON' : 'PLAY THE CAMPAIGN' : 'RETRY LESSON'}</Text></Button>
+          <Button style={s.secondary} onPress={back}><Text style={s.secondaryText}>BACK TO CAMPAIGN</Text></Button>
+        </ScrollView>
+      </View>}
+      {lesson === null && g.terminal && g.terminalTime >= 1.1 && !error && <View style={s.overlay}>
         <ScrollView style={s.resultScroll} contentContainerStyle={s.resultContent} showsVerticalScrollIndicator={false}>
           <Rise><Text style={s.kicker}>{victory ? count === 3 ? 'PERFECT HIGHLIGHT' : 'ON THE REEL' : 'ONE MORE RUSH'}</Text>
             <Text style={[s.resultTitle, !victory && s.failTitle]}>{victory ? count === 3 ? 'BAR DOWN!' : 'WHAT A FINISH!' : 'SO CLOSE.'}</Text>
@@ -224,8 +260,8 @@ function GameApp() {
       <View style={s.bottom}>
         {!!g.availablePowerup && <Button style={s.powerButton} disabled={!!g.armed} onPress={() => { stroke.current = []; g.activatePowerup(); sync(); }}><Text style={s.powerText}>{g.armed ? 'READY · ' : '⚡ '}{powerNames[g.availablePowerup]}{g.armed ? '' : ' · TAP TO CHARGE'}</Text></Button>}
         <View style={s.promptRow}>
-          <View style={s.promptCopy}><Text numberOfLines={1} style={s.promptTitle}>{prompt}</Text>{!!hint && <Text numberOfLines={2} style={s.promptBody}>{hint}</Text>}</View>
-          {g.paused && <Button style={s.objectiveButton} label="View the three star objectives" onPress={() => setShowObjectives(value => !value)}><Text style={s.objectiveGlyph}>☆ 3</Text></Button>}
+          <View style={s.promptCopy}><Text numberOfLines={1} style={s.promptTitle}>{lesson === null ? prompt : LESSONS[lesson].title}</Text>{(!!hint || lesson !== null) && <Text numberOfLines={lesson === null ? 2 : 4} style={s.promptBody}>{lesson === null ? hint : LESSONS[lesson].hint}</Text>}</View>
+          {lesson === null && g.paused && <Button style={s.objectiveButton} label="View the three star objectives" onPress={() => setShowObjectives(value => !value)}><Text style={s.objectiveGlyph}>☆ 3</Text></Button>}
         </View>
       </View>
     </Quiet>
