@@ -5,11 +5,15 @@ import { GLView, type ExpoWebGLRenderingContext } from 'expo-gl';
 import { Game, LEVELS, Point, distance, relativeAim } from './src/game';
 import { Rink } from './src/rink';
 import { Button, Campaign, MotionProvider, Quiet, Rise, Stars, feedback, s, useReducedMotion } from './src/ui';
+import { audio } from './src/sound';
+import { SOUND_PLAYS_IN_SILENT_MODE } from './src/audioPolicy';
+import { drainSoundEvents } from './src/audioEvents';
 import { emptyProgress, isUnlocked, parseProgress, recordRun, stars } from './src/progress';
 import { LESSONS, lessonComplete, tutorialGame } from './src/tutorial';
 
 const SAVE_KEY = 'bardown.progress.v1';
 const TUTORIAL_KEY = 'bardown.tutorial.v1';
+const SOUND_KEY = 'bardown.sound-enabled.v1';
 const starText = (count: number) => '★'.repeat(count) + '☆'.repeat(3 - count);
 const powerNames = { fire: 'FIRE PUCK', curve: 'MEGA CURVE', freeze: 'FREEZE' };
 
@@ -40,6 +44,13 @@ function GameApp() {
   const progress = useRef(emptyProgress());
   const recorded = useRef<Game | null>(null);
   const saveQueue = useRef(Promise.resolve());
+  const soundSaveQueue = useRef(Promise.resolve());
+  const soundEnabled = useRef(true);
+  const soundPreferenceTouched = useRef(false);
+  const audioReady = useRef(false);
+  const audioEvents = useRef<{ game: Game | null; eventId: number }>({ game: null, eventId: 0 });
+  const audioScene = useRef<'menu' | 'aim' | 'play' | 'result'>('menu');
+  const [soundOn, setSoundOn] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [showObjectives, setShowObjectives] = useState(false);
@@ -52,8 +63,21 @@ function GameApp() {
   const [error, setError] = useState('');
   const [, redraw] = useState(0);
   const lastUI = useRef('');
+  const sceneForAudio = (g: Game): 'menu' | 'aim' | 'play' | 'result' => screen.current === 'levels' ? 'menu'
+    : g.terminal ? 'result' : g.paused || g.introRemaining > 0 ? 'aim' : 'play';
+  const syncAudio = () => {
+    const g = game.current;
+    const cursor = audioEvents.current;
+    if (cursor.game !== g) { cursor.game = g; cursor.eventId = 0; }
+    const drained = drainSoundEvents(g.events, cursor.eventId);
+    cursor.eventId = drained.lastId;
+    const scene = sceneForAudio(g);
+    if (audioReady.current && scene !== audioScene.current) { audioScene.current = scene; audio.setScene(scene); }
+    if (audioReady.current) drained.cues.forEach(cue => audio.play(cue));
+  };
   const sync = () => {
     const g = game.current;
+    syncAudio();
     if (g.loosePuck) chased.current = true;
     if (tutorial.current === null && g.phase === 'SUCCESS' && recorded.current !== g) {
       recorded.current = g;
@@ -71,17 +95,67 @@ function GameApp() {
       .catch(() => { if (mounted.current) setSaveError('Progress is in memory, but could not be saved. Tap to retry saving.'); });
   }
 
+  function persistSound(enabled: boolean) {
+    soundSaveQueue.current = soundSaveQueue.current
+      .then(() => AsyncStorage.setItem(SOUND_KEY, enabled ? 'on' : 'off'))
+      .catch(() => {});
+  }
+
+  function toggleSound() {
+    const enabled = !soundEnabled.current;
+    soundPreferenceTouched.current = true;
+    soundEnabled.current = enabled;
+    setSoundOn(enabled);
+    if (audioReady.current) audio.setEnabled(enabled);
+    persistSound(enabled);
+  }
+
+  function restartAudioForNewScreen() {
+    if (!audioReady.current) return;
+    audio.setActive(false);
+    const scene = sceneForAudio(game.current);
+    audioScene.current = scene;
+    audio.setScene(scene);
+    audio.setActive(active.current);
+  }
+
   useEffect(() => {
     mounted.current = true;
     AsyncStorage.getItem(TUTORIAL_KEY).then(value => { if (mounted.current && !value) setShowHelp(true); }).catch(() => {});
     AsyncStorage.getItem(SAVE_KEY).then(raw => { progress.current = parseProgress(raw); })
       .then(() => { if (mounted.current) setLoaded(true); })
       .catch(() => { if (mounted.current) setSaveError('Could not load your save. Close and reopen the app to retry.'); });
+    let disposed = false;
+    void (async () => {
+      try { await audio.init({ playsInSilentMode: SOUND_PLAYS_IN_SILENT_MODE }); } catch {}
+      if (disposed) return;
+      try {
+        const saved = await AsyncStorage.getItem(SOUND_KEY);
+        if (!soundPreferenceTouched.current && (saved === 'on' || saved === 'off')) {
+          soundEnabled.current = saved === 'on';
+          setSoundOn(soundEnabled.current);
+        }
+      } catch {
+        // Keep the in-memory preference when storage is unavailable.
+      }
+      if (disposed) return;
+      audioReady.current = true;
+      const scene = sceneForAudio(game.current);
+      audioScene.current = scene;
+      audio.setEnabled(soundEnabled.current);
+      audio.setScene(scene);
+      audio.setActive(active.current);
+      syncAudio();
+    })();
     const subscription = AppState.addEventListener('change', state => {
       active.current = state === 'active';
+      if (audioReady.current) audio.setActive(active.current);
       stroke.current = []; game.current.cancel(); sync();
     });
-    return () => { mounted.current = false; subscription.remove(); cancelAnimationFrame(frame.current); rink.current?.dispose(); rink.current = null; };
+    return () => {
+      disposed = true; mounted.current = false; audioReady.current = false; subscription.remove();
+      cancelAnimationFrame(frame.current); rink.current?.dispose(); rink.current = null; audio.dispose();
+    };
   }, []);
 
   function contextCreated(gl: ExpoWebGLRenderingContext) {
@@ -147,11 +221,11 @@ function GameApp() {
   const selectLevel = (index: number) => {
     if (!loaded || !isUnlocked(progress.current, index)) return;
     tutorial.current = null;
-    setShowObjectives(false); stroke.current = []; game.current = new Game(index); game.current.startPreview(); screen.current = 'game'; sync();
+    setShowObjectives(false); stroke.current = []; game.current = new Game(index); game.current.startPreview(); screen.current = 'game'; restartAudioForNewScreen(); sync();
   };
   const startLesson = (lesson: number) => {
     tutorial.current = lesson; chased.current = false; setShowHelp(false); setShowObjectives(false);
-    stroke.current = []; game.current = tutorialGame(lesson); screen.current = 'game';
+    stroke.current = []; game.current = tutorialGame(lesson); screen.current = 'game'; restartAudioForNewScreen();
     lastUI.current = ''; sync();
   };
   const retry = () => tutorial.current === null ? selectLevel(game.current.levelIndex) : startLesson(tutorial.current);
@@ -160,7 +234,7 @@ function GameApp() {
     tutorial.current = null;
     stroke.current = []; game.current.cancel(); screen.current = 'levels';
     cancelAnimationFrame(frame.current); rink.current?.dispose(); rink.current = null;
-    setShowObjectives(false); setReady(false); sync();
+    setShowObjectives(false); setReady(false); restartAudioForNewScreen(); sync();
   };
   const g = game.current, aiming = g.preview.length > 1, banking = g.preview.some(p => p.bounce);
   const lesson = tutorial.current;
@@ -179,7 +253,7 @@ function GameApp() {
 
   if (screen.current === 'levels') return <SafeAreaView style={s.root}>
     <StatusBar barStyle="light-content" />
-    <Campaign progress={progress.current} loaded={loaded} error={saveError} save={() => { if (loaded) persist(); }} select={selectLevel} />
+    <Campaign progress={progress.current} loaded={loaded} error={saveError} save={() => { if (loaded) persist(); }} select={selectLevel} soundOn={soundOn} toggleSound={toggleSound} />
     <Button style={s.secondary} onPress={() => setShowHelp(true)}><Text style={s.secondaryText}>HOW TO PLAY</Text></Button>
     {showHelp && <View style={[StyleSheet.absoluteFill, s.overlay]}><ScrollView style={s.resultScroll} contentContainerStyle={s.resultContent}>
       <Text style={s.kicker}>WELCOME TO BARDOWN HERO</Text><Text style={s.resultTitle}>MAKE YOUR PLAY</Text>
@@ -203,6 +277,7 @@ function GameApp() {
           <Text style={s.levelIndex}>{g.levelIndex + 1} / {LEVELS.length}</Text>
         </View>}
       </View>
+      <Button style={s.soundButton} label={`Sound ${soundOn ? 'on' : 'off'}`} onPress={toggleSound}><Text style={s.soundText}>SND {soundOn ? 'ON' : 'OFF'}</Text></Button>
       <Button style={s.navButton} label="Retry level" onPress={retry}><Text style={s.navGlyph}>↻</Text></Button>
     </View>
     <View style={s.arena} onLayout={e => {

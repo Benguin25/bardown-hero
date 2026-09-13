@@ -54,6 +54,8 @@ This PATH change lasts only for the current terminal. `.tooling` is ignored by G
 
 ## 3. Play
 
+Audio is enabled by default: the campaign and gameplay headers include an **SND ON/OFF** toggle. Bardown Hero uses original punchy arcade hockey effects for releases, passes, boards, saves, goals, powerups, and countdowns, plus a looping upbeat stadium-electronic instrumental. The setting is saved locally, audio stops when the app is backgrounded, and playback is configured to remain audible when the iPhone silent switch is on.
+
 New players see **How to Play** and can start four guided practice lessons. Reopen **HOW TO PLAY** from the campaign to replay them. Practice does not award campaign stars or unlock levels.
 
 One skater from each team chases the puck while supporting players move in formation. Defenders skate faster and close lanes. Loose pucks stay live until collected, including after they stop. Your original passer can recover one without earning a pass star; red possession ends the attempt.

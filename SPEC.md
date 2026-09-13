@@ -4,6 +4,11 @@
 
 ## Current playable scope (September 2026)
 
+Audio update:
+
+- Expo Audio provides original local PCM WAV effects and a looping upbeat stadium-electronic instrumental. Events cover taps, releases, collections, board contact, saves, goals, failures, powerups, countdown, and start.
+- A persistent SND ON/OFF control is available in campaign and gameplay. Audio is foreground-only, stops on backgrounding, resumes music on return, and is configured to play through the iOS silent switch. Goal horn temporarily ducks music.
+
 Puck pursuit and onboarding update:
 
 - One nearby attacking skater pursues the pass or loose puck; the nearest defender pressures its current travel direction. Supporting skaters retain formation and shade toward the play. Defenders skate at 4.8 units/second (previously 4) and supporting coverage closes passing lanes.

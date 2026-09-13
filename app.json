@@ -5,6 +5,16 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
-    "ios": { "supportsTablet": false }
+    "ios": {
+      "supportsTablet": false
+    },
+    "plugins": [
+      ["expo-audio", {
+        "microphonePermission": false,
+        "recordAudioAndroid": false,
+        "enableBackgroundRecording": false,
+        "enableBackgroundPlayback": false
+      }]
+    ]
   }
 }

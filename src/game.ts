@@ -4,6 +4,7 @@ export const BOARD_X = 10.75;
 export const BOARD_Z = 22.5;
 export type Phase = 'AUTO_PLAY' | 'PAUSED_FOR_INPUT' | 'EXECUTING_ACTION' | 'REBOUND' | 'SUCCESS' | 'FAIL';
 export type Intent = { kind: 'pass'; target: number } | { kind: 'shot' } | { kind: 'loose' };
+export type GameEvent = { id: number; event: string };
 export const NET_Z = -18;
 export const NET_HALF_WIDTH = 3.05;
 export const NET_HEIGHT = 4.4;
@@ -238,7 +239,11 @@ export class Game {
   cornerCovered(p: Point) { return this.goalieCovers(p); }
   phase: Phase = 'AUTO_PLAY';
   introRemaining = 0;
-  startPreview() { if (this.phase === 'AUTO_PLAY' && this.stage === 0) this.introRemaining = 3; }
+  startPreview() {
+    if (this.phase !== 'AUTO_PLAY' || this.stage !== 0) return;
+    this.introRemaining = 3;
+    this.emit('countdown', 0);
+  }
   stage = 0;
   carrier = 0;
   attackers: Point[] = [{ x: -4, z: 18 }, { x: 6, z: 12 }, { x: -6, z: 4 }];
@@ -260,6 +265,7 @@ export class Game {
   impact = 0;
   eventId = 0;
   event = '';
+  events: GameEvent[] = [];
   callout = '';
   terminalTime = 0;
   armed: Powerup | null = null;
@@ -278,6 +284,7 @@ export class Game {
     if (!this.availablePowerup || this.armed) return;
     this.armed = this.availablePowerup;
     this.cancel();
+    this.emit('powerup', 0.45);
   }
   get objectives() {
     return OBJECTIVES[this.levelIndex].map(id => ({ id, label: OBJECTIVE_LABELS[id], complete: this.phase === 'SUCCESS' && (
@@ -431,14 +438,24 @@ export class Game {
     this.emit('release', this.actionPower === 'fire' ? 1.6 : 0.35);
   }
 
-  private emit(event: string, impact = 1) { this.event = event; this.eventId++; this.impact = impact; }
+  private emit(event: string, impact = 1) {
+    this.event = event; this.eventId++; this.impact = impact;
+    this.events.push({ id: this.eventId, event });
+    // Event delivery only needs enough history for one rendered frame, but the
+    // cap keeps a long running game from retaining an unbounded event log.
+    if (this.events.length > 24) this.events.splice(0, this.events.length - 24);
+  }
   private fail(message: string) { this.phase = 'FAIL'; this.message = message; this.emit('fail'); }
 
   update(realDt: number) {
     // Freeze includes the camera, players, particles, goalie, and simulation clock.
     if (this.paused) return;
     const dt = Number.isFinite(realDt) ? clamp(realDt, 0, 0.05) : 0;
-    if (this.introRemaining > 0) { this.introRemaining = Math.max(0, this.introRemaining - dt); return; }
+    if (this.introRemaining > 0) {
+      this.introRemaining = Math.max(0, this.introRemaining - dt);
+      if (this.introRemaining === 0) this.emit('start', 0.35);
+      return;
+    }
     const slow = (this.phase === 'EXECUTING_ACTION' && this.puck.z < -14) || this.phase === 'REBOUND' ? 0.42 : 1;
     this.elapsed += dt;
     this.motion += dt * (this.phase === 'SUCCESS' ? 0.35 : slow);

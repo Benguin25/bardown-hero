@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { audio } from './sound';
 import { CHAPTERS, HIGHLIGHTS, LEVELS, OBJECTIVES, OBJECTIVE_LABELS } from './game';
 import { isUnlocked, stars, type Progress } from './progress';
 
@@ -31,7 +32,7 @@ export function Button({ children, onPress, style, label, disabled = false }: {
   const scale = useRef(new Animated.Value(1)).current, reduced = useReducedMotion();
   const animate = (toValue: number) => { if (!reduced) Animated.spring(scale, { toValue, speed: 35, bounciness: 5, useNativeDriver: true }).start(); };
   return <AnimatedPressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }} disabled={disabled}
-    onPressIn={() => animate(0.96)} onPressOut={() => animate(1)} onPress={() => { feedback('tap'); onPress(); }}
+    onPressIn={() => animate(0.96)} onPressOut={() => animate(1)} onPress={() => { audio.play('tap'); feedback('tap'); onPress(); }}
     style={[style, { transform: [{ scale }] }]}>{children}</AnimatedPressable>;
 }
 export function Rise({ children, style, delay = 0 }: { children: React.ReactNode; style?: StyleProp<ViewStyle>; delay?: number }) {
@@ -66,15 +67,15 @@ export function Stars({ count, animate = false }: { count: number; animate?: boo
   return <View accessible accessibilityLabel={`${count} of 3 stars`} style={s.starRow}>{[0, 1, 2].map(i => <Star key={i} earned={i < count} index={i} animate={animate} />)}</View>;
 }
 
-export function Campaign({ progress, loaded, error, save, select }: {
-  progress: Progress; loaded: boolean; error: string; save: () => void; select: (index: number) => void;
+export function Campaign({ progress, loaded, error, save, select, soundOn, toggleSound }: {
+  progress: Progress; loaded: boolean; error: string; save: () => void; select: (index: number) => void; soundOn: boolean; toggleSound: () => void;
 }) {
   const total = Object.values(progress.runs).reduce((sum, run) => sum + stars(run), 0);
   const current = LEVELS.findIndex((_, i) => isUnlocked(progress, i) && !progress.runs[i]?.[0]);
   const next = current < 0 ? 0 : current;
   return <ScrollView contentContainerStyle={s.campaign} showsVerticalScrollIndicator={false}>
     <Rise>
-      <Text style={s.brand}>BARDOWN<Text style={s.teal}> HERO</Text></Text>
+      <View style={s.campaignTop}><Text style={s.brand}>BARDOWN<Text style={s.teal}> HERO</Text></Text><Button style={s.soundButton} label={`Sound ${soundOn ? 'on' : 'off'}`} onPress={toggleSound}><Text style={s.soundText}>SND {soundOn ? 'ON' : 'OFF'}</Text></Button></View>
       <View style={s.campaignHeading}><Text style={s.campaignTitle}>MAKE THE{ '\n' }HIGHLIGHT.</Text><View style={s.scoreBadge}><Text style={s.scoreStar}>★</Text><Text style={s.score}>{total}<Text style={s.scoreOf}> / {LEVELS.length * 3}</Text></Text></View></View>
       <View style={s.meter}><View style={[s.meterFill, { width: `${total / (LEVELS.length * 3) * 100}%` }]} /></View>
       <Text style={s.tagline}>{current < 0 ? 'Campaign cleared. Chase the perfect reel.' : 'One puck. Big plays. No apologies.'}</Text>
@@ -105,7 +106,7 @@ const fill: ViewStyle = { position: 'absolute', top: 0, right: 0, bottom: 0, lef
 export const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#071624' },
   teal: { color: '#23dcb6' }, ink: { color: '#071624' }, muted: { color: '#8199a8' },
-  campaign: { paddingHorizontal: 18, paddingTop: 14, paddingBottom: 32, gap: 16 },
+  campaign: { paddingHorizontal: 18, paddingTop: 14, paddingBottom: 32, gap: 16 }, campaignTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   brand: { color: '#eff8fa', fontSize: 23, fontWeight: '900', letterSpacing: -0.8 },
   campaignHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 },
   campaignTitle: { color: '#eff8fa', fontSize: 35, lineHeight: 35, fontWeight: '900', fontStyle: 'italic', letterSpacing: -1.3 },
@@ -123,7 +124,7 @@ export const s = StyleSheet.create({
   starRow: { flexDirection: 'row', gap: 3, alignItems: 'center' }, star: { color: '#ffcf5a', fontSize: 20 }, starEmpty: { color: '#67818f' }, bigStar: { fontSize: 54, marginHorizontal: 4 },
   campaignFoot: { color: '#89a4b2', textAlign: 'center', fontSize: 12 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 8, paddingVertical: 3, minHeight: 54 },
-  navButton: { width: 44, height: 44, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: '#142b3d' }, navGlyph: { fontSize: 27, color: '#dcf2f5', fontWeight: '700' }, headerCopy: { flex: 1 }, levelTitle: { color: '#ecf7f9', fontWeight: '900', fontSize: 14 },
+  navButton: { width: 44, height: 44, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: '#142b3d' }, navGlyph: { fontSize: 27, color: '#dcf2f5', fontWeight: '700' }, headerCopy: { flex: 1 }, levelTitle: { color: '#ecf7f9', fontWeight: '900', fontSize: 14 }, soundButton: { minWidth: 62, height: 32, paddingHorizontal: 8, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#142b3d' }, soundText: { color: '#b9d7df', fontSize: 10, fontWeight: '900', letterSpacing: 0.4 },
   playProgress: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5 }, dot: { width: 16, height: 3, borderRadius: 2, backgroundColor: '#365161' }, dotDone: { backgroundColor: '#23dcb6' }, dotCurrent: { backgroundColor: '#ffcf5a' }, levelIndex: { fontSize: 11, color: '#94aebc', marginLeft: 5 },
   arena: { flex: 1, overflow: 'hidden', minHeight: 180 }, arenaTouch: { ...fill },
   // Reserve both instruction lines: swapping the idle copy for aiming copy
