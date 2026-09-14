@@ -5,3 +5,5 @@ dist/
 .test-build/
 *.tsbuildinfo
 expo-env.d.ts
+
+prompt.md

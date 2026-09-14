@@ -4,7 +4,7 @@
 Build a polished-feeling arcade hockey prototype, not a hockey simulator.
 
 ## Priorities
-User direction: get the core game mechanics right first. Defer powerups, additional levels, leagues, progression, and other extras until the swipe, spacing, passing, shooting, and goalie interactions feel good. Existing test scenarios are for validating those mechanics.
+Current user direction: a polished sixteen-level arcade campaign in the established dark/teal/yellow identity. Preserve swipe controls, authored movement, live receiver retrieval, board reflection, and goalie behavior. Keep the rink prominent, chrome compact, objectives readable, and campaign states clear. Use subtle transitions, star celebrations, and haptics, respecting reduced motion. iOS comes first; Android remains supported. League/world star gates and monetization remain deferred.
 
 1. Core swipe gameplay
 2. Juice / responsiveness
@@ -21,6 +21,8 @@ User direction: get the core game mechanics right first. Defer powerups, additio
 - Do not over-engineer abstractions for a one-scenario prototype.
 - Keep scenario logic data-driven enough that another scenario can be added later.
 - Preserve exaggerated curved puck paths. Do not "fix" them into realism.
+- Stars belong to a single successful run. Persist the best run; never combine objectives across attempts.
+- Completing a level unlocks the next regardless of star count. Powerups must be tapped at their authored decision and last for one action.
 - Use placeholder assets when needed.
 - Keep gameplay code understandable and easy to iterate on.
 

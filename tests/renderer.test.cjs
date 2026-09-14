@@ -54,7 +54,7 @@ test('screen aiming hits each elevated corner at multiple phone viewport sizes',
   }
 });
 
-test('entire cage clears the HUD at every puck distance, including opening rush and camera impact', () => {
+test('entire cage clears the compact rink margin at every puck distance and camera impact', () => {
   const camera = new THREE.OrthographicCamera(-14, 14, 24, -24, 0.1, 150);
   for (const [width, height] of [[320, 240], [320, 420], [390, 500], [430, 680]]) {
     LEVELS.forEach((_, i) => {
@@ -65,7 +65,7 @@ test('entire cage clears the HUD at every puck distance, including opening rush 
         for (const x of [-3.2, 3.2]) for (const netZ of [-20.1, NET_Z + 0.1]) for (const y of [0, NET_HEIGHT + 0.2]) {
           const p = new THREE.Vector3(x, y, netZ).project(camera);
           const pixelY = (1 - p.y) * height / 2;
-          assert.ok(pixelY >= Math.min(48, height * 0.18) - 0.001, `Cage under HUD: ${width}x${height}, puck ${z}, y ${pixelY}`);
+          assert.ok(pixelY >= Math.min(16, height * 0.06) - 0.001, `Cage clipped: ${width}x${height}, puck ${z}, y ${pixelY}`);
           assert.ok(pixelY < height - 20);
           assert.ok(Math.abs(p.x) < 1);
         }
@@ -85,4 +85,20 @@ test('camera framing stays fixed while drawing a high shot', () => {
   game.aim([game.puck, GOAL_CORNERS[3]]);
   frameRink(camera, 390, 500, game);
   assert.deepEqual([...camera.projectionMatrix.elements, ...camera.matrixWorld.elements], before);
+});
+
+test('end boards remain visible and camera stays fixed during a bank preview', () => {
+  const camera = new THREE.OrthographicCamera(-14, 14, 24, -24, 0.1, 150);
+  for (const [width, height] of [[320, 240], [390, 500], [430, 680]]) {
+    const game = new Game();
+    for (let i = 0; i < 100 && !game.paused; i++) game.update(1 / 60);
+    frameRink(camera, width, height, game);
+    const before = [...camera.projectionMatrix.elements, ...camera.matrixWorld.elements];
+    game.aim([game.puck, { x: 15.5, z: 4 }]); frameRink(camera, width, height, game);
+    assert.deepEqual([...camera.projectionMatrix.elements, ...camera.matrixWorld.elements], before);
+    for (const x of [-10.75, 10.75]) for (const z of [-22.5, 22.5]) {
+      const p = new THREE.Vector3(x, 0.14, z).project(camera);
+      assert.ok(Math.abs(p.x) < 1 && Math.abs(p.y) < 1);
+    }
+  }
 });

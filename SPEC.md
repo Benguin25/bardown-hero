@@ -1,6 +1,43 @@
 # SPEC.md
 
 ## Game
+
+## Current playable scope (September 2026)
+
+Audio update:
+
+- Expo Audio provides original local PCM WAV effects and a looping upbeat stadium-electronic instrumental. Events cover taps, releases, collections, board contact, saves, goals, failures, powerups, countdown, and start.
+- A persistent SND ON/OFF control is available in campaign and gameplay. Audio is foreground-only, stops on backgrounding, resumes music on return, and is configured to play through the iOS silent switch. Goal horn temporarily ducks music.
+
+Puck pursuit and onboarding update:
+
+- One nearby attacking skater pursues the pass or loose puck; the nearest defender pressures its current travel direction. Supporting skaters retain formation and shade toward the play. Defenders skate at 4.8 units/second (previously 4) and supporting coverage closes passing lanes.
+- Loose passes never expire. Skaters keep pursuing stopped pucks, route around the cage, and collect at actual stick reach. The original passer can recover a loose puck without advancing the play or earning pass objectives. Opponent collection still ends the run. Freeze still stops defender movement while preserving collisions.
+- First launch presents How to Play with a four-lesson interactive tutorial. The campaign keeps a How to Play button for replay. Lessons cover anchored swipes, curved passes, loose-puck races, and corner shots; tutorial runs never write campaign stars or unlocks.
+
+Board-bank and presentation update:
+
+- Draw toward either side or end board. The preview stops at first contact, with no reflected path. Release executes that approach, then reflects the incoming velocity at the board with arcade speed retention. Drawing beyond the first collision cannot steer the rebound. The puck coasts and teammates attempt normal pickups after impact.
+- End-board passes may travel beside the goal but cannot pass through its cage. Ordinary shots keep their save/goal/miss rules.
+- Slightly lower camera; both end boards remain framed before aiming. Net uses round posts, a tapered rear frame, and roof/side/back mesh. The goalie has a padded blocker and a catching glove with a laced pocket, without changing save zones.
+- Every level start and retry shows its three objectives during a three-second countdown. Gameplay starts afterward; backgrounding pauses the countdown through the existing active-app loop.
+
+The current request supersedes the original vertical-slice exclusions below.
+
+- Sixteen authored portrait levels, grouped into four campaign chapters. Six new highlights cover lead retrieval, board assists, multiple receiver options, cross-ice combinations, rebounds, screened curved shots, and a four-touch finale. Intended routes take 2–4 decisions, with guided rebounds where authored.
+- Campaign cards show distinct cleared/current/locked states, short objectives, and best-run stars. Continue selects the next uncompleted unlocked level. Totals use all 48 available stars, with the original ten level indices and save schema preserved.
+- Gameplay uses a single compact navigation row, play-progress pips, a fading instruction strip, and an optional objectives sheet. The intro is a compact 3–2–1 overlay; results use staggered star animation and prominent next/retry actions. Existing dark/teal/yellow branding is retained.
+- Local haptics accompany taps, collected passes, board contact, goals, and failure. UI motion respects the system reduced-motion preference. Unsupported haptics do not block gameplay.
+- New bank/lead stars require actual bank-pass collection and at least 1.25 rink units of receiver movement during a successful pass. No new input mode, AI system, currency, or progression gate.
+- Completing a level unlocks its successor, regardless of stars. World/league star thresholds are deferred.
+- Each level has three objectives. Results show the current run; the menu retains the best single successful run. Objectives never accumulate across runs, including tied two-star results.
+- Local AsyncStorage persistence only. Save writes are serialized and failures shown with a retry action. Failed loading does not silently overwrite existing progress.
+- Contextual buttons arm Fire Puck (shot only), Mega Curve (amplified preview bend), or Freeze (stationary defenders for the next action). Canceling or making a tiny swipe preserves the charge; retry restores scenario grants. Freeze does not remove interception collisions or freeze the goalie.
+- Results offer retry and next level; the header returns to level selection. Goals get a short celebration before the scrollable results appear.
+- Preserve Expo / React Native / TypeScript / Three r162, anchored relative swipe input, authored movement, and reactive goalie behavior. iOS is the first playtest target; Android is also supported.
+- Presentation includes camera punch, danger-shot and goal slow motion, net shake, colored powerup trails, ice spray, impact particles, goalie knockback, jumping celebrations, and animated callouts.
+
+Validation: `npm run typecheck`, `npm test`, and Expo native bundle export. Physical-device checks remain necessary for GL rendering, touch feel, background/resume, menu navigation, and save/relaunch behavior.
 Portrait mobile arcade hockey inspired by stop-and-swipe sports games, but intentionally exaggerated and non-realistic.
 
 Core loop:
@@ -9,7 +46,7 @@ Core loop:
 2. At key moments, everything freezes.
 3. Player drags anywhere to draw a relative pass or shot path anchored to the puck.
 4. The path is previewed while dragging.
-5. On release, the path is lightly cleaned/snapped.
+5. On release, the path is lightly smoothed with only a small near-miss correction.
 6. The puck follows the drawn path, including ridiculous curves.
 7. Play continues until the next decision, goal, turnover, or rebound.
 
@@ -39,9 +76,11 @@ Do not optimize for hockey simulation.
 One-finger swipe/draw anywhere on screen, with the preview anchored to the puck.
 
 ### Pass
-- Endpoint near a teammate snaps/assists toward them.
-- Player-drawn curve still strongly influences puck path.
-- Generous touch tolerance.
+- The drawn curve is the primary trajectory; no endpoint lock guarantees a pass.
+- Teammates have a configurable pickup radius and skate toward reachable points along the projected puck path. A teammate can collect before the endpoint or receive a lead pass into space.
+- Only obvious near-misses receive a small correction (at most 0.2 rink units by default). An endpoint already within pickup reach stays as drawn.
+- Uncollected passes coast and slow down, then remain live until a skater collects them. Defenders retain interception priority in contested lanes. Reception freezes play at the actual contact point without teleporting the puck.
+- Tune `DEFAULT_RECEPTION` in `src/game.ts`, or pass overrides as the second `Game` constructor argument. Defaults: pickup radius 0.9, initial pursuit radius 6, skating speed 7 units/second, and board speed retention 0.84. Loose-puck retrieval has no distance limit or timeout.
 
 ### Shot
 - Endpoint toward the net becomes a shot.
@@ -53,7 +92,7 @@ One-finger swipe/draw anywhere on screen, with the preview anchored to the puck.
 ## Gameplay Rules
 - Time fully freezes during input.
 - Teammates and defenders mostly follow authored routes.
-- Defenders move on release; reception freezes play immediately. Receivers remain stationary during passes. Skaters keep separate positions along routes and at reception.
+- Defenders move on release; reception freezes play immediately. Receivers skate to reachable pickup points while skaters retain separation along their routes and at reception.
 - Small reactions are allowed, but avoid general-purpose hockey AI.
 - Defender collision/interception can fail the play.
 - Bad shots can be saved.
@@ -90,10 +129,10 @@ Flow:
 8. Save may produce one guided rebound opportunity.
 9. Turnover/miss = fail and restart.
 
-No menus, accounts, economy, customization, career UI, multiplayer, or purchases.
+Original vertical slice excluded menus. The current scope adds level selection and local progression; accounts, economy, customization, multiplayer, and purchases remain excluded.
 
 ## Progression Later
-User priority: finish and tune the core mechanics before adding powerups, more levels, leagues, or progression. The ideas below are deferred, not current implementation tasks.
+Sixteen levels, local stars, campaign chapters, and scenario powerups are in scope. The larger career ideas below remain deferred.
 
 Career chapters:
 - Rookie

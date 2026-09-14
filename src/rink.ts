@@ -7,19 +7,22 @@ const C = { ice: 0xdceef0, teal: 0x18dcb6, red: 0xef4d65, ink: 0x10293c, gold: 0
 export function frameRink(camera: THREE.OrthographicCamera, width: number, height: number, game: Game) {
   const aspect = width / height;
   const follow = Math.max(-5, Math.min(1, game.puck.z * 0.22));
-  camera.position.set(Math.sin(game.motion * 57) * game.impact * 0.16, 37, 24 + follow);
+  camera.position.set(Math.sin(game.motion * 57) * game.impact * 0.16, 31, 27 + follow);
   camera.lookAt(0, 0, follow - 2);
-  camera.zoom = 1 + game.impact * 0.065;
+  camera.zoom = 1 + game.impact * 0.10 + (game.phase === 'SUCCESS' ? Math.min(game.terminalTime, 0.8) * 0.12 : 0);
   camera.updateMatrixWorld();
-  // Fit the whole cage (including its back/top), puck, and skaters below the
-  // status overlay. Shift framing first; widen only when both ends need room.
+  // The compact HUD now lives outside the rink. Fit the cage, boards, puck,
+  // and skaters with a small visual margin instead of reserving a status panel.
   const bounds = [
+    // Both end boards must be visible before drawing: changing the camera in
+    // response to the preview would move the swipe's anchored projection.
+    ...[-11.3, 11.3].flatMap(x => [-23, 23].map(z => new THREE.Vector3(x, 1.1, z))),
     ...[-3.2, 3.2].flatMap(x => [-20.1, NET_Z + 0.1].flatMap(z => [0, NET_HEIGHT + 0.2].map(y => new THREE.Vector3(x, y, z)))),
     new THREE.Vector3(game.puck.x, 0.2 + (game.puck.height ?? 0), game.puck.z),
     ...[...game.attackers, ...game.defenders].flatMap(p => [0, 2.4].map(y => new THREE.Vector3(p.x, y, p.z))),
   ].map(p => p.applyMatrix4(camera.matrixWorldInverse));
   const minY = Math.min(...bounds.map(p => p.y)), maxY = Math.max(...bounds.map(p => p.y));
-  const topPadding = Math.min(48, height * 0.18), bottomPadding = Math.min(24, height * 0.08);
+  const topPadding = Math.min(16, height * 0.06), bottomPadding = Math.min(16, height * 0.06);
   const usable = 1 - (topPadding + bottomPadding) / height;
   const halfHeight = Math.max(Math.max(11.8 / aspect, 18) / camera.zoom, (maxY - minY) / (2 * usable));
   const lowerCenter = maxY - halfHeight + 2 * halfHeight * topPadding / height;
@@ -38,7 +41,7 @@ export class Rink {
   private renderer: THREE.WebGLRenderer;
   private players: THREE.Group[] = [];
   private goalie: THREE.Group;
-  private glove: THREE.Mesh;
+  private glove: THREE.Group;
   private gloveArm: THREE.Mesh;
   private corners: THREE.Mesh[] = [];
   private puck: THREE.Mesh;
@@ -47,6 +50,8 @@ export class Rink {
   private preview: THREE.Mesh[] = [];
   private trail: THREE.Mesh[] = [];
   private particles: THREE.Mesh[] = [];
+  private net = new THREE.Group();
+  private spray: THREE.Mesh[] = [];
   private ray = new THREE.Raycaster();
   private plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.14);
   private goalPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -NET_Z);
@@ -74,7 +79,8 @@ export class Rink {
     this.buildIce();
     this.players = [0, 1, 2, 3, 4].map(i => this.player(i < 3 ? C.teal : C.red));
     this.goalie = this.player(C.gold, true);
-    this.glove = this.box(1.1, 1.25, 0.3, 0, 1, -17.85, 0xf1eee4);
+    this.glove = this.catchingGlove();
+    this.scene.add(this.glove);
     this.gloveArm = this.box(0.22, 0.22, 1, 0, 1, -17.85, C.gold);
     this.puck = this.mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.16, 16), C.ink);
     this.scene.add(this.puck);
@@ -88,6 +94,7 @@ export class Rink {
     const dot = new THREE.SphereGeometry(1, 7, 5);
     this.trail = Array.from({ length: 28 }, () => { const m = this.mesh(dot, C.teal, true); this.scene.add(m); return m; });
     this.particles = Array.from({ length: 20 }, () => { const m = this.mesh(new THREE.BoxGeometry(0.16, 0.16, 0.4), C.gold, true); this.scene.add(m); return m; });
+    this.spray = Array.from({ length: 30 }, () => { const m = this.mesh(dot, 0xffffff, true); this.scene.add(m); return m; });
   }
 
   private mesh(geometry: THREE.BufferGeometry, color: number, unlit = false) {
@@ -102,6 +109,45 @@ export class Rink {
   private ring(inner: number, outer: number, color: number, x = 0, z = 0) {
     const m = this.mesh(new THREE.RingGeometry(inner, outer, 48), color, true);
     m.rotation.x = -Math.PI / 2; m.position.set(x, 0.04, z); this.scene.add(m); return m;
+  }
+
+  private tube(a: THREE.Vector3, b: THREE.Vector3, radius: number, color: number, parent: THREE.Object3D) {
+    const tube = this.mesh(new THREE.CylinderGeometry(radius, radius, a.distanceTo(b), 10), color);
+    tube.position.copy(a).lerp(b, 0.5);
+    tube.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+    parent.add(tube); return tube;
+  }
+
+  private catchingGlove() {
+    const group = new THREE.Group(), shape = new THREE.Shape();
+    shape.moveTo(-0.38, -0.55); shape.quadraticCurveTo(-0.95, -0.05, -0.6, 0.55);
+    shape.quadraticCurveTo(-0.2, 0.98, 0.44, 0.64); shape.quadraticCurveTo(0.82, 0.38, 0.53, -0.04);
+    shape.quadraticCurveTo(0.92, -0.18, 0.57, -0.57); shape.lineTo(0.05, -0.72); shape.closePath();
+    group.add(this.mesh(new THREE.ExtrudeGeometry(shape, { depth: 0.18, bevelEnabled: true, bevelSize: 0.07, bevelThickness: 0.07, bevelSegments: 2, steps: 1, curveSegments: 8 }), 0xf1eee4));
+    const pocket = this.mesh(new THREE.CircleGeometry(0.45, 16), 0x394958);
+    pocket.position.set(-0.08, 0.18, 0.265); pocket.scale.y = 1.16; group.add(pocket);
+    const rim = this.mesh(new THREE.TorusGeometry(0.46, 0.065, 6, 16), 0xcbbd9d);
+    rim.position.copy(pocket.position); rim.position.z += 0.015; rim.scale.y = 1.16; group.add(rim);
+    for (const offset of [-0.24, -0.08, 0.08, 0.24]) {
+      const extent = Math.sqrt(0.43 ** 2 - offset ** 2);
+      this.tube(new THREE.Vector3(-0.08 + offset, 0.18 - extent, 0.29), new THREE.Vector3(-0.08 + offset, 0.18 + extent, 0.29), 0.014, 0xb9aa89, group);
+      this.tube(new THREE.Vector3(-0.08 - extent, 0.18 + offset, 0.3), new THREE.Vector3(-0.08 + extent, 0.18 + offset, 0.3), 0.014, 0xb9aa89, group);
+    }
+    this.box(0.5, 0.25, 0.36, 0.03, -0.58, 0.1, C.gold, group);
+    return group;
+  }
+
+  private blocker(parent: THREE.Group) {
+    const shape = new THREE.Shape();
+    shape.moveTo(-0.42, -0.55); shape.lineTo(0.42, -0.55); shape.lineTo(0.42, 0.46);
+    shape.quadraticCurveTo(0.4, 0.66, 0.18, 0.68); shape.lineTo(-0.3, 0.62);
+    shape.quadraticCurveTo(-0.48, 0.57, -0.42, 0.35); shape.closePath();
+    const group = new THREE.Group(); group.position.set(0.9, 1.08, -0.58); group.rotation.z = -0.16;
+    group.add(this.mesh(new THREE.ExtrudeGeometry(shape, { depth: 0.2, bevelEnabled: true, bevelSize: 0.08, bevelThickness: 0.06, bevelSegments: 2, curveSegments: 5 }), 0xf1eee4));
+    this.box(0.7, 0.12, 0.025, 0, 0.26, -0.075, C.gold, group);
+    this.box(0.7, 0.05, 0.025, 0, 0.05, -0.075, C.ink, group);
+    this.box(0.43, 0.42, 0.34, 0, -0.15, 0.32, 0xcbbd9d, group);
+    parent.add(group);
   }
 
   private buildIce() {
@@ -124,12 +170,36 @@ export class Rink {
     crease.rotation.x = -Math.PI / 2; crease.rotation.z = Math.PI;
     crease.position.set(0, 0.025, -18); this.scene.add(crease);
     // Exaggerated upright goal face: top and bottom corners are real targets.
-    this.box(0.16, NET_HEIGHT, 0.16, -NET_HALF_WIDTH, NET_HEIGHT / 2, NET_Z, C.red);
-    this.box(0.16, NET_HEIGHT, 0.16, NET_HALF_WIDTH, NET_HEIGHT / 2, NET_Z, C.red);
-    this.box(6.25, 0.16, 0.16, 0, NET_HEIGHT, NET_Z, C.red);
-    for (let x = -3; x <= 3; x += 0.5) this.box(0.025, NET_HEIGHT, 0.025, x, NET_HEIGHT / 2, -20, 0x9fbcc8);
-    for (let y = 0.2; y <= NET_HEIGHT; y += 0.4) this.box(6, 0.025, 0.025, 0, y, -20, 0x9fbcc8);
-    for (const x of [-3, 3]) for (const z of [-18.5, -19, -19.5, -20]) this.box(0.035, NET_HEIGHT, 0.035, x, NET_HEIGHT / 2, z, 0x9fbcc8);
+    const front = (x: number, y: number) => new THREE.Vector3(x * NET_HALF_WIDTH, y * NET_HEIGHT, NET_Z);
+    const back = (x: number, y: number) => new THREE.Vector3(x * 2.65, y * 3.7, -20);
+    for (const side of [-1, 1]) {
+      this.tube(front(side, 0), front(side, 1), 0.095, C.red, this.net);
+      this.tube(front(side, 0), back(side, 0), 0.07, C.red, this.net);
+      this.tube(front(side, 1), back(side, 1), 0.055, 0xe5e9e2, this.net);
+      this.tube(back(side, 0), back(side, 1), 0.055, 0xe5e9e2, this.net);
+    }
+    this.tube(front(-1, 1), front(1, 1), 0.095, C.red, this.net);
+    this.tube(back(-1, 0), back(1, 0), 0.075, C.red, this.net);
+    this.tube(back(-1, 1), back(1, 1), 0.055, 0xe5e9e2, this.net);
+    const threads: number[] = [];
+    const line = (a: THREE.Vector3, b: THREE.Vector3) => threads.push(...a.toArray(), ...b.toArray());
+    for (let i = 0; i <= 16; i++) {
+      const x = -1 + i / 8;
+      line(back(x, 0), back(x, 1)); line(front(x, 1), back(x, 1));
+    }
+    for (let i = 0; i <= 12; i++) {
+      const t = i / 12;
+      line(back(-1, t), back(1, t));
+      for (const side of [-1, 1]) line(front(side, t), back(side, t));
+    }
+    for (let i = 1; i < 7; i++) {
+      const t = i / 7;
+      line(front(-1, 1).lerp(back(-1, 1), t), front(1, 1).lerp(back(1, 1), t));
+      for (const side of [-1, 1]) line(front(side, 0).lerp(back(side, 0), t), front(side, 1).lerp(back(side, 1), t));
+    }
+    const mesh = new THREE.BufferGeometry(); mesh.setAttribute('position', new THREE.Float32BufferAttribute(threads, 3));
+    this.net.add(new THREE.LineSegments(mesh, new THREE.LineBasicMaterial({ color: 0x91aab4, transparent: true, opacity: 0.7 })));
+    this.scene.add(this.net);
     this.corners = GOAL_CORNERS.map(p => {
       const ring = this.ring(0.46, 0.6, C.gold);
       ring.rotation.x = 0;
@@ -151,6 +221,7 @@ export class Rink {
       this.box(0.21, 0.13, 0.65, x, 0.1, -0.1, C.ink, group);
     }
     for (const x of [-0.65, 0.65]) this.box(0.3, 0.6, 0.3, x, 1.05, -0.14, color, group);
+    if (keeper) this.blocker(group);
     const stick = this.box(0.075, 1.2, 0.075, 0.8, 0.57, -0.35, 0x435967, group); stick.rotation.x = -0.5;
     this.box(0.6, 0.09, 0.13, 0.6, 0.1, -0.7, C.ink, group);
     const shadow = this.mesh(new THREE.CircleGeometry(0.75, 20), 0x95b9c5, true);
@@ -188,11 +259,13 @@ export class Rink {
   render(game: Game) {
     frameRink(this.camera, this.width, this.height, game);
     [...game.attackers, ...game.defenders].forEach((p, i) => {
-      const model = this.players[i];
-      model.position.set(p.x, 0, p.z);
-      const skating = game.phase === 'AUTO_PLAY' || game.phase === 'REBOUND' || (game.phase === 'EXECUTING_ACTION' && (i >= 3 || (game.intent.kind === 'pass' && i !== game.intent.target)));
+        const model = this.players[i];
+        const dx = p.x - model.position.x, dz = p.z - model.position.z;
+        model.position.set(p.x, 0, p.z);
+        const skating = !game.paused && !game.terminal && game.introRemaining <= 0 && !(i >= 3 && game.actionPower === 'freeze') && Math.hypot(dx, dz) > 0.00001;
+      (model.children[0] as THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial>).material.color.setHex(i < 3 ? C.teal : game.actionPower === 'freeze' ? 0x69dfff : C.red);
       model.rotation.z = skating ? Math.sin(game.motion * 13 + i) * 0.09 : 0;
-      model.rotation.y = i >= 3 ? Math.PI : -0.1;
+        if (skating) model.rotation.y = Math.atan2(-dx, -dz);
       if (game.phase === 'SUCCESS' && i < 3) model.position.y = Math.abs(Math.sin(game.motion * 10 + i)) * 1.2;
       if (game.phase === 'FAIL' && i === game.carrier) model.rotation.z = -Math.min(1.2, game.elapsed * 0.4);
       model.children.filter(child => child.name === 'leg').forEach((leg, j) => { leg.rotation.x = skating ? Math.sin(game.motion * 14 + j * Math.PI) * 0.4 : 0; });
@@ -200,8 +273,13 @@ export class Rink {
     this.goalie.position.set(game.goalie.x, 0, game.goalie.z);
     this.goalie.rotation.y = Math.PI;
     this.goalie.rotation.z = -game.goalieVelocity * 0.055;
+    this.goalie.rotation.x = game.phase === 'SUCCESS' ? -Math.min(1.35, game.terminalTime * (game.actionPower === 'fire' ? 6 : 2)) : game.phase === 'REBOUND' ? -0.35 : 0;
+    if (game.phase === 'SUCCESS' && game.actionPower === 'fire') this.goalie.position.z -= Math.min(1.4, game.terminalTime * 4);
+    this.net.position.z = game.phase === 'SUCCESS' ? Math.sin(game.terminalTime * 48) * Math.exp(-game.terminalTime * 3) * (game.actionPower === 'fire' ? 0.65 : 0.35) : 0;
     const cover = game.goalieGlove;
     this.glove.position.set(cover.x, (cover.height ?? 0) + 0.14, cover.z);
+    this.glove.rotation.x = -0.25;
+    this.glove.rotation.z = -game.goalieVelocity * 0.025;
     const shoulder = new THREE.Vector3(game.goalie.x, 1.4, game.goalie.z);
     this.gloveArm.position.copy(shoulder).lerp(this.glove.position, 0.5);
     this.gloveArm.scale.z = shoulder.distanceTo(this.glove.position);
@@ -216,6 +294,7 @@ export class Rink {
     this.targets.forEach((m, i) => {
       m.visible = game.paused && i !== game.carrier;
       m.position.set(game.attackers[i].x, 0.065, game.attackers[i].z);
+      m.scale.setScalar(game.reception.pickupRadius / 1.05);
     });
     this.preview.forEach((m, i) => {
       const a = game.preview[i], b = game.preview[i + 1];
@@ -225,18 +304,26 @@ export class Rink {
       m.position.set((a.x + b.x) / 2, 0.16 + ((a.height ?? 0) + (b.height ?? 0)) / 2, (a.z + b.z) / 2);
       m.scale.set(0.12, 0.06, Math.hypot(dx, dy, dz) + 0.08);
       m.lookAt(b.x, 0.16 + (b.height ?? 0), b.z);
-      (m.material as THREE.MeshBasicMaterial).color.setHex(game.intent.kind === 'pass' ? C.teal : game.intent.kind === 'shot' ? C.gold : 0xf18ca0);
+      (m.material as THREE.MeshBasicMaterial).color.setHex(game.intent.kind === 'pass' ? C.teal : game.intent.kind === 'shot' ? C.gold : 0x80bddb);
     });
     this.trail.forEach((m, i) => {
       const p = game.trail[i]; m.visible = !!p && !game.paused;
-      if (p) { m.position.set(p.x, 0.15 + (p.height ?? 0), p.z); m.scale.setScalar(0.04 + i / 28 * 0.23); }
+      if (p) { m.position.set(p.x, 0.15 + (p.height ?? 0), p.z); m.scale.setScalar((0.04 + i / 28 * 0.23) * (game.actionPower === 'fire' ? 3 : 1)); }
+      (m.material as THREE.MeshBasicMaterial).color.setHex(game.actionPower === 'fire' ? (i % 2 ? 0xff5722 : C.gold) : game.actionPower === 'curve' ? 0xc180ff : C.teal);
     });
     this.particles.forEach((m, i) => {
       m.visible = game.impact > 0.1 && !game.paused;
-      const age = 1 - game.impact, angle = i * 2.399;
+      const age = 1 - Math.min(1, game.impact), angle = i * 2.399;
       m.position.set(game.puck.x + Math.cos(angle) * age * 4, 0.2 + Math.sin(age * Math.PI) * (1 + i % 3), game.puck.z + Math.sin(angle) * age * 4);
       m.rotation.set(age * 6, angle, age * 3);
       m.scale.setScalar(game.impact);
+    });
+    this.spray.forEach((m, i) => {
+      const skater = Math.floor(i / 6), p = [...game.attackers, ...game.defenders][skater];
+      const age = (game.motion * 2 + (i % 6) / 6) % 1;
+      m.visible = !game.paused && !game.terminal && !(skater >= 3 && game.actionPower === 'freeze');
+      m.position.set(p.x + Math.sin(i * 2.4) * age * 0.7, 0.08 + Math.sin(age * Math.PI) * 0.35, p.z + age * 1.5);
+      m.scale.setScalar((1 - age) * 0.12);
     });
     this.renderer.render(this.scene, this.camera);
     this.gl.endFrameEXP();
@@ -246,7 +333,7 @@ export class Rink {
     const geometries = new Set<THREE.BufferGeometry>();
     const materials = new Set<THREE.Material>();
     this.scene.traverse(object => {
-      if (object instanceof THREE.Mesh) {
+      if (object instanceof THREE.Mesh || object instanceof THREE.LineSegments) {
         geometries.add(object.geometry);
         (Array.isArray(object.material) ? object.material : [object.material]).forEach(m => materials.add(m));
       }
