@@ -58,7 +58,7 @@ Audio is enabled by default: the campaign and gameplay headers include an **SND 
 
 New players see **How to Play** and can start four guided practice lessons. Reopen **HOW TO PLAY** from the campaign to replay them. Practice does not award campaign stars or unlock levels.
 
-One skater from each team chases the puck while supporting players move in formation. Defenders skate faster and close lanes. Loose pucks stay live until collected, including after they stop. Your original passer can recover one without earning a pass star; red possession ends the attempt.
+One skater from each team chases the puck while supporting players move in formation. Receivers keep a reachable pickup lane instead of repeatedly swapping the chase. Defenders pressure the travel direction with limited anticipation and need a close stick touch to intercept; a clear pass beside them can get through. Loose pucks stay live until collected, including after they stop. Your original passer can recover one without earning a pass star; red possession ends the attempt.
 
 - **Teal** players are your team. **Red** players intercept. **Gold** is the goalie.
 - When the play pauses, drag anywhere on the screen, including the lower instruction area. Your finger's movement draws a trajectory anchored to the gold puck ring. Start below the puck to keep the preview visible, then lift to execute. Taps on the ice do nothing; a second finger cancels the stroke.
@@ -74,6 +74,8 @@ One skater from each team chases the puck while supporting players move in forma
 Use the **‹** back button to return to the campaign. A goal unlocks the next level regardless of stars. Each level has three objectives shown on its card and results screen. Stars must be earned together in one run; only the best run is saved, and tied runs do not merge objectives. Retry restarts the selected level with fresh powerups. The five opening scenarios cover breakout, hooked passes, one-timers, traffic, and rebounds. Levels 6–10 add Fire Puck, Mega Curve, Freeze, tight lanes, and a four-decision combo. Levels 11–16 build on those skills with lead retrieval, banks, receiver choices, rebound finishes, traffic, and a finale. A second save ends the attempt. You can still shoot early or choose another teammate.
 
 At designated decisions, tap the yellow **TAP TO CHARGE** powerup button before drawing. Fire Puck requires a shot and makes it extremely fast; Mega Curve amplifies the bend shown in the preview; Freeze holds defenders in place during the next action, but they can still intercept. Charges survive canceled swipes. Powerups are granted by the scenario, with no inventory or purchases.
+
+Gameplay feel pass: passes, receiver pursuit, and the opening skate are faster, with a shorter guided rebound pause. Lead passes have slightly more collection reach, and banks keep more speed after contact. Receivers hold their position during a bank approach and chase after the bounce; a puck that actually touches a teammate can still be collected before the wall. Mega Curve retains its exaggerated bend with less sensitivity to uneven finger sampling. Corner targets now tolerate a slightly imprecise thumb finish, while center shots remain aimed at the pads. Skaters turn smoothly instead of snapping to each new heading. Try near-corner swipes from several starting points on the screen, then deliberately aim wide or high to check that placement still matters.
 
 ## 4. Quick playtest checklist
 
@@ -148,9 +150,9 @@ npx.cmd expo export --platform ios
 npx.cmd expo export --platform android
 ```
 
-The tests cover three-star routes through all sixteen levels, both receiver choices in Double Take, old-save compatibility, single-run persistence rules, unlocks, powerup lifetimes, curve preservation, full simulation freeze, interception, scoring, save/rebound behavior, missed shots, canceled input, retry state, and phone-size camera projection. Exports check production bundles; they do not install an app on your phone.
+The tests replay three-star routes through all sixteen levels at 120, 60, 30, and 20 fps and cover both receiver choices in Double Take, old-save compatibility, single-run persistence rules, unlocks, powerup lifetimes, curve preservation, full simulation freeze, interception, scoring, save/rebound behavior, missed shots, canceled input, retry state, and phone-size camera projection. Exports check production bundles; they do not install an app on your phone.
 
-Automated checks and iOS bundling were run during implementation. Physical iPhone rendering, touch feel, and frame rate still need the device playtest above.
+This gameplay tuning pass was checked with `npm run typecheck` and `npm test`. Physical iPhone rendering, touch feel, and frame rate still need the device playtest above.
 
 ## Where to change things
 

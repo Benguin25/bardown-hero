@@ -4,6 +4,14 @@ import { Game, Point, GOAL_CORNERS, NET_Z, NET_HEIGHT, NET_HALF_WIDTH } from './
 
 const C = { ice: 0xdceef0, teal: 0x18dcb6, red: 0xef4d65, ink: 0x10293c, gold: 0xffcf5a };
 
+// Use exponential damping so a turn takes the same amount of real time on a
+// 30 Hz phone as it does on a 60 Hz phone.  The wrapped delta also prevents a
+// skater from taking the long way around when its heading crosses +/- PI.
+export function dampAngle(current: number, target: number, seconds: number, speed = 15) {
+  const delta = Math.atan2(Math.sin(target - current), Math.cos(target - current));
+  return current + delta * (1 - Math.exp(-speed * Math.max(0, seconds)));
+}
+
 export function frameRink(camera: THREE.OrthographicCamera, width: number, height: number, game: Game) {
   const aspect = width / height;
   const follow = Math.max(-5, Math.min(1, game.puck.z * 0.22));
@@ -57,6 +65,7 @@ export class Rink {
   private goalPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -NET_Z);
   private width = 1;
   private height = 1;
+  private lastRenderTime = Number.NaN;
 
   constructor(private gl: ExpoWebGLRenderingContext) {
     // Keep Three pinned to r162: Expo's native context can satisfy the WebGL1
@@ -249,8 +258,9 @@ export class Rink {
     const face = this.ray.ray.intersectPlane(this.goalPlane, new THREE.Vector3());
     if (face && Math.abs(face.x) <= NET_HALF_WIDTH + 0.8 && face.y >= 0.14 && face.y <= NET_HEIGHT + 2) {
       const p = { x: face.x, z: NET_Z, height: face.y - 0.14 };
-      // Small magnetic corner targets remain easy to hit on a phone.
-      const corner = GOAL_CORNERS.find(c => Math.hypot(c.x - p.x, c.height - p.height) < 0.65);
+      // The elevated face is foreshortened in portrait, so give each authored
+      // corner a forgiving but still distinct phone-sized capture area.
+      const corner = GOAL_CORNERS.find(c => Math.abs(c.x - p.x) < 0.95 && Math.abs(c.height - p.height) < 0.8);
       return corner ? { x: corner.x, z: corner.z, height: corner.height } : p;
     }
     return this.icePoint(x, y);
@@ -258,6 +268,8 @@ export class Rink {
 
   render(game: Game) {
     frameRink(this.camera, this.width, this.height, game);
+    const renderDt = Number.isFinite(this.lastRenderTime) ? Math.min(0.05, Math.max(0, game.elapsed - this.lastRenderTime)) : 0;
+    this.lastRenderTime = game.elapsed;
     [...game.attackers, ...game.defenders].forEach((p, i) => {
         const model = this.players[i];
         const dx = p.x - model.position.x, dz = p.z - model.position.z;
@@ -265,7 +277,10 @@ export class Rink {
         const skating = !game.paused && !game.terminal && game.introRemaining <= 0 && !(i >= 3 && game.actionPower === 'freeze') && Math.hypot(dx, dz) > 0.00001;
       (model.children[0] as THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial>).material.color.setHex(i < 3 ? C.teal : game.actionPower === 'freeze' ? 0x69dfff : C.red);
       model.rotation.z = skating ? Math.sin(game.motion * 13 + i) * 0.09 : 0;
-        if (skating) model.rotation.y = Math.atan2(-dx, -dz);
+        if (skating) {
+          const heading = Math.atan2(-dx, -dz);
+          model.rotation.y = renderDt > 0 ? dampAngle(model.rotation.y, heading, renderDt) : heading;
+        }
       if (game.phase === 'SUCCESS' && i < 3) model.position.y = Math.abs(Math.sin(game.motion * 10 + i)) * 1.2;
       if (game.phase === 'FAIL' && i === game.carrier) model.rotation.z = -Math.min(1.2, game.elapsed * 0.4);
       model.children.filter(child => child.name === 'leg').forEach((leg, j) => { leg.rotation.x = skating ? Math.sin(game.motion * 14 + j * Math.PI) * 0.4 : 0; });

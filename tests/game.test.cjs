@@ -295,6 +295,16 @@ test('pass assist preserves extravagant loops and snaps only the endpoint', () =
   assert.deepEqual(p[0], raw[0]); assert.deepEqual(p.at(-1), { x: 6, z: 4 });
   assert.ok(p.some(x => x.x < -6)); assert.ok(p.some(x => x.x > 7));
 });
+test('pass assistance follows stroke distance rather than touch sample count', () => {
+  const path = cleanPath([
+    { x: 0, z: 0 }, { x: 1, z: 0 }, { x: 9, z: 0 }, { x: 10, z: 0 },
+  ], { x: 10, z: 1 });
+  // The third sample is 90% through the stroke, even though it is only the
+  // second interior array entry. It receives the final-quarter correction.
+  assert.equal(path[1].z, 0);
+  assert.ok(path[2].z > 0.1);
+  assert.deepEqual(path.at(-1), { x: 10, z: 1 });
+});
 test('tap and canceled strokes keep the decision open', () => {
   const g = new Game(); pause(g); g.release([g.puck]); assert.ok(g.paused);
   g.aim([g.puck, { x: 6, z: 4 }]); g.cancel(); assert.ok(g.paused); assert.equal(g.preview.length, 0);

@@ -21,9 +21,12 @@ const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
 export const SKATER_SPACING = 1.85;
 export const DEFAULT_RECEPTION = {
-  pickupRadius: 0.9, pursuitRadius: 6, skateSpeed: 7,
+  // A receiver should be able to skate onto a sensible lead, but a pass still
+  // has to enter their lane. These values are deliberately generous only once
+  // the player has drawn the puck into reachable ice.
+  pickupRadius: 0.98, pursuitRadius: 7, skateSpeed: 7.8,
   assistRadius: 1.4, assistStrength: 0.18, maxAssist: 0.2,
-  coastDrag: 16, boardRetention: 0.84,
+  coastDrag: 13, boardRetention: 0.88,
 };
 export type ReceptionConfig = typeof DEFAULT_RECEPTION;
 // Keep the receiver fixed and give everyone else a distinct patch of ice.
@@ -177,8 +180,13 @@ export function cleanPath(raw: Point[], end?: Point): Point[] {
   if (end) {
     const delta = { x: end.x - smooth[smooth.length - 1].x, z: end.z - smooth[smooth.length - 1].z };
     // Assistance only bends the final quarter of a pass, never straightens it.
+    const lengths = smooth.map((p, i) => i ? distance(smooth[i - 1], p) : 0);
+    const total = lengths.reduce((sum, length) => sum + length, 0);
+    let traveled = 0;
     for (let i = 1; i < smooth.length; i++) {
-      const weight = Math.pow(Math.max(0, (i / (smooth.length - 1) - 0.75) * 4), 2);
+      traveled += lengths[i];
+      const progress = traveled / Math.max(total, 0.001);
+      const weight = Math.pow(Math.max(0, (progress - 0.75) * 4), 2);
       smooth[i] = { x: smooth[i].x + delta.x * weight, z: smooth[i].z + delta.z * weight };
     }
   }
@@ -275,6 +283,7 @@ export class Game {
   bankPasses = 0;
   leadPasses = 0;
   private actionBanked = false;
+  private bankApproach = false;
   curvedActions = 0;
   frozenActions = 0;
   goalHeight = 0;
@@ -307,6 +316,10 @@ export class Game {
   private freeVelocity: Point | null = null;
   private pickupPlans: (Point | null)[] = [null, null, null];
   private pickupReplan = 0;
+  // Keep a skater committed to a lane for an action. Re-evaluating the nearest
+  // player every physics slice made two nearby teammates twitch and swap jobs.
+  private pursuingAttacker = -1;
+  private pressureDefender = -1;
   private lastHeading: Point = { x: 0, z: -1 };
   private toDefense: Point[] = [];
   private toAttack: Point[] = [];
@@ -355,8 +368,15 @@ export class Game {
     this.preview = cleanPath([copy(this.puck), ...stroke.slice(1).map(p => ({ x: p.x, z: p.z }))], end);
     if (this.armed === 'curve' && this.preview.length > 2) {
       const start = this.preview[0], finish = this.preview[this.preview.length - 1];
+      const lengths = this.preview.map((p, i) => i ? distance(this.preview[i - 1], p) : 0);
+      const total = lengths.reduce((sum, length) => sum + length, 0);
+      let traveled = 0;
       this.preview = this.preview.map((p, i, a) => {
-        const baseline = mix(start, finish, i / (a.length - 1));
+        traveled += lengths[i];
+        // Curve power follows distance along the stroke, not how often a phone
+        // happened to report touch samples. This makes a deliberate hook
+        // repeatable across devices and frame rates.
+        const baseline = mix(start, finish, traveled / Math.max(total, 0.001));
         return { ...p, x: baseline.x + (p.x - baseline.x) * 1.8, z: baseline.z + (p.z - baseline.z) * 1.8 };
       });
     }
@@ -397,6 +417,8 @@ export class Game {
     // add a large percentage to a long cross-ice pass.
     this.actionCurved = this.preview.some(p => Math.abs((p.x - start.x) * (end.z - start.z) - (p.z - start.z) * (end.x - start.x)) / Math.max(direct, 0.01) >= 1.5)
       || length > direct * 1.12 + 0.6;
+    const bankAction = this.preview.some(p => p.bounce);
+    this.bankApproach = bankAction;
     this.path = this.preview.map(copy);
     // Shots ending just in front of the net continue on their final heading.
     if (this.intent.kind === 'shot') {
@@ -410,7 +432,7 @@ export class Game {
     this.preview = [];
     this.segment = 0;
     this.segmentOffset = 0;
-    this.speed = 23 + clamp(length / Math.max(seconds, 0.1) / 20, 0, 5);
+    this.speed = 24 + clamp(length / Math.max(seconds, 0.1) / 20, 0, 5);
     if (this.actionPower === 'fire') this.speed *= 2.8;
     this.actionDistance = 0;
     this.actionTime = 0;
@@ -432,6 +454,15 @@ export class Game {
     this.toAttack = this.attackers.map((p, i) => this.intent.kind === 'pass' && i !== receiver ? copy(next.support[others.indexOf(i)]) : copy(p));
     this.toAttack = spaceSkaters(this.toAttack, receiver);
     this.planReception(this.path, this.speed);
+    this.pursuingAttacker = this.collectors.filter(p => this.pickupPlans[p.id])
+      .sort((a, b) => distance(a, this.puck) - distance(b, this.puck))[0]?.id ?? -1;
+    // The approach to a bank is committed at release. Letting a teammate pick
+    // it up before contact makes a drawn board pass feel inconsistent.
+    if (bankAction) {
+      this.pickupPlans = [null, null, null];
+      this.pursuingAttacker = -1;
+    }
+    this.pressureDefender = this.defenders.reduce((best, p, i, all) => distance(p, this.puck) < distance(all[best], this.puck) ? i : best, 0);
     this.phase = 'EXECUTING_ACTION';
     this.message = this.intent.kind === 'pass' ? 'THREAD IT.' : this.intent.kind === 'shot' ? 'LET IT RIP.' : 'INTO SPACE.';
     this.callout = this.actionPower === 'fire' ? 'FIRE PUCK!' : this.actionPower === 'curve' ? 'MEGA CURVE!' : this.actionPower === 'freeze' ? 'ICE COLD!' : '';
@@ -463,7 +494,7 @@ export class Game {
     if (this.terminal) { this.terminalTime += dt; return; }
     if (this.phase === 'AUTO_PLAY') {
       this.routeTime += dt;
-      const t = Math.min(1, this.routeTime / 1.15);
+      const t = Math.min(1, this.routeTime / 0.92);
       const ease = t * t * (3 - 2 * t);
       const moment = this.moment;
       const others = [0, 1, 2].filter(i => i !== this.carrier);
@@ -476,7 +507,7 @@ export class Game {
     }
     if (this.phase === 'REBOUND') {
       this.routeTime += dt * slow;
-      const t = Math.min(1, this.routeTime / 0.8);
+      const t = Math.min(1, this.routeTime / 0.58);
       const p = mix(this.reboundStart, this.reboundEnd, t);
       p.x += Math.sin(t * Math.PI) * 1.6;
       this.puck = p;
@@ -488,6 +519,9 @@ export class Game {
       return;
     }
     let remaining = dt * slow;
+    // Cap movement increments so close interceptions and skate races stay
+    // stable across common phone frame rates.
+    const physicsStep = 1 / 120;
     // Swept substeps prevent fast shots tunneling through defenders or the goalie.
     while (remaining > 0.000001 && this.phase === 'EXECUTING_ACTION') {
       const a = this.path[this.segment];
@@ -500,7 +534,7 @@ export class Game {
       let hit: ReturnType<typeof boardHit> = null;
       if (this.freeVelocity) {
         const speed = distance(this.freeVelocity, { x: 0, z: 0 });
-        stepDt = Math.min(remaining, 0.02, 0.12 / Math.max(speed, 0.1));
+        stepDt = Math.min(remaining, physicsStep, 0.12 / Math.max(speed, 0.1));
         const nextSpeed = Math.max(0, speed - this.reception.coastDrag * stepDt);
         const travel = (speed + nextSpeed) * 0.5 * stepDt;
         const direction = speed > 0 ? { x: this.freeVelocity.x / speed, z: this.freeVelocity.z / speed } : { x: 0, z: 0 };
@@ -512,7 +546,7 @@ export class Game {
         this.freeVelocity = { x: direction.x * slowed, z: direction.z * slowed };
         step = distance(previous, this.puck);
       } else {
-        step = Math.min(this.speed * remaining, 0.12, length - this.segmentOffset);
+        step = Math.min(this.speed * remaining, this.speed * physicsStep, 0.12, length - this.segmentOffset);
         stepDt = step / this.speed;
         this.segmentOffset += step;
         this.puck = mix(a, b, this.segmentOffset / length);
@@ -523,10 +557,13 @@ export class Game {
       this.actionTime += stepDt;
       this.moveDefense(stepDt);
       this.moveReceivers(stepDt);
-      const pursuing = this.collectors.filter(p => this.pickupPlans[p.id]).sort((p, q) => distance(p, this.puck) - distance(q, this.puck))[0];
+      const pursuing = this.collectors.find(p => p.id === this.pursuingAttacker && this.pickupPlans[p.id])
+        ?? this.collectors.filter(p => this.pickupPlans[p.id]).sort((p, q) => distance(p, this.puck) - distance(q, this.puck))[0];
       this.separateSkaters(pursuing?.id ?? (this.intent.kind === 'pass' ? this.intent.target : this.carrier));
       this.moveGoalie(stepDt, this.intent.kind === 'shot' ? previous : undefined);
-      if ((this.puck.height ?? 0) < 2.1 && this.defenders.some(d => distance(d, this.puck) < 1.05)) { this.fail('PICKED OFF. Bend around the red jerseys.'); break; }
+      // A defender needs a clear stick-length touch. The smaller radius keeps
+      // an otherwise clean lead from feeling like it was stolen by a hitbox.
+      if ((this.puck.height ?? 0) < 2.1 && this.defenders.some(d => distance(d, this.puck) < 0.6)) { this.fail('PICKED OFF. Bend around the red jerseys.'); break; }
       if (Math.abs(this.puck.x) > BOARD_X + 0.001 || Math.abs(this.puck.z) > BOARD_Z + 0.001) { this.fail('OFF THE ICE. Aim the bank inside the boards.'); break; }
       if (this.intent.kind !== 'shot' && this.puck.z < NET_Z - 0.1 && this.puck.z > -20.2 && Math.abs(this.puck.x) < NET_HALF_WIDTH + 0.15) { this.fail('HIT THE CAGE. Bank around the outside of the net.'); break; }
       if (previous.z > this.goalie.z && this.puck.z <= this.goalie.z) {
@@ -611,10 +648,19 @@ export class Game {
     const end = { x: this.puck.x + this.freeVelocity.x / Math.max(speed, 0.001) * runout, z: this.puck.z + this.freeVelocity.z / Math.max(speed, 0.001) * runout };
     const path = bankPath([this.puck, end]);
     this.planReception(path, Math.max(0.5, speed * 0.65));
-    // A stopped puck remains playable, even outside the initial passing reach.
-    const target = path[path.length - 1];
-    const closest = this.collectors.sort((a, b) => distance(a, this.puck) - distance(b, this.puck))[0];
-    this.pickupPlans = this.attackers.map((_, i) => i === closest?.id ? copy(target) : null);
+    const reachable = this.collectors.filter(p => this.pickupPlans[p.id]);
+    if (reachable.length) {
+      // Preserve viable intercept points across replans; only transfer the
+      // chase when the assigned skater no longer has a reachable route.
+      if (!reachable.some(p => p.id === this.pursuingAttacker)) {
+        this.pursuingAttacker = reachable.sort((a, b) => distance(a, this.puck) - distance(b, this.puck))[0].id;
+      }
+    } else {
+      // A stopped puck remains playable even outside the initial pass range.
+      const closest = this.collectors.sort((a, b) => distance(a, this.puck) - distance(b, this.puck))[0];
+      this.pickupPlans = this.attackers.map((_, i) => i === closest?.id ? copy(path[path.length - 1]) : null);
+      this.pursuingAttacker = closest?.id ?? -1;
+    }
     this.pickupReplan = 0.12;
   }
 
@@ -634,22 +680,33 @@ export class Game {
   private moveDefense(dt: number) {
     if (this.actionPower === 'freeze') return;
     const closest = this.defenders.reduce((best, p, i, all) => distance(p, this.puck) < distance(all[best], this.puck) ? i : best, 0);
+    // Change who pressures only when the other defender has clearly won the
+    // race. This prevents visible role-flipping as the puck crosses center.
+    if (this.pressureDefender < 0 || distance(this.defenders[closest], this.puck) + 0.65 < distance(this.defenders[this.pressureDefender], this.puck)) this.pressureDefender = closest;
     const velocity = this.freeVelocity ?? { x: this.lastHeading.x * this.speed, z: this.lastHeading.z * this.speed };
-    const target = { x: this.puck.x + velocity.x * 0.18, z: this.puck.z + velocity.z * 0.18 };
+    const velocityLength = Math.max(distance(velocity, { x: 0, z: 0 }), 0.001);
+    const lead = Math.min(2.4, velocityLength * 0.12);
+    const target = { x: this.puck.x + velocity.x / velocityLength * lead, z: this.puck.z + velocity.z / velocityLength * lead };
     this.defenders = this.defenders.map((p, i) => {
       // Support shades toward the live passing lane while one player pressures.
       const formation = this.toDefense[i] ?? p;
       const cover = mix(formation, this.puck, 0.12);
-      return this.skateToward(p, i === closest ? target : cover, 4.8, dt);
+      return this.skateToward(p, i === this.pressureDefender ? target : cover, 4.8, dt);
     });
   }
 
   private moveReceivers(dt: number) {
+    // The puck is committed to the first board contact. Hold the formation on
+    // its approach, then let normal loose-puck pursuit take over after impact.
+    // A skater can still collect it at the ordinary stick radius below.
+    if (this.bankApproach) return;
     if (this.freeVelocity) {
       this.pickupReplan -= dt;
       if (this.pickupReplan <= 0) this.planFreeReception();
     }
-    const planned = this.collectors.filter(p => this.pickupPlans[p.id]).sort((a, b) => distance(a, this.puck) - distance(b, this.puck))[0];
+    const planned = this.collectors.find(p => p.id === this.pursuingAttacker && this.pickupPlans[p.id])
+      ?? this.collectors.filter(p => this.pickupPlans[p.id]).sort((a, b) => distance(a, this.puck) - distance(b, this.puck))[0];
+    if (planned) this.pursuingAttacker = planned.id;
     const closest = planned ?? this.collectors.sort((a, b) => distance(a, this.path[this.path.length - 1] ?? this.puck) - distance(b, this.path[this.path.length - 1] ?? this.puck))[0];
     this.attackers = this.attackers.map((p, i) => {
       const pickup = this.intent.kind !== 'shot' && i === closest?.id ? this.pickupPlans[i] ?? this.path[this.path.length - 1] ?? this.puck : null;
@@ -665,6 +722,7 @@ export class Game {
   private bounce(flipX: boolean, flipZ: boolean) {
     if (!this.freeVelocity) return;
     this.actionBanked = true;
+    this.bankApproach = false;
     this.freeVelocity.x *= (flipX ? -1 : 1) * this.reception.boardRetention;
     this.freeVelocity.z *= (flipZ ? -1 : 1) * this.reception.boardRetention;
     this.path = []; this.segment = 0; this.segmentOffset = 0;
@@ -724,6 +782,7 @@ export class Game {
   private receive(receiver: number) {
     if (receiver === this.carrier) {
       this.freeVelocity = null; this.pickupPlans = [null, null, null]; this.path = []; this.trail = [];
+      this.pursuingAttacker = -1; this.pressureDefender = -1;
       this.actionPower = null; this.intent = { kind: 'loose' }; this.phase = 'PAUSED_FOR_INPUT';
       this.callout = 'RECOVERED!'; this.message = 'Back on your stick. Find a teammate or take the shot.';
       this.emit('pass', 0); return;
@@ -739,6 +798,7 @@ export class Game {
     // Keep the puck at the actual contact point within stick reach.
     this.freeVelocity = null;
     this.pickupPlans = [null, null, null];
+    this.pursuingAttacker = -1; this.pressureDefender = -1;
     // A late pass stays in the shooting setup instead of adding another stage.
     this.path = [];
     this.intent = { kind: 'loose' };
@@ -754,6 +814,7 @@ export class Game {
     this.emit('save');
     this.freeVelocity = null;
     this.pickupPlans = [null, null, null];
+    this.pursuingAttacker = -1; this.pressureDefender = -1;
     this.callout = 'SECOND CHANCE!';
     this.actionPower = null;
     this.goalieRecovery = 0.65;

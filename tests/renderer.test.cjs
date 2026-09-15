@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { WebGLRenderer } = require('three');
 const THREE = require('three');
-const { Rink, frameRink } = require('../.test-build/rink.js');
+const { Rink, frameRink, dampAngle } = require('../.test-build/rink.js');
 const { Game, LEVELS, GOAL_CORNERS, NET_Z, NET_HEIGHT } = require('../.test-build/game.js');
 
 test('native GL contexts reach initialization without the r163 WebGL1 rejection', () => {
@@ -52,6 +52,49 @@ test('screen aiming hits each elevated corner at multiple phone viewport sizes',
     const over = rink.screenPoint({ x: 0, z: NET_Z, height: NET_HEIGHT + 0.5 });
     assert.ok(rink.aimPoint(over.x, over.y).height > NET_HEIGHT);
   }
+});
+
+test('phone-sized near-corner aim snaps to the authored target without pulling the middle of the net', () => {
+  const rink = Object.create(Rink.prototype);
+  rink.width = 390; rink.height = 600;
+  rink.camera = new THREE.OrthographicCamera(-14, 14, 24, -24, 0.1, 150);
+  frameRink(rink.camera, rink.width, rink.height, new Game());
+  rink.ray = new THREE.Raycaster();
+  rink.plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.14);
+  rink.goalPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -NET_Z);
+  for (const corner of GOAL_CORNERS) {
+    const near = rink.screenPoint({ x: corner.x + (corner.x < 0 ? 0.85 : -0.85), z: NET_Z, height: corner.height + 0.7 });
+    assert.deepEqual(rink.aimPoint(near.x, near.y), { x: corner.x, z: corner.z, height: corner.height });
+  }
+  const middle = rink.screenPoint({ x: 0, z: NET_Z, height: NET_HEIGHT / 2 });
+  const aim = rink.aimPoint(middle.x, middle.y);
+  assert.ok(Math.abs(aim.x) < 0.001 && Math.abs(aim.height - NET_HEIGHT / 2) < 0.001);
+});
+
+test('wide and over-the-bar face aims stay outside every corner capture area', () => {
+  for (const [width, height] of [[320, 420], [390, 600], [430, 680]]) {
+    const rink = Object.create(Rink.prototype);
+    rink.width = width; rink.height = height;
+    rink.camera = new THREE.OrthographicCamera(-14, 14, 24, -24, 0.1, 150);
+    frameRink(rink.camera, width, height, new Game());
+    rink.ray = new THREE.Raycaster();
+    rink.plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.14);
+    rink.goalPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -NET_Z);
+    const wide = rink.screenPoint({ x: 3.35, z: NET_Z, height: 3.5 });
+    const wideAim = rink.aimPoint(wide.x, wide.y);
+    assert.ok(wideAim.x > 3.2, `${width}x${height}: wide aim was corrected inside the post`);
+    const high = rink.screenPoint({ x: 2.25, z: NET_Z, height: 4.55 });
+    const highAim = rink.aimPoint(high.x, high.y);
+    assert.ok(highAim.height > NET_HEIGHT, `${width}x${height}: over-bar aim was corrected to a corner`);
+  }
+});
+
+test('skater heading damping is frame-rate independent and takes the short turn across the angle seam', () => {
+  let thirty = 3.05, sixty = 3.05;
+  for (let i = 0; i < 15; i++) thirty = dampAngle(thirty, -3.05, 1 / 30);
+  for (let i = 0; i < 30; i++) sixty = dampAngle(sixty, -3.05, 1 / 60);
+  assert.ok(Math.abs(thirty - sixty) < 1e-10);
+  assert.ok(thirty > 3.05, 'crosses the seam by the short positive turn');
 });
 
 test('entire cage clears the compact rink margin at every puck distance and camera impact', () => {
