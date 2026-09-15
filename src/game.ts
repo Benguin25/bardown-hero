@@ -487,7 +487,10 @@ export class Game {
       if (this.introRemaining === 0) this.emit('start', 0.35);
       return;
     }
-    const slow = (this.phase === 'EXECUTING_ACTION' && this.puck.z < -14) || this.phase === 'REBOUND' ? 0.42 : 1;
+    // The dramatic goal-mouth time warp belongs to shots.  Passes that travel
+    // deep into the attacking zone should keep their committed pace so the
+    // receiver can skate onto the moving puck in stride.
+    const slow = (this.phase === 'EXECUTING_ACTION' && this.intent.kind === 'shot' && this.puck.z < -14) || this.phase === 'REBOUND' ? 0.42 : 1;
     this.elapsed += dt;
     this.motion += dt * (this.phase === 'SUCCESS' ? 0.35 : slow);
     this.impact = Math.max(0, this.impact - dt * 1.8);

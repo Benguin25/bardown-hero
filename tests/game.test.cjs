@@ -616,6 +616,38 @@ test('lead pass stays drawn into open space while the teammate skates to collect
   }
 });
 
+test('goal-mouth slow motion applies to shots only', () => {
+  const pass = passingSetup({ skateSpeed: 0 });
+  pass.release([pass.puck, { x: 0, z: -15.5 }]);
+  while (pass.puck.z >= -14) pass.update(1 / 60);
+  const passStart = { ...pass.puck };
+  pass.update(1 / 60);
+
+  const shot = passingSetup({ skateSpeed: 0 });
+  shot.release([shot.puck, { x: 0, z: -18 }]);
+  while (shot.puck.z >= -14) shot.update(1 / 60);
+  const shotStart = { ...shot.puck };
+  shot.update(1 / 60);
+
+  assert.ok(distance(passStart, pass.puck) > distance(shotStart, shot.puck) * 1.8,
+    'a deep pass should retain full speed while a shot enters the slow zone');
+});
+
+test('a good pass is met by a receiver instead of being shadowed', () => {
+  const g = passingSetup();
+  const raw = [g.puck, { x: 0, z: 2 }, { x: 5, z: -8 }];
+  g.release(raw, 0.5);
+  let separatedFrames = 0;
+  for (let i = 0; i < 40 && g.phase === 'EXECUTING_ACTION'; i++) {
+    g.update(1 / 60);
+    if (distance(g.puck, g.attackers[1]) > 0.2) separatedFrames++;
+  }
+  assert.ok(separatedFrames >= 5, 'receiver should approach a contact point ahead of the puck');
+  for (let i = 0; i < 600 && !g.paused && !g.terminal; i++) g.update(1 / 60);
+  assert.equal(g.phase, 'PAUSED_FOR_INPUT');
+  assert.equal(g.carrier, 1);
+});
+
 test('pickup radius is configurable and skaters can recover beyond initial pursuit range', () => {
   for (const radius of [0.4, 1.2]) {
     const g = passingSetup({ pickupRadius: radius, skateSpeed: 0 });
