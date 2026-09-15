@@ -82,6 +82,11 @@ Do not optimize for hockey simulation.
 - Camera tracks play and may use scripted zooms/pans.
 - If this perspective becomes unreadable, use a higher isometric angle.
 - Semi-realistic hockey setting with intentionally over-the-top effects and animation.
+- Procedural skaters use lightweight helmet, visor, shoulder, jersey, stick, and skate shapes. Moving skaters face their route; set skaters smoothly turn toward the puck so formations read as a live play.
+- The rink uses a subtle ice sheen, contact shadows, detailed boards and netting, and low-cost rink-side light ribbons to imply a larger dark arena without textures or licensed branding.
+- Goals combine camera punch, slow motion, a wider particle burst, springing net movement, goalie reaction, and staggered team celebration. Saves, rebounds, passes, banks, and powerups retain their distinct trails, spray, poses, callouts, audio, and haptic feedback.
+- Campaign chapters share the dark/teal/yellow identity while using restrained teal, gold, blue, and violet accent rails for faster visual scanning. Animated callouts use a compact high-contrast arcade plate and must remain readable over play.
+- UI motion honors the device reduced-motion preference; gameplay timing and aiming behavior do not depend on decorative animation.
 
 ## Input
 One-finger swipe/draw anywhere on screen, with the preview anchored to the puck.

@@ -1,29 +1,31 @@
-Work on the current Bardown Hero repo and improve the moment-to-moment gameplay feel without adding major new systems.
+Now do a visual/presentation polish pass on Bardown Hero.
 
-Focus on:
+Do not redesign the core game or add large new systems. Make the existing game feel more like a finished arcade hockey game and less like a prototype.
 
-* tune passing so lead passes and passes slightly ahead of teammates feel forgiving but still skill-based
-* improve teammate puck pursuit/reception so players naturally skate onto passes rather than looking robotic
-* tune defender pressure/interceptions so failures feel deserved, not random
-* improve shot aiming and goalie balance so good corner shots reliably feel rewarding while bad shots can still be saved
-* tune curve sensitivity so exaggerated curves are fun and controllable
-* improve board-pass feel where needed
-* make player movement, puck movement, and pauses between decisions feel faster and more arcade-like
-* remove any awkward pauses, snapping, jitter, or obviously unnatural transitions you notice
+Improve the presentation where practical within the current React Native + Expo GL + Three.js architecture:
 
-Do not add currency, shops, accounts, multiplayer, cosmetics, or other meta systems.
+* improve player and goalie visual models while keeping them stylized and lightweight
+* improve skating, shooting, passing, goalie save, rebound, and celebration animations
+* make players visually face/react toward the puck and current play more naturally
+* improve rink/stadium atmosphere, lighting, ice appearance, shadows, boards, net, and background environment
+* make goals feel significantly more satisfying with better camera movement, particles, net reaction, player celebrations, crowd/audio feedback, and timing
+* add special feedback for genuinely exciting hockey moments such as BAR DOWN, post/crossbar hits, great passes, huge curves, bank assists, one-timers, and rebound goals
+* improve slow motion, screen shake, camera punch, trails, ice spray, impact effects, and animated callouts without making the screen unreadable
+* give the four campaign chapters slightly more visual identity if this can be done cleanly
+* polish menus/results/gameplay HUD wherever something still visibly feels like development UI
 
-Preserve the current swipe-anywhere input, 16-level campaign, progression, tutorial, powerups, audio, and existing mechanics.
+Keep the current dark/teal/yellow Bardown Hero identity rather than replacing it with a totally new design.
 
-Play through/reason through all 16 authored levels while making changes so existing intended routes still work.
+Do not use copyrighted NHL logos, teams, jerseys, arena branding, music, or other protected assets. Prefer original/procedural visuals.
 
-Add or update tests for any gameplay behavior you change.
+Keep performance suitable for a real iPhone. Avoid adding heavy dependencies unless clearly necessary.
+
+Preserve reduced-motion support and current gameplay behavior.
 
 Run:
 
 * npm run typecheck
 * npm test
+* Expo export/bundle checks if appropriate
 
-Update SPEC.md and launch.md with any meaningful behavior/tuning changes.
-
-Prioritize “this feels fun on a phone” over realism.
+Update SPEC.md and launch.md to reflect meaningful presentation changes.

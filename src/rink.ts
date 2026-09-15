@@ -60,6 +60,7 @@ export class Rink {
   private particles: THREE.Mesh[] = [];
   private net = new THREE.Group();
   private spray: THREE.Mesh[] = [];
+  private arenaGlow: THREE.Mesh[] = [];
   private ray = new THREE.Raycaster();
   private plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.14);
   private goalPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -NET_Z);
@@ -104,6 +105,14 @@ export class Rink {
     this.trail = Array.from({ length: 28 }, () => { const m = this.mesh(dot, C.teal, true); this.scene.add(m); return m; });
     this.particles = Array.from({ length: 20 }, () => { const m = this.mesh(new THREE.BoxGeometry(0.16, 0.16, 0.4), C.gold, true); this.scene.add(m); return m; });
     this.spray = Array.from({ length: 30 }, () => { const m = this.mesh(dot, 0xffffff, true); this.scene.add(m); return m; });
+    // Simple rink-side light ribbons suggest a larger arena without textures or
+    // another render pass. Keep them beyond the boards so they never obscure play.
+    this.arenaGlow = [-18, -9, 0, 9, 18].flatMap((z, i) => [-1, 1].map(side => {
+      const m = this.box(0.12, 0.35, 6.8, side * 12.15, 2.8, z, i % 2 ? 0x1d6070 : 0x28516a);
+      (m.material as THREE.MeshStandardMaterial).emissive.setHex(i % 2 ? 0x0b3b47 : 0x102b43);
+      (m.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.8;
+      return m;
+    }));
   }
 
   private mesh(geometry: THREE.BufferGeometry, color: number, unlit = false) {
@@ -161,6 +170,10 @@ export class Rink {
 
   private buildIce() {
     this.box(23, 0.6, 46, 0, -0.34, 0, C.ice);
+    const sheen = this.mesh(new THREE.PlaneGeometry(20.5, 43), 0xeafcff, true);
+    sheen.rotation.x = -Math.PI / 2; sheen.position.set(0, -0.025, 0); sheen.scale.x = 0.98;
+    (sheen.material as THREE.MeshBasicMaterial).transparent = true; (sheen.material as THREE.MeshBasicMaterial).opacity = 0.18;
+    this.scene.add(sheen);
     for (const x of [-11.3, 11.3]) {
       this.box(0.5, 1.1, 46, x, 0.5, 0, 0xf3f7f8);
       this.box(0.55, 0.18, 46, x, 1.06, 0, 0x32677c);
@@ -223,6 +236,10 @@ export class Rink {
     this.box(0.87, 0.12, 0.62, 0, 0.93, 0, 0xffffff, group);
     const head = this.mesh(new THREE.SphereGeometry(0.35, 12, 10), C.ink);
     head.position.set(0, 1.95, 0); group.add(head);
+    const helmet = this.mesh(new THREE.SphereGeometry(0.38, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.58), color, true);
+    helmet.position.set(0, 2.08, -0.01); group.add(helmet);
+    const visor = this.mesh(new THREE.BoxGeometry(0.46, 0.06, 0.04), 0xc8f4f2, true);
+    visor.position.set(0, 1.98, -0.34); group.add(visor);
     this.box(0.5, 0.16, 0.15, 0, 1.88, -0.3, 0xa9d5de, group);
     for (const x of [-0.3, 0.3]) {
       const leg = this.box(keeper ? 0.5 : 0.27, 0.63, keeper ? 0.45 : 0.27, x, 0.48, 0, keeper ? 0xf1eee4 : C.ink, group);
@@ -230,6 +247,13 @@ export class Rink {
       this.box(0.21, 0.13, 0.65, x, 0.1, -0.1, C.ink, group);
     }
     for (const x of [-0.65, 0.65]) this.box(0.3, 0.6, 0.3, x, 1.05, -0.14, color, group);
+    // Shoulder discs and a small chest stripe read better than a flat block at
+    // the elevated camera angle while keeping the silhouette lightweight.
+    for (const x of [-0.48, 0.48]) {
+      const shoulder = this.mesh(new THREE.SphereGeometry(0.22, 8, 6), color, true);
+      shoulder.position.set(x, 1.48, -0.02); shoulder.scale.set(1.15, 0.7, 0.9); group.add(shoulder);
+    }
+    this.box(keeper ? 1.05 : 0.72, 0.1, 0.03, 0, 1.2, -0.32, keeper ? 0xf1eee4 : 0x9ff5df, group);
     if (keeper) this.blocker(group);
     const stick = this.box(0.075, 1.2, 0.075, 0.8, 0.57, -0.35, 0x435967, group); stick.rotation.x = -0.5;
     this.box(0.6, 0.09, 0.13, 0.6, 0.1, -0.7, C.ink, group);
@@ -274,14 +298,20 @@ export class Rink {
         const model = this.players[i];
         const dx = p.x - model.position.x, dz = p.z - model.position.z;
         model.position.set(p.x, 0, p.z);
-        const skating = !game.paused && !game.terminal && game.introRemaining <= 0 && !(i >= 3 && game.actionPower === 'freeze') && Math.hypot(dx, dz) > 0.00001;
+      const skating = !game.paused && !game.terminal && game.introRemaining <= 0 && !(i >= 3 && game.actionPower === 'freeze') && Math.hypot(dx, dz) > 0.00001;
       (model.children[0] as THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial>).material.color.setHex(i < 3 ? C.teal : game.actionPower === 'freeze' ? 0x69dfff : C.red);
       model.rotation.z = skating ? Math.sin(game.motion * 13 + i) * 0.09 : 0;
-        if (skating) {
-          const heading = Math.atan2(-dx, -dz);
-          model.rotation.y = renderDt > 0 ? dampAngle(model.rotation.y, heading, renderDt) : heading;
-        }
-      if (game.phase === 'SUCCESS' && i < 3) model.position.y = Math.abs(Math.sin(game.motion * 10 + i)) * 1.2;
+        const travelHeading = Math.atan2(-dx, -dz);
+        const playDx = game.puck.x - p.x, playDz = game.puck.z - p.z;
+        const playHeading = Math.atan2(-playDx, -playDz);
+        // Moving skaters lead with their route; set players naturally watch the
+        // puck instead of presenting a row of fixed forward-facing mannequins.
+        const heading = skating ? travelHeading : (Math.hypot(playDx, playDz) > 0.15 ? playHeading : model.rotation.y);
+        model.rotation.y = renderDt > 0 ? dampAngle(model.rotation.y, heading, renderDt, skating ? 15 : 9) : heading;
+      if (game.phase === 'SUCCESS' && i < 3) {
+        model.position.y = Math.abs(Math.sin(game.motion * 10 + i)) * 1.2;
+        model.rotation.z += Math.sin(game.motion * 8 + i) * 0.12;
+      }
       if (game.phase === 'FAIL' && i === game.carrier) model.rotation.z = -Math.min(1.2, game.elapsed * 0.4);
       model.children.filter(child => child.name === 'leg').forEach((leg, j) => { leg.rotation.x = skating ? Math.sin(game.motion * 14 + j * Math.PI) * 0.4 : 0; });
     });
@@ -291,6 +321,7 @@ export class Rink {
     this.goalie.rotation.x = game.phase === 'SUCCESS' ? -Math.min(1.35, game.terminalTime * (game.actionPower === 'fire' ? 6 : 2)) : game.phase === 'REBOUND' ? -0.35 : 0;
     if (game.phase === 'SUCCESS' && game.actionPower === 'fire') this.goalie.position.z -= Math.min(1.4, game.terminalTime * 4);
     this.net.position.z = game.phase === 'SUCCESS' ? Math.sin(game.terminalTime * 48) * Math.exp(-game.terminalTime * 3) * (game.actionPower === 'fire' ? 0.65 : 0.35) : 0;
+    this.net.rotation.x = game.phase === 'SUCCESS' ? Math.sin(game.terminalTime * 30) * Math.exp(-game.terminalTime * 3) * 0.035 : 0;
     const cover = game.goalieGlove;
     this.glove.position.set(cover.x, (cover.height ?? 0) + 0.14, cover.z);
     this.glove.rotation.x = -0.25;
@@ -329,7 +360,8 @@ export class Rink {
     this.particles.forEach((m, i) => {
       m.visible = game.impact > 0.1 && !game.paused;
       const age = 1 - Math.min(1, game.impact), angle = i * 2.399;
-      m.position.set(game.puck.x + Math.cos(angle) * age * 4, 0.2 + Math.sin(age * Math.PI) * (1 + i % 3), game.puck.z + Math.sin(angle) * age * 4);
+      const burst = game.phase === 'SUCCESS' ? 1.45 : 1;
+      m.position.set(game.puck.x + Math.cos(angle) * age * 4 * burst, 0.2 + Math.sin(age * Math.PI) * (1 + i % 3) * burst, game.puck.z + Math.sin(angle) * age * 4 * burst);
       m.rotation.set(age * 6, angle, age * 3);
       m.scale.setScalar(game.impact);
     });
@@ -339,6 +371,10 @@ export class Rink {
       m.visible = !game.paused && !game.terminal && !(skater >= 3 && game.actionPower === 'freeze');
       m.position.set(p.x + Math.sin(i * 2.4) * age * 0.7, 0.08 + Math.sin(age * Math.PI) * 0.35, p.z + age * 1.5);
       m.scale.setScalar((1 - age) * 0.12);
+    });
+    this.arenaGlow.forEach((m, i) => {
+      const material = m.material as THREE.MeshStandardMaterial;
+      material.emissiveIntensity = 0.65 + (game.phase === 'SUCCESS' ? 0.45 : 0) + Math.sin(game.motion * 2 + i) * 0.08;
     });
     this.renderer.render(this.scene, this.camera);
     this.gl.endFrameEXP();
