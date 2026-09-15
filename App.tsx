@@ -28,7 +28,7 @@ function Callout({ text, eventId }: { text: string; eventId: number }) {
   return <Animated.View pointerEvents="none" style={[s.callout, {
     opacity: animation.interpolate({ inputRange: [0, 0.12, 0.7, 1], outputRange: [0, 1, 1, 0] }),
     transform: [{ translateY: animation.interpolate({ inputRange: [0, 1], outputRange: reduced ? [0, 0] : [15, -25] }) }, { scale: animation.interpolate({ inputRange: [0, 0.15, 1], outputRange: reduced ? [1, 1, 1] : [0.75, 1.12, 1] }) }],
-  }]}><Text style={s.calloutText}>{text}</Text></Animated.View>;
+  }]}><View style={s.calloutPlate}><Text numberOfLines={1} adjustsFontSizeToFit style={s.calloutText}>{text}</Text></View></Animated.View>;
 }
 
 function GameApp() {

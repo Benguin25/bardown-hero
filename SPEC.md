@@ -4,6 +4,17 @@
 
 ## Current playable scope (September 2026)
 
+Gameplay feel update:
+
+- Passes travel at 24-29 rink units/second before Fire Puck, up from 23-28. The opening skate takes 0.92 seconds; the rebound route takes 0.58 simulation seconds (about 1.38 seconds with its retained slow motion). The three-second objective countdown and immediate input freeze after reception are preserved.
+- Lead reception uses slightly wider stick reach and faster pursuit, with only the existing tiny endpoint assist. Puck coast drag is 13 units/second squared and boards retain 88% of speed, keeping the rebound lively. Bank approaches hold formation until impact, but actual contact can still collect the incoming puck.
+- Mega Curve still amplifies bends 1.8 times; its baseline and final-quarter pass assistance now follow stroke distance instead of touch-sample index, reducing sensitivity to uneven finger sampling.
+- Receivers keep their selected pickup lane; loose-puck replans retain reachable intercepts instead of always chasing the coast endpoint. Defender pressure changes only when another defender is clearly nearer, predicts at most 2.4 rink units ahead, and requires contact within 0.6 rink units. Movement substeps are capped at 1/120 second, with shorter steps for swept collision checks.
+- Goal-mouth slow motion applies only to shots and their resulting rebound; deep passes retain full speed. Pass receivers commit to the first reachable interception point, so they skate ahead to meet the puck instead of matching its movement along the path. Missed passes still become live loose pucks and draw a natural chase.
+- Corner aiming has a wider, distinct capture area on the upright goal face (0.95 horizontal / 0.8 vertical rink units around each target). Center aim remains free; clearly wide and high shots still miss.
+- Skater headings turn smoothly along the shortest angle, with time-based damping across phone frame rates. Decision pauses still freeze the scene.
+- Campaign regression coverage replays all sixteen authored three-star routes at 120, 60, 30, and 20 fps, including banks, leads, rebounds, and powerup decisions. Device touch/GL feel still requires a physical-phone playtest.
+
 Audio update:
 
 - Expo Audio provides original local PCM WAV effects and a looping upbeat stadium-electronic instrumental. Events cover taps, releases, collections, board contact, saves, goals, failures, powerups, countdown, and start.
@@ -11,7 +22,7 @@ Audio update:
 
 Puck pursuit and onboarding update:
 
-- One nearby attacking skater pursues the pass or loose puck; the nearest defender pressures its current travel direction. Supporting skaters retain formation and shade toward the play. Defenders skate at 4.8 units/second (previously 4) and supporting coverage closes passing lanes.
+- One nearby attacking skater pursues the pass or loose puck; a nearby defender pressures its current travel direction and keeps that role until another defender is clearly nearer. Supporting skaters retain formation and shade toward the play. Defenders skate at 4.8 units/second (previously 4) and supporting coverage closes passing lanes.
 - Loose passes never expire. Skaters keep pursuing stopped pucks, route around the cage, and collect at actual stick reach. The original passer can recover a loose puck without advancing the play or earning pass objectives. Opponent collection still ends the run. Freeze still stops defender movement while preserving collisions.
 - First launch presents How to Play with a four-lesson interactive tutorial. The campaign keeps a How to Play button for replay. Lessons cover anchored swipes, curved passes, loose-puck races, and corner shots; tutorial runs never write campaign stars or unlocks.
 
@@ -71,6 +82,11 @@ Do not optimize for hockey simulation.
 - Camera tracks play and may use scripted zooms/pans.
 - If this perspective becomes unreadable, use a higher isometric angle.
 - Semi-realistic hockey setting with intentionally over-the-top effects and animation.
+- Procedural skaters use lightweight helmet, visor, shoulder, jersey, stick, and skate shapes. Moving skaters face their route; set skaters smoothly turn toward the puck so formations read as a live play.
+- The rink uses a subtle ice sheen, contact shadows, detailed boards and netting, and low-cost rink-side light ribbons to imply a larger dark arena without textures or licensed branding.
+- Goals combine camera punch, slow motion, a wider particle burst, springing net movement, goalie reaction, and staggered team celebration. Saves, rebounds, passes, banks, and powerups retain their distinct trails, spray, poses, callouts, audio, and haptic feedback.
+- Campaign chapters share the dark/teal/yellow identity while using restrained teal, gold, blue, and violet accent rails for faster visual scanning. Animated callouts use a compact high-contrast arcade plate and must remain readable over play.
+- UI motion honors the device reduced-motion preference; gameplay timing and aiming behavior do not depend on decorative animation.
 
 ## Input
 One-finger swipe/draw anywhere on screen, with the preview anchored to the puck.
@@ -80,7 +96,7 @@ One-finger swipe/draw anywhere on screen, with the preview anchored to the puck.
 - Teammates have a configurable pickup radius and skate toward reachable points along the projected puck path. A teammate can collect before the endpoint or receive a lead pass into space.
 - Only obvious near-misses receive a small correction (at most 0.2 rink units by default). An endpoint already within pickup reach stays as drawn.
 - Uncollected passes coast and slow down, then remain live until a skater collects them. Defenders retain interception priority in contested lanes. Reception freezes play at the actual contact point without teleporting the puck.
-- Tune `DEFAULT_RECEPTION` in `src/game.ts`, or pass overrides as the second `Game` constructor argument. Defaults: pickup radius 0.9, initial pursuit radius 6, skating speed 7 units/second, and board speed retention 0.84. Loose-puck retrieval has no distance limit or timeout.
+- Tune `DEFAULT_RECEPTION` in `src/game.ts`, or pass overrides as the second `Game` constructor argument. Defaults: pickup radius 0.98, initial pursuit radius 7, skating speed 7.8 units/second, coast drag 13 units/second squared, and board speed retention 0.88. Loose-puck retrieval has no distance limit or timeout.
 
 ### Shot
 - Endpoint toward the net becomes a shot.

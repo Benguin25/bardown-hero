@@ -295,6 +295,16 @@ test('pass assist preserves extravagant loops and snaps only the endpoint', () =
   assert.deepEqual(p[0], raw[0]); assert.deepEqual(p.at(-1), { x: 6, z: 4 });
   assert.ok(p.some(x => x.x < -6)); assert.ok(p.some(x => x.x > 7));
 });
+test('pass assistance follows stroke distance rather than touch sample count', () => {
+  const path = cleanPath([
+    { x: 0, z: 0 }, { x: 1, z: 0 }, { x: 9, z: 0 }, { x: 10, z: 0 },
+  ], { x: 10, z: 1 });
+  // The third sample is 90% through the stroke, even though it is only the
+  // second interior array entry. It receives the final-quarter correction.
+  assert.equal(path[1].z, 0);
+  assert.ok(path[2].z > 0.1);
+  assert.deepEqual(path.at(-1), { x: 10, z: 1 });
+});
 test('tap and canceled strokes keep the decision open', () => {
   const g = new Game(); pause(g); g.release([g.puck]); assert.ok(g.paused);
   g.aim([g.puck, { x: 6, z: 4 }]); g.cancel(); assert.ok(g.paused); assert.equal(g.preview.length, 0);
@@ -604,6 +614,38 @@ test('lead pass stays drawn into open space while the teammate skates to collect
     assert.equal(g.passes, 1);
     const frozen = JSON.stringify(g); g.update(0.05); assert.equal(JSON.stringify(g), frozen);
   }
+});
+
+test('goal-mouth slow motion applies to shots only', () => {
+  const pass = passingSetup({ skateSpeed: 0 });
+  pass.release([pass.puck, { x: 0, z: -15.5 }]);
+  while (pass.puck.z >= -14) pass.update(1 / 60);
+  const passStart = { ...pass.puck };
+  pass.update(1 / 60);
+
+  const shot = passingSetup({ skateSpeed: 0 });
+  shot.release([shot.puck, { x: 0, z: -18 }]);
+  while (shot.puck.z >= -14) shot.update(1 / 60);
+  const shotStart = { ...shot.puck };
+  shot.update(1 / 60);
+
+  assert.ok(distance(passStart, pass.puck) > distance(shotStart, shot.puck) * 1.8,
+    'a deep pass should retain full speed while a shot enters the slow zone');
+});
+
+test('a good pass is met by a receiver instead of being shadowed', () => {
+  const g = passingSetup();
+  const raw = [g.puck, { x: 0, z: 2 }, { x: 5, z: -8 }];
+  g.release(raw, 0.5);
+  let separatedFrames = 0;
+  for (let i = 0; i < 40 && g.phase === 'EXECUTING_ACTION'; i++) {
+    g.update(1 / 60);
+    if (distance(g.puck, g.attackers[1]) > 0.2) separatedFrames++;
+  }
+  assert.ok(separatedFrames >= 5, 'receiver should approach a contact point ahead of the puck');
+  for (let i = 0; i < 600 && !g.paused && !g.terminal; i++) g.update(1 / 60);
+  assert.equal(g.phase, 'PAUSED_FOR_INPUT');
+  assert.equal(g.carrier, 1);
 });
 
 test('pickup radius is configurable and skaters can recover beyond initial pursuit range', () => {

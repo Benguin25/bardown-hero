@@ -14,6 +14,7 @@ export function feedback(kind: 'tap' | 'pass' | 'goal' | 'fail' | 'bank') {
 }
 
 const Motion = createContext(false);
+const CHAPTER_ACCENTS = ['#23dcb6', '#ffcf5a', '#77b9ff', '#c78cff'] as const;
 export function MotionProvider({ children }: { children: React.ReactNode }) {
   const [reduced, setReduced] = useState(false);
   useEffect(() => {
@@ -84,11 +85,11 @@ export function Campaign({ progress, loaded, error, save, select, soundOn, toggl
       {!loaded && <Text style={s.body}>{error ? 'Your saved progress is safe.' : 'Getting your skates ready…'}</Text>}
     </Rise>
     {CHAPTERS.map((chapter, chapterIndex) => <Rise key={chapter} delay={80 + chapterIndex * 45}>
-      <View style={s.chapterHeading}><Text style={s.chapterNumber}>0{chapterIndex + 1}</Text><Text style={s.chapterName}>{chapter}</Text><Text style={s.chapterScore}>{LEVELS.slice(chapterIndex * 4, chapterIndex * 4 + 4).reduce((sum, _, i) => sum + stars(progress.runs[chapterIndex * 4 + i]), 0)} / 12 ★</Text></View>
+      <View style={[s.chapterHeading, { borderLeftColor: CHAPTER_ACCENTS[chapterIndex] }]}><Text style={[s.chapterNumber, { color: CHAPTER_ACCENTS[chapterIndex] }]}>0{chapterIndex + 1}</Text><Text style={s.chapterName}>{chapter}</Text><Text style={s.chapterScore}>{LEVELS.slice(chapterIndex * 4, chapterIndex * 4 + 4).reduce((sum, _, i) => sum + stars(progress.runs[chapterIndex * 4 + i]), 0)} / 12 ★</Text></View>
       {LEVELS.slice(chapterIndex * 4, chapterIndex * 4 + 4).map((level, offset) => {
         const i = chapterIndex * 4 + offset, unlocked = loaded && isUnlocked(progress, i), complete = !!progress.runs[i]?.[0], now = loaded && i === current;
         return <Button key={level.title} disabled={!unlocked} onPress={() => select(i)} label={`${i + 1}. ${level.title}. ${now ? 'Up next.' : complete ? 'Completed.' : unlocked ? '' : 'Locked.'} ${stars(progress.runs[i])} stars.`}
-          style={[s.card, complete && s.cardComplete, now && s.cardCurrent, !unlocked && s.cardLocked]}>
+          style={[s.card, { borderLeftColor: CHAPTER_ACCENTS[chapterIndex], borderLeftWidth: 3 }, complete && s.cardComplete, now && s.cardCurrent, !unlocked && s.cardLocked]}>
           <View style={[s.numberTile, complete && s.numberComplete, now && s.numberCurrent]}><Text style={[s.levelNumber, now && s.ink]}>{String(i + 1).padStart(2, '0')}</Text><Text style={[s.tileMark, now && s.ink]}>{complete ? '✓' : now ? '▶' : '—'}</Text></View>
           <View style={s.cardCopy}><View style={s.cardHeading}><Text style={s.cardState}>{now ? 'UP NEXT' : complete ? 'CLEARED' : 'LOCKED'}</Text><Stars count={stars(progress.runs[i])} /></View>
             <Text style={[s.cardName, !unlocked && s.muted]}>{level.title}</Text>
@@ -116,7 +117,7 @@ export const s = StyleSheet.create({
   tagline: { color: '#a6becc', fontSize: 13, marginTop: 9, marginBottom: 16 },
   continueButton: { backgroundColor: '#23dcb6', borderRadius: 14, minHeight: 68, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   continueKicker: { color: '#124b45', fontSize: 11, fontWeight: '900', letterSpacing: 1.4 }, continueName: { color: '#071624', fontSize: 16, fontWeight: '900', marginTop: 3 }, playArrow: { color: '#071624', fontSize: 25 },
-  chapterHeading: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }, chapterNumber: { color: '#23dcb6', fontSize: 13, fontWeight: '900' }, chapterName: { color: '#e5f2f5', flex: 1, fontSize: 13, fontWeight: '900', letterSpacing: 1 }, chapterScore: { color: '#b7c7ce', fontSize: 12, fontWeight: '700' },
+  chapterHeading: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10, borderLeftWidth: 3, paddingLeft: 9 }, chapterNumber: { color: '#23dcb6', fontSize: 13, fontWeight: '900' }, chapterName: { color: '#e5f2f5', flex: 1, fontSize: 13, fontWeight: '900', letterSpacing: 1 }, chapterScore: { color: '#b7c7ce', fontSize: 12, fontWeight: '700' },
   card: { borderRadius: 13, backgroundColor: '#11283a', borderWidth: 1, borderColor: '#294354', padding: 12, marginBottom: 8, flexDirection: 'row', gap: 12 },
   cardCurrent: { borderColor: '#ffcf5a', backgroundColor: '#213537', borderWidth: 2 }, cardComplete: { borderColor: '#235b55', backgroundColor: '#102d32' }, cardLocked: { backgroundColor: '#0d2030', borderColor: '#1e3343' },
   numberTile: { width: 42, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1c3446' }, numberComplete: { backgroundColor: '#174d45' }, numberCurrent: { backgroundColor: '#ffcf5a' }, levelNumber: { fontSize: 21, fontWeight: '900', color: '#c1d5dd' }, tileMark: { color: '#23dcb6', fontSize: 14, marginTop: 4 },
@@ -137,5 +138,5 @@ export const s = StyleSheet.create({
   primary: { minHeight: 50, alignSelf: 'stretch', borderRadius: 13, backgroundColor: '#23dcb6', alignItems: 'center', justifyContent: 'center', marginTop: 6 }, primaryText: { color: '#071624', fontSize: 15, fontWeight: '900' }, secondary: { minHeight: 44, alignSelf: 'stretch', borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a384a' }, secondaryText: { color: '#d8ebf0', fontSize: 13, fontWeight: '800' },
   objectivesSheet: { position: 'absolute', bottom: 12, left: 18, right: 18, backgroundColor: '#092536f5', borderRadius: 16, padding: 18, borderWidth: 1, borderColor: '#365461' },
   center: { ...fill, alignItems: 'center', justifyContent: 'center' }, errorText: { color: '#ffaf9f', fontSize: 12, lineHeight: 18, padding: 8 },
-  callout: { position: 'absolute', top: '28%', left: 0, right: 0, alignItems: 'center' }, calloutText: { fontSize: 31, fontWeight: '900', fontStyle: 'italic', color: '#ffcf5a', textShadowColor: '#071624', textShadowRadius: 5, textShadowOffset: { width: 2, height: 3 } },
+  callout: { position: 'absolute', top: '28%', left: 18, right: 18, alignItems: 'center' }, calloutPlate: { maxWidth: '94%', paddingHorizontal: 18, paddingVertical: 8, backgroundColor: '#071624df', borderColor: '#ffcf5a', borderWidth: 1, borderRadius: 10, transform: [{ skewX: '-5deg' }] }, calloutText: { fontSize: 31, fontWeight: '900', fontStyle: 'italic', letterSpacing: -0.7, color: '#ffcf5a', textShadowColor: '#071624', textShadowRadius: 5, textShadowOffset: { width: 2, height: 3 } },
 });

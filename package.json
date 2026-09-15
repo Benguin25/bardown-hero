@@ -11,15 +11,16 @@
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
-    "expo": "~57.0.21",
+    "expo": "~57.0.22",
     "expo-audio": "~57.0.5",
     "expo-gl": "~57.0.2",
-    "expo-haptics": "~57.0.2",
+    "expo-haptics": "~57.0.3",
     "react": "19.2.3",
     "react-native": "0.86.3",
     "three": "0.162.0"
   },
   "devDependencies": {
+    "@expo/ngrok": "^4.1.0",
     "@types/react": "~19.2.0",
     "@types/three": "0.162.0",
     "react-dom": "19.2.3",
