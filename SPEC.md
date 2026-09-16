@@ -11,20 +11,20 @@ Gameplay feel update:
 - Mega Curve still amplifies bends 1.8 times; its baseline and final-quarter pass assistance now follow stroke distance instead of touch-sample index, reducing sensitivity to uneven finger sampling.
 - Receivers keep their selected pickup lane; loose-puck replans retain reachable intercepts instead of always chasing the coast endpoint. Defender pressure changes only when another defender is clearly nearer, predicts at most 2.4 rink units ahead, and requires contact within 0.6 rink units. Movement substeps are capped at 1/120 second, with shorter steps for swept collision checks.
 - Goal-mouth slow motion applies only to shots and their resulting rebound; deep passes retain full speed. Pass receivers commit to the first reachable interception point, so they skate ahead to meet the puck instead of matching its movement along the path. Missed passes still become live loose pucks and draw a natural chase.
-- Corner aiming has a wider, distinct capture area on the upright goal face (0.95 horizontal / 0.8 vertical rink units around each target). Center aim remains free; clearly wide and high shots still miss.
+- Flick shooting uses broad left/right and high/low bands rather than elevated goal-face capture areas. Center aim remains available for deliberate pad saves; clearly wide shots still miss.
 - Skater headings turn smoothly along the shortest angle, with time-based damping across phone frame rates. Decision pauses still freeze the scene.
 - Campaign regression coverage replays all 32 authored three-star routes at 120, 60, 30, and 20 fps, including banks, leads, loose-puck races, rebounds, multi-touch sequences, and powerup decisions. Device touch/GL feel still requires a physical-phone playtest.
 
 Audio update:
 
-- Expo Audio provides original local PCM WAV effects and a looping upbeat stadium-electronic instrumental. Events cover taps, releases, collections, board contact, saves, goals, failures, powerups, countdown, and start.
-- A persistent SND ON/OFF control is available in campaign and gameplay. Audio is foreground-only, stops on backgrounding, resumes music on return, and is configured to play through the iOS silent switch. Goal horn temporarily ducks music.
+- Expo Audio provides original local PCM WAV effects and a looping upbeat stadium-electronic instrumental. Shot classification supplies distinct procedural cues for snapshots, one-timers, curved releases, screened shots, and rebound finishes in addition to taps, collections, board contact, saves, goals, failures, powerups, countdown, and start.
+- A persistent SND ON/OFF control is available in campaign and gameplay. Audio is foreground-only, stops on backgrounding, resumes music on return, and is configured to play through the iOS silent switch. Music continues without restarting across campaign, aiming, gameplay, and results scenes at a 0.30–0.38 mix level. The goal horn temporarily ducks rather than stops it.
 
 Puck pursuit and onboarding update:
 
 - One nearby attacking skater pursues the pass or loose puck; a nearby defender pressures its current travel direction and keeps that role until another defender is clearly nearer. Supporting skaters retain formation and shade toward the play. Defenders skate at 4.8 units/second (previously 4) and supporting coverage closes passing lanes.
 - Loose passes never expire. Skaters keep pursuing stopped pucks, route around the cage, and collect at actual stick reach. The original passer can recover a loose puck without advancing the play or earning pass objectives. Opponent collection still ends the run. Freeze still stops defender movement while preserving collisions.
-- First launch presents How to Play with a four-lesson interactive tutorial. The campaign keeps a How to Play button for replay. Lessons cover anchored swipes, curved passes, loose-puck races, and corner shots; tutorial runs never write campaign stars or unlocks.
+- First launch presents How to Play with a four-lesson interactive tutorial. The campaign keeps a How to Play button for replay. Lessons cover anchored swipes, curved passes, loose-puck races, and flick shots; tutorial runs never write campaign stars or unlocks.
 
 Board-bank and presentation update:
 
@@ -108,8 +108,9 @@ One-finger swipe/draw anywhere on screen, with the preview anchored to the puck.
 ### Shot
 - Endpoint toward the net becomes a shot.
 - Shot placement matters.
-- A tall net has four high/low corner targets. Gold targets show current gaps; red marks current pad/body/glove coverage. The goalie can close a gap after release. Shot height affects saves, defender clearance, and crossbar misses.
+- The net supports high/low and left/center/right shot regions. The goalie can close a gap after release. Shot height affects saves and defender clearance.
 - Touch input no longer requires dragging onto elevated corner targets. A flick through the net stays projected onto the ice: its lateral lane selects left, center, or right, and extra follow-through beyond the goal line selects high rather than low. In-post side lanes resolve to generous corner regions; a narrow centered low lane intentionally tests the pads for rebounds. Gestures outside the posts remain misses. Corner meshes are not shown as touch buttons; preview height and goalie stance communicate the result.
+- Releases are classified without adding controls. Quick first-stage shots become snapshots; shots immediately following authored passes become one-timers; visible bends, defenders screening the direct lane, and guided rebound attempts become curve, screen, and rebound releases. These styles receive distinct callouts and sounds, while snapshots, one-timers, and rebound finishes receive small speed bonuses.
 - Less aim assistance than passes.
 - Swipe speed may slightly affect puck speed/power.
 

@@ -616,6 +616,26 @@ test('lead pass stays drawn into open space while the teammate skates to collect
   }
 });
 
+test('shot releases classify snapshots, one-timers, screens, curves, and rebounds', () => {
+  const shot = (configure, path, seconds = 0.3) => {
+    const game = clearShootingSetup();
+    configure(game);
+    game.release([game.puck, ...path], seconds);
+    return game;
+  };
+  const target = { x: 2.25, z: -18, height: 3.5 };
+  const snapshot = shot(() => {}, [target]);
+  assert.equal(snapshot.shotStyle, 'snapshot'); assert.equal(snapshot.event, 'snapshot');
+  const oneTimer = shot(game => { game.stage = 1; }, [target]);
+  assert.equal(oneTimer.shotStyle, 'oneTimer'); assert.equal(oneTimer.event, 'oneTimer');
+  const screen = shot(game => { game.defenders = [{ x: 1, z: -13 }, { x: -9, z: 8 }]; }, [target], 0.8);
+  assert.equal(screen.shotStyle, 'screen'); assert.equal(screen.event, 'screenShot');
+  const curve = shot(() => {}, [{ x: -7, z: -13 }, target], 0.8);
+  assert.equal(curve.shotStyle, 'curve'); assert.equal(curve.event, 'curveShot');
+  const rebound = shot(game => { game.reboundUsed = true; }, [target]);
+  assert.equal(rebound.shotStyle, 'rebound'); assert.equal(rebound.event, 'reboundShot');
+});
+
 test('super-close pass keeps puck travel visible and bounds every skater step', () => {
   for (const dt of [1 / 120, 1 / 60, 0.05]) {
     const g = passingSetup({ skateSpeed: 7.8 });

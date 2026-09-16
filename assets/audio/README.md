@@ -6,6 +6,11 @@ These effects are original procedural sounds generated for this project. They co
 | --- | ---: | --- |
 | `tap.wav` | 0.105 s | UI puck tap |
 | `release.wav` | 0.270 s | Stick slap on shot release |
+| `snapshot.wav` | 0.220 s | Short, sharp snapshot release |
+| `one-timer.wav` | 0.340 s | Heavy catch-and-release impact |
+| `curve-shot.wav` | 0.390 s | Rising curved-shot whoosh |
+| `screen-shot.wav` | 0.310 s | Low, dense shot through traffic |
+| `rebound-shot.wav` | 0.290 s | Scramble chop and follow-up impact |
 | `pass.wav` | 0.150 s | Puck collection / stick tick |
 | `bank.wav` | 0.245 s | Board impact thud |
 | `save.wav` | 0.315 s | Padded goalie save |

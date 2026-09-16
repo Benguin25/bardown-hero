@@ -7,6 +7,7 @@ export const BOARD_X = 10.75;
 export const BOARD_Z = 22.5;
 export type Phase = 'AUTO_PLAY' | 'PAUSED_FOR_INPUT' | 'EXECUTING_ACTION' | 'REBOUND' | 'SUCCESS' | 'FAIL';
 export type Intent = { kind: 'pass'; target: number } | { kind: 'shot' } | { kind: 'loose' };
+export type ShotStyle = 'wrist' | 'snapshot' | 'oneTimer' | 'curve' | 'screen' | 'rebound';
 export type GameEvent = { id: number; event: string };
 export const NET_Z = -18;
 export const NET_HALF_WIDTH = 3.05;
@@ -18,6 +19,15 @@ export const GOAL_CORNERS = [
   { x: 2.25, z: NET_Z, height: 3.5, label: 'HIGH RIGHT' },
 ] as const;
 export const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.z - b.z);
+export function isScreenedShot(start: Point, end: Point, defenders: readonly Point[]): boolean {
+  const dx = end.x - start.x, dz = end.z - start.z, length2 = dx * dx + dz * dz;
+  if (length2 < 0.001) return false;
+  return defenders.some(defender => {
+    const t = ((defender.x - start.x) * dx + (defender.z - start.z) * dz) / length2;
+    if (t < 0.2 || t > 0.9) return false;
+    return distance(defender, { x: start.x + dx * t, z: start.z + dz * t }) <= 1.45;
+  });
+}
 export const mix = (a: Point, b: Point, t: number): Point => ({ x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t, ...(a.height !== undefined || b.height !== undefined ? { height: (a.height ?? 0) + ((b.height ?? 0) - (a.height ?? 0)) * t } : {}) });
 const copy = (p: Point): Point => ({ ...p });
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
@@ -187,6 +197,7 @@ export class Game {
   curvedActions = 0;
   frozenActions = 0;
   goalHeight = 0;
+  shotStyle: ShotStyle = 'wrist';
   private actionCurved = false;
   get availablePowerup() { return this.paused && !this.reboundUsed && !this.usedPowerups.has(String(this.stage)) ? this.moment.powerup : undefined; }
   activatePowerup() {
@@ -317,6 +328,14 @@ export class Game {
     // add a large percentage to a long cross-ice pass.
     this.actionCurved = this.preview.some(p => Math.abs((p.x - start.x) * (end.z - start.z) - (p.z - start.z) * (end.x - start.x)) / Math.max(direct, 0.01) >= 1.5)
       || length > direct * 1.12 + 0.6;
+    if (this.intent.kind === 'shot') {
+      this.shotStyle = this.reboundUsed ? 'rebound'
+        : this.actionCurved ? 'curve'
+        : isScreenedShot(start, end, this.defenders) ? 'screen'
+        : this.stage > 0 ? 'oneTimer'
+        : seconds <= 0.45 ? 'snapshot'
+        : 'wrist';
+    }
     const bankAction = this.preview.some(p => p.bounce);
     this.bankApproach = bankAction;
     this.path = this.preview.map(copy);
@@ -333,6 +352,8 @@ export class Game {
     this.segment = 0;
     this.segmentOffset = 0;
     this.speed = 24 + clamp(length / Math.max(seconds, 0.1) / 20, 0, 5);
+    if (this.intent.kind === 'shot') this.speed *= this.shotStyle === 'oneTimer' ? 1.14
+      : this.shotStyle === 'rebound' ? 1.10 : this.shotStyle === 'snapshot' ? 1.08 : 1;
     if (this.actionPower === 'fire') this.speed *= 2.8;
     this.actionDistance = 0;
     this.actionTime = 0;
@@ -365,8 +386,10 @@ export class Game {
     this.pressureDefender = this.defenders.reduce((best, p, i, all) => distance(p, this.puck) < distance(all[best], this.puck) ? i : best, 0);
     this.phase = 'EXECUTING_ACTION';
     this.message = this.intent.kind === 'pass' ? 'THREAD IT.' : this.intent.kind === 'shot' ? 'LET IT RIP.' : 'INTO SPACE.';
-    this.callout = this.actionPower === 'fire' ? 'FIRE PUCK!' : this.actionPower === 'curve' ? 'MEGA CURVE!' : this.actionPower === 'freeze' ? 'ICE COLD!' : '';
-    this.emit('release', this.actionPower === 'fire' ? 1.6 : 0.35);
+    const shotCallout: Record<ShotStyle, string> = { wrist: 'WRISTER!', snapshot: 'QUICK RELEASE!', oneTimer: 'ONE-TIMER!', curve: 'BEND IT!', screen: 'THROUGH TRAFFIC!', rebound: 'BURY IT!' };
+    this.callout = this.actionPower === 'fire' ? 'FIRE PUCK!' : this.actionPower === 'curve' ? 'MEGA CURVE!' : this.actionPower === 'freeze' ? 'ICE COLD!' : this.intent.kind === 'shot' ? shotCallout[this.shotStyle] : '';
+    const shotEvent: Record<ShotStyle, string> = { wrist: 'release', snapshot: 'snapshot', oneTimer: 'oneTimer', curve: 'curveShot', screen: 'screenShot', rebound: 'reboundShot' };
+    this.emit(this.intent.kind === 'shot' ? shotEvent[this.shotStyle] : 'release', this.actionPower === 'fire' ? 1.6 : this.intent.kind === 'shot' ? 0.65 : 0.35);
   }
 
   private emit(event: string, impact = 1) {

@@ -113,10 +113,11 @@ function GameApp() {
 
   function restartAudioForNewScreen() {
     if (!audioReady.current) return;
-    audio.setActive(false);
     const scene = sceneForAudio(game.current);
     audioScene.current = scene;
     audio.setScene(scene);
+    // Keep the looping track running through menu/game transitions. Native
+    // audio is paused only when the app backgrounds or sound is disabled.
     audio.setActive(active.current);
   }
 

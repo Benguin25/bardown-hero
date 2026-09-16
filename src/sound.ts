@@ -8,7 +8,7 @@ import {
   type AudioSource,
 } from 'expo-audio';
 
-export type SoundCue = 'tap' | 'release' | 'pass' | 'bank' | 'save' | 'goal' | 'fail' | 'powerup' | 'countdown' | 'start';
+export type SoundCue = 'tap' | 'release' | 'snapshot' | 'oneTimer' | 'curveShot' | 'screenShot' | 'reboundShot' | 'pass' | 'bank' | 'save' | 'goal' | 'fail' | 'powerup' | 'countdown' | 'start';
 export type SoundScene = 'menu' | 'aim' | 'play' | 'result';
 
 type SoundDefinition = { source: AudioSource; volume: number; pool: number };
@@ -16,6 +16,11 @@ type SoundDefinition = { source: AudioSource; volume: number; pool: number };
 const sounds: Record<SoundCue, SoundDefinition> = {
   tap: { source: require('../assets/audio/tap.wav'), volume: 0.32, pool: 2 },
   release: { source: require('../assets/audio/release.wav'), volume: 0.78, pool: 3 },
+  snapshot: { source: require('../assets/audio/snapshot.wav'), volume: 0.88, pool: 2 },
+  oneTimer: { source: require('../assets/audio/one-timer.wav'), volume: 0.94, pool: 2 },
+  curveShot: { source: require('../assets/audio/curve-shot.wav'), volume: 0.88, pool: 2 },
+  screenShot: { source: require('../assets/audio/screen-shot.wav'), volume: 0.90, pool: 2 },
+  reboundShot: { source: require('../assets/audio/rebound-shot.wav'), volume: 0.96, pool: 2 },
   pass: { source: require('../assets/audio/pass.wav'), volume: 0.56, pool: 3 },
   bank: { source: require('../assets/audio/bank.wav'), volume: 0.66, pool: 2 },
   save: { source: require('../assets/audio/save.wav'), volume: 0.76, pool: 2 },
@@ -27,7 +32,9 @@ const sounds: Record<SoundCue, SoundDefinition> = {
 };
 
 const music: AudioSource = require('../assets/audio/music.wav');
-const sceneVolumes: Record<SoundScene, number> = { menu: 0.18, aim: 0.10, play: 0.12, result: 0.14 };
+// Music remains continuous across scenes. Aim is slightly calmer; gameplay is
+// full enough to be present on phone speakers without masking puck impacts.
+const sceneVolumes: Record<SoundScene, number> = { menu: 0.38, aim: 0.30, play: 0.36, result: 0.34 };
 const maxQueuedCues = 12;
 
 /**
@@ -157,7 +164,7 @@ export class SoundController {
     const player = this.musicPlayer;
     if (!player || !this.enabled || !this.active) return;
     const token = ++this.duckToken;
-    this.safely(() => { player.volume = 0.045; });
+    this.safely(() => { player.volume = 0.12; });
     if (this.duckTimer) clearTimeout(this.duckTimer);
     this.duckTimer = setTimeout(() => {
       if (token === this.duckToken && !this.disposed) this.syncMusic();
