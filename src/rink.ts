@@ -50,6 +50,23 @@ export function frameRink(camera: THREE.OrthographicCamera, width: number, heigh
   camera.updateProjectionMatrix();
 }
 
+export const SHOT_FLICK_START_Z = -16.2;
+export const HIGH_FOLLOW_THROUGH_Z = -20.25;
+export const SHOT_FLICK_HALF_WIDTH = NET_HALF_WIDTH;
+
+/**
+ * Convert an ice-plane follow-through into a broad shot choice. The player
+ * flicks through the net instead of dragging onto a small elevated ring:
+ * lateral direction chooses side, extra depth chooses high/low, and a narrow
+ * center lane deliberately tests the pads for authored rebound plays.
+ */
+export function flickShotPoint(ice: Point): Point {
+  if (ice.z > SHOT_FLICK_START_Z || Math.abs(ice.x) > SHOT_FLICK_HALF_WIDTH) return ice;
+  const height = ice.z <= HIGH_FOLLOW_THROUGH_Z ? 3.5 : 0.55;
+  const x = Math.abs(ice.x) < 0.55 ? 0 : Math.sign(ice.x) * 2.25;
+  return { x, z: NET_Z, height };
+}
+
 export class Rink {
   private scene = new THREE.Scene();
   private camera = new THREE.OrthographicCamera(-14, 14, 24, -24, 0.1, 150);
@@ -286,15 +303,8 @@ export class Rink {
 
   aimPoint(x: number, y: number): Point | null {
     this.ray.setFromCamera(new THREE.Vector2(x / this.width * 2 - 1, 1 - y / this.height * 2), this.camera);
-    const face = this.ray.ray.intersectPlane(this.goalPlane, new THREE.Vector3());
-    if (face && Math.abs(face.x) <= NET_HALF_WIDTH + 0.8 && face.y >= 0.14 && face.y <= NET_HEIGHT + 2) {
-      const p = { x: face.x, z: NET_Z, height: face.y - 0.14 };
-      // The elevated face is foreshortened in portrait, so give each authored
-      // corner a forgiving but still distinct phone-sized capture area.
-      const corner = GOAL_CORNERS.find(c => Math.abs(c.x - p.x) < 0.95 && Math.abs(c.height - p.height) < 0.8);
-      return corner ? { x: corner.x, z: corner.z, height: corner.height } : p;
-    }
-    return this.icePoint(x, y);
+    const ice = this.icePoint(x, y);
+    return ice ? flickShotPoint(ice) : null;
   }
 
   render(game: Game) {
@@ -342,10 +352,9 @@ export class Rink {
     this.gloveArm.position.copy(shoulder).lerp(this.glove.position, 0.5);
     this.gloveArm.scale.z = shoulder.distanceTo(this.glove.position);
     this.gloveArm.lookAt(this.glove.position);
-    this.corners.forEach((marker, i) => {
-      marker.visible = game.paused || game.phase === 'EXECUTING_ACTION';
-      (marker.material as THREE.MeshBasicMaterial).color.setHex(game.cornerCovered(GOAL_CORNERS[i]) ? C.red : C.gold);
-    });
+    // Corner rings remain pooled for compatibility but no longer behave like
+    // touch targets. The shot preview and goalie position communicate the gap.
+    this.corners.forEach(marker => { marker.visible = false; });
     this.puck.position.set(game.puck.x, 0.17 + (game.puck.height ?? 0) + (game.phase === 'REBOUND' ? Math.abs(Math.sin(game.motion * 8)) * 0.5 : 0), game.puck.z);
     this.halo.visible = game.paused;
     this.halo.position.set(game.puck.x, 0.08, game.puck.z);

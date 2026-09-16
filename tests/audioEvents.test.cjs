@@ -19,3 +19,8 @@ test('does not replay already-consumed events', () => {
   const events = [{ id: 1, event: 'release' }, { id: 2, event: 'bank' }];
   assert.deepEqual(drainSoundEvents(events, 2), { cues: [], lastId: 2 });
 });
+
+test('maps every authored shot release to its distinct cue', () => {
+  const events = ['snapshot', 'oneTimer', 'curveShot', 'screenShot', 'reboundShot'].map((event, i) => ({ id: i + 1, event }));
+  assert.deepEqual(drainSoundEvents(events, 0).cues, ['snapshot', 'oneTimer', 'curveShot', 'screenShot', 'reboundShot']);
+});

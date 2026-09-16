@@ -80,6 +80,11 @@ function hat(buf, at, open = false) { add(buf, at, open ? .24 : .07, t => rand()
 const report = [
   write('tap.wav', .105, b => { impact(b, 0, .105, { noise: .18, low: 180, tone: .17, decay: 38 }); }),
   write('release.wav', .270, b => { impact(b, 0, .23, { noise: .46, low: 108, tone: .31, decay: 13 }); add(b, .012, .10, t => sine(265, t) * .13 * exp(t, 32)); }),
+  write('snapshot.wav', .220, b => { impact(b, 0, .19, { noise: .30, low: 155, tone: .29, decay: 24 }); add(b, .008, .13, t => sine(510 - t * 420, t) * .12 * exp(t, 29)); }),
+  write('one-timer.wav', .340, b => { impact(b, 0, .28, { noise: .48, low: 82, tone: .40, decay: 12 }); impact(b, .018, .18, { noise: .18, low: 240, tone: .16, decay: 25 }); }),
+  write('curve-shot.wav', .390, b => { impact(b, 0, .20, { noise: .30, low: 120, tone: .25, decay: 18 }); add(b, .025, .33, t => (sine(280 + t * 760, t) * .10 + rand() * .055) * exp(t, 6)); }),
+  write('screen-shot.wav', .310, b => { impact(b, 0, .28, { noise: .24, low: 68, tone: .43, decay: 10 }); add(b, .03, .22, t => sine(105, t) * .14 * exp(t, 12)); }),
+  write('rebound-shot.wav', .290, b => { impact(b, 0, .12, { noise: .50, low: 205, tone: .20, decay: 28 }); impact(b, .045, .23, { noise: .34, low: 88, tone: .39, decay: 13 }); }),
   write('pass.wav', .150, b => { impact(b, 0, .14, { noise: .22, low: 235, tone: .18, decay: 31 }); }),
   write('bank.wav', .245, b => { impact(b, 0, .23, { noise: .36, low: 92, tone: .32, decay: 14 }); add(b, .014, .13, t => sine(178, t) * .12 * exp(t, 20)); }),
   write('save.wav', .315, b => { impact(b, 0, .29, { noise: .22, low: 76, tone: .38, decay: 11 }); add(b, .025, .20, t => sine(126, t) * .13 * exp(t, 13)); }),

@@ -113,10 +113,11 @@ function GameApp() {
 
   function restartAudioForNewScreen() {
     if (!audioReady.current) return;
-    audio.setActive(false);
     const scene = sceneForAudio(game.current);
     audioScene.current = scene;
     audio.setScene(scene);
+    // Keep the looping track running through menu/game transitions. Native
+    // audio is paused only when the app backgrounds or sound is disabled.
     audio.setActive(active.current);
   }
 
@@ -243,11 +244,11 @@ function GameApp() {
   const live = !g.paused && !g.terminal && g.introRemaining <= 0;
   const prompt = g.introRemaining > 0 ? 'Your next highlight starts here'
     : g.terminal ? g.phase === 'SUCCESS' ? 'That belongs on the reel.' : 'You’ve got the next one.'
-    : aiming ? banking ? 'Off the boards' : g.intent.kind === 'shot' ? 'Pick your corner' : 'Put it into space'
+    : aiming ? banking ? 'Off the boards' : g.intent.kind === 'shot' ? `${(g.preview.at(-1)?.height ?? 0) >= 3 ? 'High' : 'Low'} ${Math.abs(g.preview.at(-1)?.x ?? 0) < 0.5 ? 'through the pads' : (g.preview.at(-1)?.x ?? 0) < 0 ? 'left' : 'right'}` : 'Put it into space'
     : g.reboundUsed ? 'Bury the rebound' : g.moment.title;
   const hint = g.introRemaining > 0 ? 'Three stars. One run.'
     : g.terminal ? '' : aiming ? banking ? 'Release and let the wing chase the bounce.'
-    : g.intent.kind === 'shot' ? g.cornerCovered(g.preview[g.preview.length - 1]) ? 'Glove is there. Try the other corner.' : 'There’s the gap. Let it rip.'
+    : g.intent.kind === 'shot' ? g.cornerCovered(g.preview[g.preview.length - 1]) ? 'That lane is covered. Change side or follow-through.' : 'There’s the gap. Let it rip.'
     : 'Lead your teammate. Release to send it.' : g.paused ? g.message : ' ';
   const count = g.objectives.filter(o => o.complete).length;
   const victory = g.phase === 'SUCCESS';
@@ -260,7 +261,7 @@ function GameApp() {
       <Text style={s.kicker}>WELCOME TO BARDOWN HERO</Text><Text style={s.resultTitle}>MAKE YOUR PLAY</Text>
       <Text style={s.body}>Drag anywhere to draw from the puck. Lift to play. Time freezes while you aim.</Text>
       <Text style={s.body}>Teal is your team. Red defenders race for passes and loose pucks. Lead a teammate into space or curve around pressure. A red pickup ends the rush.</Text>
-      <Text style={s.body}>Shoot inside the posts. Gold corners show gaps; the goalie can still react. Bank off boards to find a new lane.</Text>
+      <Text style={s.body}>Flick through the net to shoot. Move left or right for the side; follow through farther beyond the goal for a high shot. A centered low flick tests the pads for a rebound.</Text>
       <Text style={s.body}>Tap a yellow powerup before drawing when one is available. Goals unlock levels. Earn all three stars together in one run.</Text>
       <Button style={s.primary} onPress={() => { dismissHelp(); startLesson(0); }}><Text style={s.primaryText}>TRY THE GUIDED TUTORIAL</Text></Button>
       <Button style={s.secondary} onPress={dismissHelp}><Text style={s.secondaryText}>BACK TO CAMPAIGN</Text></Button>

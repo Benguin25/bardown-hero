@@ -36,15 +36,33 @@ const highlightRoutes = [
   [[{ x: 6, z: -5 }], [{ x: -6, z: -9 }], [{ x: -8, z: -16 }, { x: -2.25, z: -18, height: 3.5 }]],
   [[{ x: 15.5, z: -5 }], [{ x: -6, z: -9 }], [{ x: 6, z: -9 }], [{ x: -2.25, z: -18, height: 3.5 }]],
 ];
+const expansionRoutes = [
+  [[{ x: 6, z: 0 }], [{ x: -1, z: -9 }], [{ x: 2.25, z: -18, height: 3.5 }]],
+  [[{ x: -7, z: -15 }], [{ x: -1, z: -7 }], [{ x: 7, z: -12 }], [{ x: -2.25, z: -18, height: 3.5 }]],
+  [[{ x: 15.5, z: -10 }], [{ x: -2.25, z: -18, height: 3.5 }]],
+  [[{ x: 8, z: -10 }], [{ x: 9, z: -13 }, { x: 7, z: -16 }, { x: -2.25, z: -18, height: 3.5 }]],
+  [[{ x: 15.5, z: -5 }], [{ x: -15.5, z: -7 }], [{ x: -2.25, z: -18, height: 3.5 }]],
+  [[{ x: -4, z: -5 }, { x: 0, z: -9 }], [{ x: 7, z: -11 }], [{ x: -2.25, z: -18, height: 3.5 }]],
+  [[{ x: 0, z: -10 }], [{ x: 0, z: -18 }], [{ x: -2.25, z: -18, height: 3.5 }]],
+  [[{ x: -7, z: -10 }], [{ x: -8, z: -10 }, { x: -8, z: -13 }, { x: 0, z: -13 }], [{ x: -2.25, z: -18, height: 3.5 }]],
+  [[{ x: -7, z: 2 }, { x: -8, z: -6 }, { x: 7, z: -6 }], [{ x: 8, z: -12 }, { x: 0, z: -14 }, { x: -6, z: -11 }], [{ x: 2.25, z: -18, height: 3.5 }]],
+  [[{ x: 15.5, z: -5 }], [{ x: 6, z: -8 }], [{ x: -2, z: -11 }], [{ x: -2.25, z: -18, height: 3.5 }]],
+  [[{ x: 5, z: -5 }], [{ x: -7, z: -12 }], [{ x: 2.25, z: -18, height: 3.5 }]],
+  [[{ x: -7, z: -3 }], [{ x: -8, z: -9 }, { x: 7, z: -10 }, { x: 7, z: -8 }], [{ x: 7, z: -3 }, { x: -4, z: -3 }, { x: -4, z: -6 }], [{ x: -2.25, z: -18, height: 3.5 }]],
+  [[{ x: 15.5, z: -5 }], [{ x: -6, z: -9 }], [{ x: 2.25, z: -18, height: 3.5 }]],
+  [[{ x: 0, z: 5 }, { x: 9, z: 0 }, { x: 7, z: -8 }], [{ x: -6, z: -12 }], [{ x: -2.25, z: -18, height: 3.5 }]],
+  [[{ x: -9, z: -3 }, { x: -9, z: -10 }, { x: 0, z: -9 }], [{ x: 7, z: -12 }], [{ x: 2.25, z: -18, height: 3.5 }]],
+  [[{ x: 15.5, z: -5 }], [{ x: -7, z: -9 }], [{ x: 6, z: -11 }], [{ x: 8, z: -14 }, { x: 0, z: -13 }], [{ x: -2.25, z: -18, height: 3.5 }]],
+];
 const opening = [
   [{ x: 6, z: 4 }],
   [{ x: 4, z: 6 }, { x: -8, z: 6 }, { x: -8, z: -7 }, { x: -6, z: -7 }],
   [{ x: -4, z: -14 }, { x: 2.25, z: -18, height: 3.5 }],
 ];
 const campaign = [opening, ...routes.map((route, i) => i === 1
-  ? [route[0], [{ x: 2.25, z: -18, height: 3.5 }]] : route), ...newRoutes, ...highlightRoutes];
+  ? [route[0], [{ x: 2.25, z: -18, height: 3.5 }]] : route), ...newRoutes, ...highlightRoutes, ...expansionRoutes];
 for (const fps of [120, 60, 30, 20]) {
-  test('all 16 authored three-star routes remain playable at ' + fps + ' fps', () => {
+  test('all 32 authored three-star routes remain playable at ' + fps + ' fps', () => {
     assert.equal(campaign.length, LEVELS.length);
     campaign.forEach((route, level) => {
       const game = new Game(level);

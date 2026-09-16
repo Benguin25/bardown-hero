@@ -85,9 +85,9 @@ highlightRoutes.forEach((route, i) => test(`highlight level ${i + 11} has a thre
 }));
 
 test('the expanded campaign preserves old saves and unlocks level eleven after ten', () => {
-  const { HIGHLIGHTS, OBJECTIVES, CHAPTERS } = require('../.test-build/game.js');
-  assert.equal(LEVELS.length, 16); assert.equal(HIGHLIGHTS.length, LEVELS.length);
-  assert.equal(CHAPTERS.length * 4, LEVELS.length); assert.equal(OBJECTIVES.length, LEVELS.length);
+  const { HIGHLIGHTS, OBJECTIVES, CHAPTERS, CHAPTER_LEVEL_COUNTS } = require('../.test-build/game.js');
+  assert.equal(LEVELS.length, 32); assert.equal(HIGHLIGHTS.length, LEVELS.length);
+  assert.equal(CHAPTERS.length, 6); assert.equal(CHAPTER_LEVEL_COUNTS.reduce((sum, count) => sum + count, 0), LEVELS.length); assert.equal(OBJECTIVES.length, LEVELS.length);
   const saved = emptyProgress();
   for (let i = 0; i < 10; i++) saved.runs[i] = [true, false, false];
   const loaded = parseProgress(JSON.stringify(saved));
@@ -614,6 +614,26 @@ test('lead pass stays drawn into open space while the teammate skates to collect
     assert.equal(g.passes, 1);
     const frozen = JSON.stringify(g); g.update(0.05); assert.equal(JSON.stringify(g), frozen);
   }
+});
+
+test('shot releases classify snapshots, one-timers, screens, curves, and rebounds', () => {
+  const shot = (configure, path, seconds = 0.3) => {
+    const game = clearShootingSetup();
+    configure(game);
+    game.release([game.puck, ...path], seconds);
+    return game;
+  };
+  const target = { x: 2.25, z: -18, height: 3.5 };
+  const snapshot = shot(() => {}, [target]);
+  assert.equal(snapshot.shotStyle, 'snapshot'); assert.equal(snapshot.event, 'snapshot');
+  const oneTimer = shot(game => { game.stage = 1; }, [target]);
+  assert.equal(oneTimer.shotStyle, 'oneTimer'); assert.equal(oneTimer.event, 'oneTimer');
+  const screen = shot(game => { game.defenders = [{ x: 1, z: -13 }, { x: -9, z: 8 }]; }, [target], 0.8);
+  assert.equal(screen.shotStyle, 'screen'); assert.equal(screen.event, 'screenShot');
+  const curve = shot(() => {}, [{ x: -7, z: -13 }, target], 0.8);
+  assert.equal(curve.shotStyle, 'curve'); assert.equal(curve.event, 'curveShot');
+  const rebound = shot(game => { game.reboundUsed = true; }, [target]);
+  assert.equal(rebound.shotStyle, 'rebound'); assert.equal(rebound.event, 'reboundShot');
 });
 
 test('super-close pass keeps puck travel visible and bounds every skater step', () => {

@@ -1,9 +1,10 @@
-export type SoundCue = 'tap' | 'release' | 'pass' | 'bank' | 'save' | 'goal' | 'fail' | 'powerup' | 'countdown' | 'start';
+export type SoundCue = 'tap' | 'release' | 'snapshot' | 'oneTimer' | 'curveShot' | 'screenShot' | 'reboundShot' | 'pass' | 'bank' | 'save' | 'goal' | 'fail' | 'powerup' | 'countdown' | 'start';
 
 export type AudioEvent = { id: number; event: string };
 
 const CUES: Record<string, SoundCue | undefined> = {
   release: 'release', pass: 'pass', bank: 'bank', save: 'save', goal: 'goal', fail: 'fail',
+  snapshot: 'snapshot', oneTimer: 'oneTimer', curveShot: 'curveShot', screenShot: 'screenShot', reboundShot: 'reboundShot',
   powerup: 'powerup', countdown: 'countdown', start: 'start',
 };
 
