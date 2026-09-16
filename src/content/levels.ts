@@ -1,5 +1,6 @@
 import type { AuthoredLevel } from './types';
 import { assertValidLevels } from './types';
+import { EXTRA_HIGHLIGHTS, EXTRA_LEVELS } from './extraLevels';
 export type { Powerup, Objective, Point } from './types';
 import type { Powerup, Objective, Point } from './types';
 export type Moment = AuthoredLevel['moments'][number]; export type Level = AuthoredLevel;
@@ -83,14 +84,16 @@ const RAW_LEVELS: readonly LevelScenario[] = [
   ] },
 ];
 
-export const CHAPTERS = ['FIRST TRACKS', 'HEAT CHECK', 'PLAYMAKERS', 'HIGHLIGHT REEL'];
+export const CHAPTERS = ['FIRST TRACKS', 'HEAT CHECK', 'PLAYMAKERS', 'HIGHLIGHT REEL', 'CREATIVE CHAOS', 'LEGENDARY ICE'];
+export const CHAPTER_LEVEL_COUNTS = [4, 4, 4, 4, 8, 8] as const;
 export const HIGHLIGHTS = [
   'Break out. Bend it. Bury it.', 'A hook pass with bad intentions.', 'Across the ice. Off the blade.', 'Two closed lanes. Find a third.',
   'The second chance is the best chance.', 'Open ice. A puck on fire.', 'A finish that bends the rules.', 'Freeze the lane. Heat up the net.',
   'A pass through the smallest window.', 'Four touches. Lights out.', 'Put it where they’re going.', 'The boards get the assist.',
   'Two wings. One very confused goalie.', 'A pad save is just the beginning.', 'Make your own shooting lane.', 'Bank. Chase. Cross. Bury.',
+  ...EXTRA_HIGHLIGHTS,
 ];
-const OBJECTIVES: readonly (readonly Objective[])[] = [
+const BASE_OBJECTIVES: readonly (readonly Objective[])[] = [
   ['goal', 'passes', 'top'], ['goal', 'curve', 'top'], ['goal', 'passes', 'top'],
   ['goal', 'curve', 'passes'], ['goal', 'rebound', 'top'], ['goal', 'fire', 'top'],
   ['goal', 'curve', 'top'], ['goal', 'freeze', 'top'], ['goal', 'passes', 'top'], ['goal', 'fire', 'freeze'],
@@ -104,10 +107,11 @@ export const OBJECTIVE_LABELS: Record<Objective, string> = {
 };
 
 
-export const LEVELS: readonly AuthoredLevel[] = RAW_LEVELS.map((level, index) => ({
+export const LEVELS: readonly AuthoredLevel[] = [...RAW_LEVELS.map((level, index) => ({
   ...level,
   id: `level-${String(index + 1).padStart(2, '0')}`,
-  objectives: OBJECTIVES[index],
-}));
+  objectives: BASE_OBJECTIVES[index],
+})), ...EXTRA_LEVELS];
+export const OBJECTIVES: readonly (readonly Objective[])[] = LEVELS.map(level => level.objectives);
 assertValidLevels(LEVELS);
-export { MOMENTS, OBJECTIVES };
+export { MOMENTS };

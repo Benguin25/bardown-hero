@@ -1,6 +1,6 @@
 # Run Bardown Hero on your iPhone
 
-This is an Expo + React Native + TypeScript arcade game. It opens into a sixteen-level campaign with four chapters, local progress, and 48 stars to chase. Your Windows PC runs the development server; your iPhone runs the game in Expo Go. Android is also supported through Expo Go; iOS is the first playtest target.
+This is an Expo + React Native + TypeScript arcade game. It opens into a 32-level campaign with six chapters, local progress, and 96 stars to chase. Your Windows PC runs the development server; your iPhone runs the game in Expo Go. Android is also supported through Expo Go; iOS is the first playtest target.
 
 ## 1. Install these once
 
@@ -71,7 +71,7 @@ One skater from each team chases the puck while supporting players move in forma
 - Each start/retry shows the level objectives and counts down **3–2–1** before the rush begins.
 - For a **BANK PASS**, draw toward a side or end board. The preview stops at the first collision. On release, the incoming angle determines the rebound; extra drawing beyond that collision has no effect. Teammates chase reachable pickups after the bounce. Bank around the outside of the cage; the puck cannot travel through its back. Ordinary missed shots still end the attempt.
 
-Use the **‹** back button to return to the campaign. A goal unlocks the next level regardless of stars. Each level has three objectives shown on its card and results screen. Stars must be earned together in one run; only the best run is saved, and tied runs do not merge objectives. Retry restarts the selected level with fresh powerups. The five opening scenarios cover breakout, hooked passes, one-timers, traffic, and rebounds. Levels 6–10 add Fire Puck, Mega Curve, Freeze, tight lanes, and a four-decision combo. Levels 11–16 build on those skills with lead retrieval, banks, receiver choices, rebound finishes, traffic, and a finale. A second save ends the attempt. You can still shoot early or choose another teammate.
+Use the **‹** back button to return to the campaign. A goal unlocks the next level regardless of stars. Each level has three objectives shown on its card and results screen. Stars must be earned together in one run; only the best run is saved, and tied runs do not merge objectives. Retry restarts the selected level with fresh powerups. The original levels 1–16 are unchanged. Levels 17–20 introduce a give-and-go, low-to-high cycle, side-board carom one-timer, and cross-ice lead. Levels 21–26 combine double banks, Freeze, deliberate rebounds, Mega Curve screens, route choice, and bank-to-lead play. Levels 27–32 are late-game sequences: puck races, a 3-on-2, Freeze-to-bank, cross-ice redirects, a screened Fire Puck rush, and a five-decision finale. Passing behind the net is intentionally not authored yet because it needs dedicated cage-routing logic. A second save ends the attempt. You can still shoot early or choose another teammate.
 
 At designated decisions, tap the yellow **TAP TO CHARGE** powerup button before drawing. Fire Puck requires a shot and makes it extremely fast; Mega Curve amplifies the bend shown in the preview; Freeze holds defenders in place during the next action, but they can still intercept. Charges survive canceled swipes. Powerups are granted by the scenario, with no inventory or purchases.
 
@@ -83,7 +83,7 @@ Presentation polish pass: skaters and the goalie now have clearer procedural hel
 
 Campaign polish: check cleared, next, and locked cards; try the continue button; open star objectives with **☆ 3** during a decision. Check the compact countdown, fading instructions during flight, result-star animation, and haptics. Repeat with the device’s reduced-motion setting enabled. Old ten-level saves should retain every star and unlock level 11 after level 10.
 
-New highlights: levels 11–16 introduce open-ice lead retrieval, a bank-to-cross-ice combo, two receiver options, a rebound finish, a shot through traffic, and a four-touch bank/lead/one-timer finale. Bank and lead stars require the puck to be collected, not just aimed at the desired spot.
+New highlights: levels 17–32 add sixteen distinct authored situations across **CREATIVE CHAOS** and **LEGENDARY ICE**. Check that their coral and lime chapter rails are visually distinct, chapter scores read 24 stars each, and the campaign total reads 96. Bank and lead stars require the puck to be collected, not just aimed at the desired spot.
 
 For a development-only browser preview, run `npm.cmd run preview`. The web dependencies are development dependencies; the native Expo app remains the primary playtest target.
 
@@ -153,13 +153,13 @@ npx.cmd expo export --platform ios
 npx.cmd expo export --platform android
 ```
 
-The tests replay three-star routes through all sixteen levels at 120, 60, 30, and 20 fps and cover both receiver choices in Double Take, old-save compatibility, single-run persistence rules, unlocks, powerup lifetimes, curve preservation, full simulation freeze, interception, scoring, save/rebound behavior, missed shots, canceled input, retry state, and phone-size camera projection. Exports check production bundles; they do not install an app on your phone.
+The tests replay three-star routes through all 32 levels at 120, 60, 30, and 20 fps and cover both receiver choices in Double Take, old-save compatibility, single-run persistence rules, unlocks, powerup lifetimes, curve preservation, full simulation freeze, interception, scoring, save/rebound behavior, missed shots, canceled input, retry state, and phone-size camera projection. Exports check production bundles; they do not install an app on your phone.
 
 This gameplay and presentation pass was checked with `npm run typecheck`, `npm test`, and production Expo export checks. Physical iPhone rendering, touch feel, and frame rate still need the device playtest above.
 
 ## Where to change things
 
-- `src/content/levels.ts`: campaign order and all authored level data: stable IDs, titles, moments, formations, powerup grants, objectives, chapter labels, and card highlights.
+- `src/content/levels.ts`: original campaign order, chapter metadata, stable IDs, objectives, and card highlights. `src/content/extraLevels.ts` contains append-only levels 17–32.
 - `src/content/types.ts`: reusable authored-content types and validation rules. Add a powerup or objective identifier here before referencing it from a level.
 - `src/game.ts`: path cleanup, input intent, state machine, collisions, goalie, and rebound simulation. It imports the catalog and keeps compatibility re-exports for existing callers.
 - `src/rink.ts`: 3D rink and placeholder models, camera, trails, and reactions.
@@ -167,6 +167,6 @@ This gameplay and presentation pass was checked with `npm run typecheck`, `npm t
 - `src/progress.ts`: local-save schema, best-run selection, and sequential unlock rules.
 - `tests/content.test.cjs`: catalog validation and stable-ID/index mapping. `tests/game.test.cjs` covers deterministic gameplay.
 
-To add a future level, append its authored moments plus its three-objective set and campaign-card highlight in `src/content/levels.ts`, then extend chapter metadata if the new level starts a chapter. Do not insert or reorder shipped levels: AsyncStorage version 1 intentionally keys runs by their existing array index. Give the new entry the next stable `level-NN` ID, run the checks below, and add a deterministic successful route test when its authored route is novel. Most levels should require no change to `src/game.ts`; engine edits are reserved for new mechanics.
+To add a future level, append its authored moments, three-objective set, and campaign-card highlight in `src/content/extraLevels.ts`, then extend the explicit chapter counts in `src/content/levels.ts` if the new level starts a chapter. Do not insert or reorder shipped levels: AsyncStorage version 1 intentionally keys runs by their existing array index. Give the new entry the next stable `level-NN` ID, run the checks below, and add a deterministic successful route test. Most levels should require no change to `src/game.ts`; engine edits are reserved for new mechanics.
 
 The renderer uses Three.js with Expo GL, procedural geometry, and fixed effect pools. Gameplay uses authored movement and simple collision zones; there is no general physics engine, backend, or external asset download. AsyncStorage saves progress locally on the device.

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import { AccessibilityInfo, Animated, Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { audio } from './sound';
-import { CHAPTERS, HIGHLIGHTS, LEVELS, OBJECTIVE_LABELS } from './content';
+import { CHAPTERS, CHAPTER_LEVEL_COUNTS, HIGHLIGHTS, LEVELS, OBJECTIVE_LABELS } from './content';
 import { isUnlocked, stars, type Progress } from './progress';
 
 export function feedback(kind: 'tap' | 'pass' | 'goal' | 'fail' | 'bank') {
@@ -14,7 +14,7 @@ export function feedback(kind: 'tap' | 'pass' | 'goal' | 'fail' | 'bank') {
 }
 
 const Motion = createContext(false);
-const CHAPTER_ACCENTS = ['#23dcb6', '#ffcf5a', '#77b9ff', '#c78cff'] as const;
+const CHAPTER_ACCENTS = ['#23dcb6', '#ffcf5a', '#77b9ff', '#c78cff', '#ff7f6e', '#a8f05a'] as const;
 export function MotionProvider({ children }: { children: React.ReactNode }) {
   const [reduced, setReduced] = useState(false);
   useEffect(() => {
@@ -84,10 +84,14 @@ export function Campaign({ progress, loaded, error, save, select, soundOn, toggl
       {!!error && <Button onPress={save}><Text style={s.errorText}>{error}</Text></Button>}
       {!loaded && <Text style={s.body}>{error ? 'Your saved progress is safe.' : 'Getting your skates ready…'}</Text>}
     </Rise>
-    {CHAPTERS.map((chapter, chapterIndex) => <Rise key={chapter} delay={80 + chapterIndex * 45}>
-      <View style={[s.chapterHeading, { borderLeftColor: CHAPTER_ACCENTS[chapterIndex] }]}><Text style={[s.chapterNumber, { color: CHAPTER_ACCENTS[chapterIndex] }]}>0{chapterIndex + 1}</Text><Text style={s.chapterName}>{chapter}</Text><Text style={s.chapterScore}>{LEVELS.slice(chapterIndex * 4, chapterIndex * 4 + 4).reduce((sum, _, i) => sum + stars(progress.runs[chapterIndex * 4 + i]), 0)} / 12 ★</Text></View>
-      {LEVELS.slice(chapterIndex * 4, chapterIndex * 4 + 4).map((level, offset) => {
-        const i = chapterIndex * 4 + offset, unlocked = loaded && isUnlocked(progress, i), complete = !!progress.runs[i]?.[0], now = loaded && i === current;
+    {CHAPTERS.map((chapter, chapterIndex) => {
+      const chapterStart = CHAPTER_LEVEL_COUNTS.slice(0, chapterIndex).reduce((sum, count) => sum + count, 0);
+      const chapterCount = CHAPTER_LEVEL_COUNTS[chapterIndex];
+      const chapterLevels = LEVELS.slice(chapterStart, chapterStart + chapterCount);
+      return <Rise key={chapter} delay={80 + chapterIndex * 45}>
+      <View style={[s.chapterHeading, { borderLeftColor: CHAPTER_ACCENTS[chapterIndex] }]}><Text style={[s.chapterNumber, { color: CHAPTER_ACCENTS[chapterIndex] }]}>0{chapterIndex + 1}</Text><Text style={s.chapterName}>{chapter}</Text><Text style={s.chapterScore}>{chapterLevels.reduce((sum, _, offset) => sum + stars(progress.runs[chapterStart + offset]), 0)} / {chapterCount * 3} ★</Text></View>
+      {chapterLevels.map((level, offset) => {
+        const i = chapterStart + offset, unlocked = loaded && isUnlocked(progress, i), complete = !!progress.runs[i]?.[0], now = loaded && i === current;
         return <Button key={level.title} disabled={!unlocked} onPress={() => select(i)} label={`${i + 1}. ${level.title}. ${now ? 'Up next.' : complete ? 'Completed.' : unlocked ? '' : 'Locked.'} ${stars(progress.runs[i])} stars.`}
           style={[s.card, { borderLeftColor: CHAPTER_ACCENTS[chapterIndex], borderLeftWidth: 3 }, complete && s.cardComplete, now && s.cardCurrent, !unlocked && s.cardLocked]}>
           <View style={[s.numberTile, complete && s.numberComplete, now && s.numberCurrent]}><Text style={[s.levelNumber, now && s.ink]}>{String(i + 1).padStart(2, '0')}</Text><Text style={[s.tileMark, now && s.ink]}>{complete ? '✓' : now ? '▶' : '—'}</Text></View>
@@ -98,7 +102,7 @@ export function Campaign({ progress, loaded, error, save, select, soundOn, toggl
           </View>
         </Button>;
       })}
-    </Rise>)}
+    </Rise>;})}
     <Text style={s.campaignFoot}>Every rush is another shot at three stars.</Text>
   </ScrollView>;
 }

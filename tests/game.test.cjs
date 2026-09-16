@@ -85,9 +85,9 @@ highlightRoutes.forEach((route, i) => test(`highlight level ${i + 11} has a thre
 }));
 
 test('the expanded campaign preserves old saves and unlocks level eleven after ten', () => {
-  const { HIGHLIGHTS, OBJECTIVES, CHAPTERS } = require('../.test-build/game.js');
-  assert.equal(LEVELS.length, 16); assert.equal(HIGHLIGHTS.length, LEVELS.length);
-  assert.equal(CHAPTERS.length * 4, LEVELS.length); assert.equal(OBJECTIVES.length, LEVELS.length);
+  const { HIGHLIGHTS, OBJECTIVES, CHAPTERS, CHAPTER_LEVEL_COUNTS } = require('../.test-build/game.js');
+  assert.equal(LEVELS.length, 32); assert.equal(HIGHLIGHTS.length, LEVELS.length);
+  assert.equal(CHAPTERS.length, 6); assert.equal(CHAPTER_LEVEL_COUNTS.reduce((sum, count) => sum + count, 0), LEVELS.length); assert.equal(OBJECTIVES.length, LEVELS.length);
   const saved = emptyProgress();
   for (let i = 0; i < 10; i++) saved.runs[i] = [true, false, false];
   const loaded = parseProgress(JSON.stringify(saved));

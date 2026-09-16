@@ -1,8 +1,8 @@
 // Rink coordinates: x across the ice, z toward the camera. Attack toward -z.
-import { LEVELS, MOMENTS, CHAPTERS, HIGHLIGHTS, OBJECTIVES, OBJECTIVE_LABELS } from './content/levels';
+import { LEVELS, MOMENTS, CHAPTERS, CHAPTER_LEVEL_COUNTS, HIGHLIGHTS, OBJECTIVES, OBJECTIVE_LABELS } from './content/levels';
 import type { Point, Powerup } from './content/types';
 export type { Point, Powerup, Objective, Moment, Level } from './content/levels';
-export { LEVELS, MOMENTS, CHAPTERS, HIGHLIGHTS, OBJECTIVES, OBJECTIVE_LABELS };
+export { LEVELS, MOMENTS, CHAPTERS, CHAPTER_LEVEL_COUNTS, HIGHLIGHTS, OBJECTIVES, OBJECTIVE_LABELS };
 export const BOARD_X = 10.75;
 export const BOARD_Z = 22.5;
 export type Phase = 'AUTO_PLAY' | 'PAUSED_FOR_INPUT' | 'EXECUTING_ACTION' | 'REBOUND' | 'SUCCESS' | 'FAIL';
