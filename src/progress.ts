@@ -1,4 +1,4 @@
-import { LEVELS } from './game';
+import { LEVELS } from './content';
 
 // Store the best complete run, never merge objectives from separate attempts.
 export type Progress = { version: 1; runs: Record<string, boolean[]> };
