@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import { AccessibilityInfo, Animated, Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { audio } from './sound';
-import { CHAPTERS, HIGHLIGHTS, LEVELS, OBJECTIVES, OBJECTIVE_LABELS } from './game';
+import { CHAPTERS, HIGHLIGHTS, LEVELS, OBJECTIVE_LABELS } from './content';
 import { isUnlocked, stars, type Progress } from './progress';
 
 export function feedback(kind: 'tap' | 'pass' | 'goal' | 'fail' | 'bank') {
@@ -94,7 +94,7 @@ export function Campaign({ progress, loaded, error, save, select, soundOn, toggl
           <View style={s.cardCopy}><View style={s.cardHeading}><Text style={s.cardState}>{now ? 'UP NEXT' : complete ? 'CLEARED' : 'LOCKED'}</Text><Stars count={stars(progress.runs[i])} /></View>
             <Text style={[s.cardName, !unlocked && s.muted]}>{level.title}</Text>
             <Text style={s.highlight}>{HIGHLIGHTS[i]}</Text>
-            <Text style={s.cardObjectives}>{OBJECTIVES[i].map(id => OBJECTIVE_LABELS[id]).join(' · ')}</Text>
+            <Text style={s.cardObjectives}>{level.objectives.map(id => OBJECTIVE_LABELS[id]).join(' · ')}</Text>
           </View>
         </Button>;
       })}

@@ -49,6 +49,13 @@ The current request supersedes the original vertical-slice exclusions below.
 - Presentation includes camera punch, danger-shot and goal slow motion, net shake, colored powerup trails, ice spray, impact particles, goalie knockback, jumping celebrations, and animated callouts.
 
 Validation: `npm run typecheck`, `npm test`, and Expo native bundle export. Physical-device checks remain necessary for GL rendering, touch feel, background/resume, menu navigation, and save/relaunch behavior.
+
+Content architecture update:
+
+- Authored campaign content lives under `src/content`, separate from the simulation in `src/game.ts`. The catalog owns level IDs, titles, moments, formations, powerup grants, objectives, chapter labels, highlights, and objective labels.
+- Every level has a stable `level-NN` identifier, while persisted progress deliberately remains version 1 and index-keyed. Existing saves therefore retain their stars and unlock sequence. Reordering an existing level is a save-compatibility change and is not allowed without an explicit migration.
+- The catalog validates at module load and in tests. Levels require a unique ID, title, at least one moment, exactly three unique objectives including `goal`, finite carrier/support/defense coordinates, exactly two support skaters and two defenders per moment, and a known powerup reference.
+- New campaign levels should be authored in `src/content/levels.ts`; simulation changes belong in `src/game.ts` only when introducing genuinely new mechanics.
 Portrait mobile arcade hockey inspired by stop-and-swipe sports games, but intentionally exaggerated and non-realistic.
 
 Core loop:

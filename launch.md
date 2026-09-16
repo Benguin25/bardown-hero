@@ -159,10 +159,14 @@ This gameplay and presentation pass was checked with `npm run typecheck`, `npm t
 
 ## Where to change things
 
-- `src/game.ts`: authored formations, path cleanup, input intent, state machine, collisions, goalie, and rebound.
+- `src/content/levels.ts`: campaign order and all authored level data: stable IDs, titles, moments, formations, powerup grants, objectives, chapter labels, and card highlights.
+- `src/content/types.ts`: reusable authored-content types and validation rules. Add a powerup or objective identifier here before referencing it from a level.
+- `src/game.ts`: path cleanup, input intent, state machine, collisions, goalie, and rebound simulation. It imports the catalog and keeps compatibility re-exports for existing callers.
 - `src/rink.ts`: 3D rink and placeholder models, camera, trails, and reactions.
 - `App.tsx`: touch input, game loop, lifecycle handling, and gameplay HUD.
 - `src/progress.ts`: local-save schema, best-run selection, and sequential unlock rules.
-- `tests/game.test.cjs`: deterministic gameplay checks.
+- `tests/content.test.cjs`: catalog validation and stable-ID/index mapping. `tests/game.test.cjs` covers deterministic gameplay.
+
+To add a future level, append its authored moments plus its three-objective set and campaign-card highlight in `src/content/levels.ts`, then extend chapter metadata if the new level starts a chapter. Do not insert or reorder shipped levels: AsyncStorage version 1 intentionally keys runs by their existing array index. Give the new entry the next stable `level-NN` ID, run the checks below, and add a deterministic successful route test when its authored route is novel. Most levels should require no change to `src/game.ts`; engine edits are reserved for new mechanics.
 
 The renderer uses Three.js with Expo GL, procedural geometry, and fixed effect pools. Gameplay uses authored movement and simple collision zones; there is no general physics engine, backend, or external asset download. AsyncStorage saves progress locally on the device.
