@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { WebGLRenderer } = require('three');
 const THREE = require('three');
-const { Rink, frameRink, dampAngle, approachPoint } = require('../.test-build/rink.js');
+const { Rink, frameRink, flickShotPoint, dampAngle, approachPoint, HIGH_FOLLOW_THROUGH_Z } = require('../.test-build/rink.js');
 const { Game, LEVELS, GOAL_CORNERS, NET_Z, NET_HEIGHT } = require('../.test-build/game.js');
 
 test('native GL contexts reach initialization without the r163 WebGL1 rejection', () => {
@@ -29,8 +29,7 @@ test('native GL contexts reach initialization without the r163 WebGL1 rejection'
   }
 });
 
-test('screen aiming hits each elevated corner at multiple phone viewport sizes', () => {
-  // Exercise the actual projection/input methods without pretending to emulate GL.
+test('screen-space follow-through selects broad low and high shot lanes on phone viewports', () => {
   for (const [width, height] of [[320, 420], [390, 600], [430, 680]]) {
     const rink = Object.create(Rink.prototype);
     rink.width = width; rink.height = height;
@@ -39,54 +38,32 @@ test('screen aiming hits each elevated corner at multiple phone viewport sizes',
     rink.ray = new THREE.Raycaster();
     rink.plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.14);
     rink.goalPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -NET_Z);
-    for (const corner of GOAL_CORNERS) {
-      const screen = rink.screenPoint(corner);
+    for (const side of [-1, 1]) for (const [z, shotHeight] of [[-18.8, 0.55], [-21.5, 3.5]]) {
+      const screen = rink.screenPoint({ x: side * 1.4, z });
       assert.ok(screen.x > 0 && screen.x < width && screen.y > 0 && screen.y < height);
-      assert.deepEqual(rink.aimPoint(screen.x, screen.y), { x: corner.x, z: corner.z, height: corner.height });
+      assert.deepEqual(rink.aimPoint(screen.x, screen.y), { x: side * 2.25, z: NET_Z, height: shotHeight });
     }
     const ice = { x: 6, z: 4 };
     const screen = rink.screenPoint(ice);
     const aim = rink.aimPoint(screen.x, screen.y);
     assert.ok(Math.hypot(aim.x - ice.x, aim.z - ice.z) < 0.001);
     assert.equal(aim.height, undefined);
-    const over = rink.screenPoint({ x: 0, z: NET_Z, height: NET_HEIGHT + 0.5 });
-    assert.ok(rink.aimPoint(over.x, over.y).height > NET_HEIGHT);
+    const pads = rink.screenPoint({ x: 0.2, z: -19 });
+    assert.deepEqual(rink.aimPoint(pads.x, pads.y), { x: 0, z: NET_Z, height: 0.55 });
   }
 });
 
-test('phone-sized near-corner aim snaps to the authored target without pulling the middle of the net', () => {
-  const rink = Object.create(Rink.prototype);
-  rink.width = 390; rink.height = 600;
-  rink.camera = new THREE.OrthographicCamera(-14, 14, 24, -24, 0.1, 150);
-  frameRink(rink.camera, rink.width, rink.height, new Game());
-  rink.ray = new THREE.Raycaster();
-  rink.plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.14);
-  rink.goalPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -NET_Z);
-  for (const corner of GOAL_CORNERS) {
-    const near = rink.screenPoint({ x: corner.x + (corner.x < 0 ? 0.85 : -0.85), z: NET_Z, height: corner.height + 0.7 });
-    assert.deepEqual(rink.aimPoint(near.x, near.y), { x: corner.x, z: corner.z, height: corner.height });
-  }
-  const middle = rink.screenPoint({ x: 0, z: NET_Z, height: NET_HEIGHT / 2 });
-  const aim = rink.aimPoint(middle.x, middle.y);
-  assert.ok(Math.abs(aim.x) < 0.001 && Math.abs(aim.height - NET_HEIGHT / 2) < 0.001);
+test('flick shooting uses generous side and follow-through bands', () => {
+  for (const x of [0.55, 1.4, 3]) assert.equal(flickShotPoint({ x, z: -19 }).x, 2.25);
+  for (const x of [-0.55, -1.4, -3]) assert.equal(flickShotPoint({ x, z: -19 }).x, -2.25);
+  assert.deepEqual(flickShotPoint({ x: 0.54, z: -19 }), { x: 0, z: NET_Z, height: 0.55 });
+  assert.equal(flickShotPoint({ x: 1, z: HIGH_FOLLOW_THROUGH_Z + 0.01 }).height, 0.55);
+  assert.equal(flickShotPoint({ x: 1, z: HIGH_FOLLOW_THROUGH_Z }).height, 3.5);
 });
 
-test('wide and over-the-bar face aims stay outside every corner capture area', () => {
-  for (const [width, height] of [[320, 420], [390, 600], [430, 680]]) {
-    const rink = Object.create(Rink.prototype);
-    rink.width = width; rink.height = height;
-    rink.camera = new THREE.OrthographicCamera(-14, 14, 24, -24, 0.1, 150);
-    frameRink(rink.camera, width, height, new Game());
-    rink.ray = new THREE.Raycaster();
-    rink.plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.14);
-    rink.goalPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -NET_Z);
-    const wide = rink.screenPoint({ x: 3.35, z: NET_Z, height: 3.5 });
-    const wideAim = rink.aimPoint(wide.x, wide.y);
-    assert.ok(wideAim.x > 3.2, `${width}x${height}: wide aim was corrected inside the post`);
-    const high = rink.screenPoint({ x: 2.25, z: NET_Z, height: 4.55 });
-    const highAim = rink.aimPoint(high.x, high.y);
-    assert.ok(highAim.height > NET_HEIGHT, `${width}x${height}: over-bar aim was corrected to a corner`);
-  }
+test('wide follow-through stays wide instead of receiving shot assistance', () => {
+  assert.deepEqual(flickShotPoint({ x: 3.2, z: -21 }), { x: 3.2, z: -21 });
+  assert.deepEqual(flickShotPoint({ x: -3.2, z: -21 }), { x: -3.2, z: -21 });
 });
 
 test('skater heading damping is frame-rate independent and takes the short turn across the angle seam', () => {

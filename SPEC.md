@@ -109,6 +109,7 @@ One-finger swipe/draw anywhere on screen, with the preview anchored to the puck.
 - Endpoint toward the net becomes a shot.
 - Shot placement matters.
 - A tall net has four high/low corner targets. Gold targets show current gaps; red marks current pad/body/glove coverage. The goalie can close a gap after release. Shot height affects saves, defender clearance, and crossbar misses.
+- Touch input no longer requires dragging onto elevated corner targets. A flick through the net stays projected onto the ice: its lateral lane selects left, center, or right, and extra follow-through beyond the goal line selects high rather than low. In-post side lanes resolve to generous corner regions; a narrow centered low lane intentionally tests the pads for rebounds. Gestures outside the posts remain misses. Corner meshes are not shown as touch buttons; preview height and goalie stance communicate the result.
 - Less aim assistance than passes.
 - Swipe speed may slightly affect puck speed/power.
 
