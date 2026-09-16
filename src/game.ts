@@ -591,7 +591,9 @@ export class Game {
       // actual proximity, never on which teammate the gesture was labeled for.
       if (this.intent.kind !== 'shot' && (this.puck.height ?? 0) <= 0.65) {
         const receiver = this.collectors.sort((p, q) => distance(p, this.puck) - distance(q, this.puck))[0];
-        if (receiver && distance(receiver, this.puck) <= this.reception.pickupRadius) { this.receive(receiver.id); break; }
+        // Give even a stick-on pass enough time to cross several rendered
+        // frames before possession freezes at the catch point.
+        if (receiver && this.actionTime >= 0.1 && distance(receiver, this.puck) <= this.reception.pickupRadius) { this.receive(receiver.id); break; }
       }
       if (this.freeVelocity) {
         if (hit) this.bounce(hit.flipX, hit.flipZ);
@@ -717,8 +719,11 @@ export class Game {
         return this.skateToward(p, pickup, this.reception.skateSpeed, dt);
       }
       const formation = this.toAttack[i] ?? p;
-      return this.freeVelocity ? this.skateToward(p, mix(formation, this.puck, 0.15), this.reception.skateSpeed, dt)
-        : mix(this.fromAttack[i], formation, Math.min(1, this.actionDistance / this.actionLength));
+      if (this.freeVelocity) return this.skateToward(p, mix(formation, this.puck, 0.15), this.reception.skateSpeed, dt);
+      const routePosition = mix(this.fromAttack[i], formation, Math.min(1, this.actionDistance / this.actionLength));
+      // Short actions need a speed cap; longer authored routes retain their
+      // existing timing while the renderer limits their visible skate speed.
+      return this.actionLength < 4 ? this.skateToward(p, routePosition, this.reception.skateSpeed, dt) : routePosition;
     });
   }
 

@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { WebGLRenderer } = require('three');
 const THREE = require('three');
-const { Rink, frameRink, dampAngle } = require('../.test-build/rink.js');
+const { Rink, frameRink, dampAngle, approachPoint } = require('../.test-build/rink.js');
 const { Game, LEVELS, GOAL_CORNERS, NET_Z, NET_HEIGHT } = require('../.test-build/game.js');
 
 test('native GL contexts reach initialization without the r163 WebGL1 rejection', () => {
@@ -95,6 +95,19 @@ test('skater heading damping is frame-rate independent and takes the short turn 
   for (let i = 0; i < 30; i++) sixty = dampAngle(sixty, -3.05, 1 / 60);
   assert.ok(Math.abs(thirty - sixty) < 1e-10);
   assert.ok(thirty > 3.05, 'crosses the seam by the short positive turn');
+});
+
+test('rendered skaters approach simulation positions at a bounded speed', () => {
+  const target = { x: 12, z: -8 };
+  for (const dt of [1 / 120, 1 / 60, 0.05]) {
+    let p = { x: 0, z: 0 };
+    for (let elapsed = 0; elapsed < 0.5 - 0.000001; elapsed += dt) {
+      const before = p;
+      p = approachPoint(p, target, 7.8, dt);
+      assert.ok(Math.hypot(p.x - before.x, p.z - before.z) <= 7.8 * dt + 1e-9);
+    }
+    assert.ok(Math.abs(Math.hypot(p.x, p.z) - 3.9) <= 7.8 * dt + 1e-9);
+  }
 });
 
 test('entire cage clears the compact rink margin at every puck distance and camera impact', () => {

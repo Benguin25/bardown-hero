@@ -12,6 +12,13 @@ export function dampAngle(current: number, target: number, seconds: number, spee
   return current + delta * (1 - Math.exp(-speed * Math.max(0, seconds)));
 }
 
+export function approachPoint(current: Point, target: Point, maxSpeed: number, seconds: number): Point {
+  const dx = target.x - current.x, dz = target.z - current.z;
+  const d = Math.hypot(dx, dz), step = Math.max(0, maxSpeed * seconds);
+  if (d <= step || d < 0.000001) return { x: target.x, z: target.z };
+  return { x: current.x + dx / d * step, z: current.z + dz / d * step };
+}
+
 export function frameRink(camera: THREE.OrthographicCamera, width: number, height: number, game: Game) {
   const aspect = width / height;
   const follow = Math.max(-5, Math.min(1, game.puck.z * 0.22));
@@ -292,15 +299,20 @@ export class Rink {
 
   render(game: Game) {
     frameRink(this.camera, this.width, this.height, game);
-    const renderDt = Number.isFinite(this.lastRenderTime) ? Math.min(0.05, Math.max(0, game.elapsed - this.lastRenderTime)) : 0;
-    this.lastRenderTime = game.elapsed;
+    // Use wall time so models can finish settling after gameplay freezes for
+    // input. Simulation time intentionally stops during those pauses.
+    const now = performance.now() / 1000;
+    const renderDt = Number.isFinite(this.lastRenderTime) ? Math.min(0.05, Math.max(0, now - this.lastRenderTime)) : 0;
+    this.lastRenderTime = now;
+    const skateMotion = game.paused ? now : game.motion;
     [...game.attackers, ...game.defenders].forEach((p, i) => {
         const model = this.players[i];
         const dx = p.x - model.position.x, dz = p.z - model.position.z;
-        model.position.set(p.x, 0, p.z);
-      const skating = !game.paused && !game.terminal && game.introRemaining <= 0 && !(i >= 3 && game.actionPower === 'freeze') && Math.hypot(dx, dz) > 0.00001;
+        const visual = renderDt > 0 ? approachPoint({ x: model.position.x, z: model.position.z }, p, i < 3 ? 7.8 : 4.8, renderDt) : p;
+        model.position.set(visual.x, 0, visual.z);
+      const skating = !game.terminal && game.introRemaining <= 0 && !(i >= 3 && game.actionPower === 'freeze') && Math.hypot(dx, dz) > 0.00001;
       (model.children[0] as THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial>).material.color.setHex(i < 3 ? C.teal : game.actionPower === 'freeze' ? 0x69dfff : C.red);
-      model.rotation.z = skating ? Math.sin(game.motion * 13 + i) * 0.09 : 0;
+      model.rotation.z = skating ? Math.sin(skateMotion * 13 + i) * 0.09 : 0;
         const travelHeading = Math.atan2(-dx, -dz);
         const playDx = game.puck.x - p.x, playDz = game.puck.z - p.z;
         const playHeading = Math.atan2(-playDx, -playDz);
@@ -313,7 +325,7 @@ export class Rink {
         model.rotation.z += Math.sin(game.motion * 8 + i) * 0.12;
       }
       if (game.phase === 'FAIL' && i === game.carrier) model.rotation.z = -Math.min(1.2, game.elapsed * 0.4);
-      model.children.filter(child => child.name === 'leg').forEach((leg, j) => { leg.rotation.x = skating ? Math.sin(game.motion * 14 + j * Math.PI) * 0.4 : 0; });
+      model.children.filter(child => child.name === 'leg').forEach((leg, j) => { leg.rotation.x = skating ? Math.sin(skateMotion * 14 + j * Math.PI) * 0.4 : 0; });
     });
     this.goalie.position.set(game.goalie.x, 0, game.goalie.z);
     this.goalie.rotation.y = Math.PI;

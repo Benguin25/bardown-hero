@@ -616,6 +616,26 @@ test('lead pass stays drawn into open space while the teammate skates to collect
   }
 });
 
+test('super-close pass keeps puck travel visible and bounds every skater step', () => {
+  for (const dt of [1 / 120, 1 / 60, 0.05]) {
+    const g = passingSetup({ skateSpeed: 7.8 });
+    // Start outside the normal hard-spacing radius so this isolates the
+    // short-pass route compression seen in real authored setups.
+    g.attackers[1] = { x: 1.9, z: 10 };
+    g.puck = { x: 0, z: 10 }; g.attackers[0] = { ...g.puck };
+    g.release([g.puck, { x: 2, z: 10 }], 0.1);
+    const puckStart = { ...g.puck };
+    const skatersStart = [...g.attackers, ...g.defenders].map(p => ({ ...p }));
+    g.update(dt);
+    assert.ok(distance(puckStart, g.puck) > 0.001 || g.trail.some(point => distance(puckStart, point) > 0.001),
+      `puck did not visibly travel at dt ${dt}`);
+    [...g.attackers, ...g.defenders].forEach((player, i) => {
+      assert.ok(distance(player, skatersStart[i]) <= 8 * dt + 0.002,
+        `skater ${i} snapped ${distance(player, skatersStart[i])} at dt ${dt}`);
+    });
+  }
+});
+
 test('goal-mouth slow motion applies to shots only', () => {
   const pass = passingSetup({ skateSpeed: 0 });
   pass.release([pass.puck, { x: 0, z: -15.5 }]);
