@@ -4,6 +4,7 @@ import * as Haptics from 'expo-haptics';
 import { audio } from './sound';
 import { CHAPTERS, CHAPTER_LEVEL_COUNTS, HIGHLIGHTS, LEVELS, OBJECTIVE_LABELS } from './content';
 import { isUnlocked, stars, type Progress } from './progress';
+import { CAREER_STAGES, careerCompletionPercent, chapterIndex, isChapterComplete, isChapterPerfect } from './career';
 
 export function feedback(kind: 'tap' | 'pass' | 'goal' | 'fail' | 'bank') {
   const effect = kind === 'goal' ? Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
@@ -68,15 +69,21 @@ export function Stars({ count, animate = false }: { count: number; animate?: boo
   return <View accessible accessibilityLabel={`${count} of 3 stars`} style={s.starRow}>{[0, 1, 2].map(i => <Star key={i} earned={i < count} index={i} animate={animate} />)}</View>;
 }
 
-export function Campaign({ progress, loaded, error, save, select, soundOn, toggleSound }: {
+export function Campaign({ progress, loaded, error, save, select, soundOn, toggleSound, profileName, achievementCount, openProfile, openAchievements }: {
   progress: Progress; loaded: boolean; error: string; save: () => void; select: (index: number) => void; soundOn: boolean; toggleSound: () => void;
+  profileName: string; achievementCount: number; openProfile: () => void; openAchievements: () => void;
 }) {
   const total = Object.values(progress.runs).reduce((sum, run) => sum + stars(run), 0);
   const current = LEVELS.findIndex((_, i) => isUnlocked(progress, i) && !progress.runs[i]?.[0]);
   const next = current < 0 ? 0 : current;
+  const currentChapter = chapterIndex(current < 0 ? LEVELS.length - 1 : current);
+  const careerStage = CAREER_STAGES.find(stage => stage.chapters.includes(currentChapter)) ?? CAREER_STAGES[0];
+  const completion = careerCompletionPercent(progress);
   return <ScrollView contentContainerStyle={s.campaign} showsVerticalScrollIndicator={false}>
     <Rise>
       <View style={s.campaignTop}><Text style={s.brand}>BARDOWN<Text style={s.teal}> HERO</Text></Text><Button style={s.soundButton} label={`Sound ${soundOn ? 'on' : 'off'}`} onPress={toggleSound}><Text style={s.soundText}>SND {soundOn ? 'ON' : 'OFF'}</Text></Button></View>
+      <View style={s.careerStrip}><View><Text style={s.careerKicker}>{careerStage.label.toUpperCase()} CAREER</Text><Text style={s.careerPlayer}>{profileName} · {completion}% COMPLETE</Text></View><Text style={s.careerMark}>★</Text></View>
+      <View style={s.careerActions}><Button style={s.careerAction} onPress={openProfile}><Text style={s.careerActionText}>PROFILE / LOCKER</Text></Button><Button style={s.careerAction} onPress={openAchievements}><Text style={s.careerActionText}>ACHIEVEMENTS · {achievementCount}</Text></Button></View>
       <View style={s.campaignHeading}><Text style={s.campaignTitle}>MAKE THE{ '\n' }HIGHLIGHT.</Text><View style={s.scoreBadge}><Text style={s.scoreStar}>★</Text><Text style={s.score}>{total}<Text style={s.scoreOf}> / {LEVELS.length * 3}</Text></Text></View></View>
       <View style={s.meter}><View style={[s.meterFill, { width: `${total / (LEVELS.length * 3) * 100}%` }]} /></View>
       <Text style={s.tagline}>{current < 0 ? 'Campaign cleared. Chase the perfect reel.' : 'One puck. Big plays. No apologies.'}</Text>
@@ -88,7 +95,10 @@ export function Campaign({ progress, loaded, error, save, select, soundOn, toggl
       const chapterStart = CHAPTER_LEVEL_COUNTS.slice(0, chapterIndex).reduce((sum, count) => sum + count, 0);
       const chapterCount = CHAPTER_LEVEL_COUNTS[chapterIndex];
       const chapterLevels = LEVELS.slice(chapterStart, chapterStart + chapterCount);
+      const stage = CAREER_STAGES.find(item => item.chapters.includes(chapterIndex));
+      const chapterComplete = isChapterComplete(progress, chapterIndex), chapterPerfect = isChapterPerfect(progress, chapterIndex);
       return <Rise key={chapter} delay={80 + chapterIndex * 45}>
+      <View style={s.chapterCareerRow}><Text style={s.chapterStage}>{stage?.label.toUpperCase()} STAGE</Text><Text style={[s.chapterTrophy, chapterComplete && s.chapterTrophyEarned]}>{chapterPerfect ? '★ PERFECT TROPHY' : chapterComplete ? '◆ TROPHY EARNED' : `REWARD · ${stage?.reward ?? 'Chapter trophy'}`}</Text></View>
       <View style={[s.chapterHeading, { borderLeftColor: CHAPTER_ACCENTS[chapterIndex] }]}><Text style={[s.chapterNumber, { color: CHAPTER_ACCENTS[chapterIndex] }]}>0{chapterIndex + 1}</Text><Text style={s.chapterName}>{chapter}</Text><Text style={s.chapterScore}>{chapterLevels.reduce((sum, _, offset) => sum + stars(progress.runs[chapterStart + offset]), 0)} / {chapterCount * 3} ★</Text></View>
       {chapterLevels.map((level, offset) => {
         const i = chapterStart + offset, unlocked = loaded && isUnlocked(progress, i), complete = !!progress.runs[i]?.[0], now = loaded && i === current;
@@ -113,6 +123,8 @@ export const s = StyleSheet.create({
   teal: { color: '#23dcb6' }, ink: { color: '#071624' }, muted: { color: '#8199a8' },
   campaign: { paddingHorizontal: 18, paddingTop: 14, paddingBottom: 32, gap: 16 }, campaignTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   brand: { color: '#eff8fa', fontSize: 23, fontWeight: '900', letterSpacing: -0.8 },
+  careerStrip: { marginTop: 14, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#2e5360', backgroundColor: '#0d2a39', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, careerKicker: { color: '#23dcb6', fontSize: 10, fontWeight: '900', letterSpacing: 1.3 }, careerPlayer: { color: '#d9e9ed', fontSize: 13, fontWeight: '800', marginTop: 3 }, careerMark: { color: '#ffcf5a', fontSize: 25 },
+  careerActions: { flexDirection: 'row', gap: 8, marginTop: 8 }, careerAction: { flex: 1, minHeight: 42, borderRadius: 10, borderWidth: 1, borderColor: '#345263', backgroundColor: '#132d3e', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 }, careerActionText: { color: '#d7e9ee', fontSize: 10, fontWeight: '900', letterSpacing: 0.3 },
   campaignHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 },
   campaignTitle: { color: '#eff8fa', fontSize: 35, lineHeight: 35, fontWeight: '900', fontStyle: 'italic', letterSpacing: -1.3 },
   scoreBadge: { alignItems: 'center', paddingLeft: 10 }, scoreStar: { color: '#ffcf5a', fontSize: 31 },
@@ -122,6 +134,7 @@ export const s = StyleSheet.create({
   continueButton: { backgroundColor: '#23dcb6', borderRadius: 14, minHeight: 68, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   continueKicker: { color: '#124b45', fontSize: 11, fontWeight: '900', letterSpacing: 1.4 }, continueName: { color: '#071624', fontSize: 16, fontWeight: '900', marginTop: 3 }, playArrow: { color: '#071624', fontSize: 25 },
   chapterHeading: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10, borderLeftWidth: 3, paddingLeft: 9 }, chapterNumber: { color: '#23dcb6', fontSize: 13, fontWeight: '900' }, chapterName: { color: '#e5f2f5', flex: 1, fontSize: 13, fontWeight: '900', letterSpacing: 1 }, chapterScore: { color: '#b7c7ce', fontSize: 12, fontWeight: '700' },
+  chapterCareerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, paddingHorizontal: 12 }, chapterStage: { color: '#7895a4', fontSize: 8, fontWeight: '900', letterSpacing: 1.2 }, chapterTrophy: { color: '#718996', fontSize: 8, fontWeight: '900' }, chapterTrophyEarned: { color: '#ffcf5a' },
   card: { borderRadius: 13, backgroundColor: '#11283a', borderWidth: 1, borderColor: '#294354', padding: 12, marginBottom: 8, flexDirection: 'row', gap: 12 },
   cardCurrent: { borderColor: '#ffcf5a', backgroundColor: '#213537', borderWidth: 2 }, cardComplete: { borderColor: '#235b55', backgroundColor: '#102d32' }, cardLocked: { backgroundColor: '#0d2030', borderColor: '#1e3343' },
   numberTile: { width: 42, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1c3446' }, numberComplete: { backgroundColor: '#174d45' }, numberCurrent: { backgroundColor: '#ffcf5a' }, levelNumber: { fontSize: 21, fontWeight: '900', color: '#c1d5dd' }, tileMark: { color: '#23dcb6', fontSize: 14, marginTop: 4 },

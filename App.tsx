@@ -11,10 +11,16 @@ import { SOUND_PLAYS_IN_SILENT_MODE } from './src/audioPolicy';
 import { drainSoundEvents } from './src/audioEvents';
 import { emptyProgress, isUnlocked, parseProgress, recordRun, stars } from './src/progress';
 import { LESSONS, lessonComplete, tutorialGame } from './src/tutorial';
+import { completedAchievementCount, emptyAchievements, observeAchievementEvent, parseAchievements, type AchievementDefinition } from './src/achievements';
+import { chapterIndex, isChapterComplete } from './src/career';
+import { COSMETICS, defaultProfile, parseProfile, sanitizeProfile, type PlayerProfile } from './src/profile';
+import { AchievementToast, AchievementsScreen, ChapterComplete, ProfileScreen, selectedRinkCosmetics } from './src/progressionUI';
 
 const SAVE_KEY = 'bardown.progress.v1';
 const TUTORIAL_KEY = 'bardown.tutorial.v1';
 const SOUND_KEY = 'bardown.sound-enabled.v1';
+const PROFILE_KEY = 'bardown.profile.v1';
+const ACHIEVEMENTS_KEY = 'bardown.achievements.v1';
 const starText = (count: number) => '★'.repeat(count) + '☆'.repeat(3 - count);
 const powerNames = { fire: 'FIRE PUCK', curve: 'MEGA CURVE', freeze: 'FREEZE' };
 
@@ -38,12 +44,15 @@ function GameApp() {
   const frame = useRef(0);
   const mounted = useRef(true);
   const active = useRef(true);
-  const screen = useRef<'levels' | 'game'>('levels');
+  const screen = useRef<'levels' | 'game' | 'profile' | 'achievements'>('levels');
   const tutorial = useRef<number | null>(null);
   const chased = useRef(false);
   const [showHelp, setShowHelp] = useState(false);
   const progress = useRef(emptyProgress());
+  const profile = useRef(defaultProfile());
+  const achievements = useRef(emptyAchievements());
   const recorded = useRef<Game | null>(null);
+  const retries = useRef(0);
   const saveQueue = useRef(Promise.resolve());
   const soundSaveQueue = useRef(Promise.resolve());
   const soundEnabled = useRef(true);
@@ -55,6 +64,8 @@ function GameApp() {
   const [loaded, setLoaded] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [showObjectives, setShowObjectives] = useState(false);
+  const [achievementQueue, setAchievementQueue] = useState<AchievementDefinition[]>([]);
+  const [chapterReveal, setChapterReveal] = useState<{ chapter: number; rewards: string[] } | null>(null);
   const lastFeedback = useRef<{ game: Game | null; event: number }>({ game: null, event: -1 });
   const size = useRef({ width: 1, height: 1 });
   const stroke = useRef<Point[]>([]);
@@ -64,7 +75,7 @@ function GameApp() {
   const [error, setError] = useState('');
   const [, redraw] = useState(0);
   const lastUI = useRef('');
-  const sceneForAudio = (g: Game): 'menu' | 'aim' | 'play' | 'result' => screen.current === 'levels' ? 'menu'
+  const sceneForAudio = (g: Game): 'menu' | 'aim' | 'play' | 'result' => screen.current !== 'game' ? 'menu'
     : g.terminal ? 'result' : g.paused || g.introRemaining > 0 ? 'aim' : 'play';
   const syncAudio = () => {
     const g = game.current;
@@ -82,8 +93,24 @@ function GameApp() {
     if (g.loosePuck) chased.current = true;
     if (tutorial.current === null && g.phase === 'SUCCESS' && recorded.current !== g) {
       recorded.current = g;
-      progress.current = recordRun(progress.current, g.levelIndex, g.objectives.map(o => o.complete));
+      const before = progress.current;
+      const run = g.objectives.map(o => o.complete);
+      const chapter = chapterIndex(g.levelIndex);
+      progress.current = recordRun(before, g.levelIndex, run);
+      const result = observeAchievementEvent(achievements.current, { type: 'run_completed', levelIndex: g.levelIndex, run, facts: {
+        shotStyle: g.shotStyle, actionPower: g.actionPower ?? undefined, goalHeight: g.goalHeight,
+        curvedActions: g.curvedActions, bankPasses: g.bankPasses, leadPasses: g.leadPasses, passes: g.passes,
+        reboundUsed: g.reboundUsed, loosePuckRace: g.loosePuckWins > 0, retry: retries.current > 0,
+        highlightRoute: g.levelIndex >= 24 && run.every(Boolean), goals: 1,
+      } }, progress.current);
+      achievements.current = result.state;
+      if (result.unlocked.length) setAchievementQueue(queue => [...queue, ...result.unlocked]);
+      if (chapter >= 0 && !isChapterComplete(before, chapter) && isChapterComplete(progress.current, chapter)) {
+        const rewards = COSMETICS.filter(item => item.requirement?.type === 'chapter' && item.requirement.value === chapter).map(item => item.label);
+        setChapterReveal({ chapter, rewards });
+      }
       persist();
+      persistAchievements();
     }
     const key = `${g.levelIndex}|${g.phase}|${g.stage}|${g.message}|${g.intent.kind}|${g.preview.length > 0}|${g.preview.some(p => p.bounce)}|${g.eventId}|${Math.ceil(g.introRemaining)}|${g.cornerCovered(g.preview[g.preview.length - 1] ?? g.puck)}|${g.armed}|${g.terminalTime >= 1.1}|${screen.current}`;
     if (key !== lastUI.current && mounted.current) { lastUI.current = key; redraw(v => v + 1); }
@@ -93,6 +120,17 @@ function GameApp() {
     const data = JSON.stringify(progress.current);
     saveQueue.current = saveQueue.current.then(() => AsyncStorage.setItem(SAVE_KEY, data))
       .then(() => { if (mounted.current) setSaveError(''); })
+      .catch(() => { if (mounted.current) setSaveError('Progress is in memory, but could not be saved. Tap to retry saving.'); });
+  }
+
+  function persistProfile(next = profile.current) {
+    saveQueue.current = saveQueue.current.then(() => AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(next)))
+      .catch(() => { if (mounted.current) setSaveError('Your changes are in memory, but could not be saved. Tap to retry.'); });
+  }
+
+  function persistAchievements() {
+    const data = JSON.stringify(achievements.current);
+    saveQueue.current = saveQueue.current.then(() => AsyncStorage.setItem(ACHIEVEMENTS_KEY, data))
       .catch(() => { if (mounted.current) setSaveError('Progress is in memory, but could not be saved. Tap to retry saving.'); });
   }
 
@@ -124,7 +162,12 @@ function GameApp() {
   useEffect(() => {
     mounted.current = true;
     AsyncStorage.getItem(TUTORIAL_KEY).then(value => { if (mounted.current && !value) setShowHelp(true); }).catch(() => {});
-    AsyncStorage.getItem(SAVE_KEY).then(raw => { progress.current = parseProgress(raw); })
+    Promise.all([AsyncStorage.getItem(SAVE_KEY), AsyncStorage.getItem(PROFILE_KEY), AsyncStorage.getItem(ACHIEVEMENTS_KEY)])
+      .then(([savedProgress, savedProfile, savedAchievements]) => {
+        progress.current = parseProgress(savedProgress);
+        profile.current = parseProfile(savedProfile);
+        achievements.current = parseAchievements(savedAchievements);
+      })
       .then(() => { if (mounted.current) setLoaded(true); })
       .catch(() => { if (mounted.current) setSaveError('Could not load your save. Close and reopen the app to retry.'); });
     let disposed = false;
@@ -160,12 +203,18 @@ function GameApp() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!achievementQueue.length) return;
+    const timer = setTimeout(() => setAchievementQueue(queue => queue.slice(1)), 2400);
+    return () => clearTimeout(timer);
+  }, [achievementQueue]);
+
   function contextCreated(gl: ExpoWebGLRenderingContext) {
     if (!mounted.current || screen.current !== 'game') return;
     try {
       cancelAnimationFrame(frame.current);
       rink.current?.dispose();
-      rink.current = new Rink(gl);
+      rink.current = new Rink(gl, selectedRinkCosmetics(profile.current));
       rink.current.resize(size.current.width, size.current.height);
       rink.current.render(game.current);
       setReady(true); setError('');
@@ -220,8 +269,10 @@ function GameApp() {
     });
   }, []);
 
-  const selectLevel = (index: number) => {
+  const selectLevel = (index: number, retrying = false) => {
     if (!loaded || !isUnlocked(progress.current, index)) return;
+    retries.current = retrying ? retries.current + 1 : 0;
+    if (!retrying) setChapterReveal(null);
     tutorial.current = null;
     setShowObjectives(false); stroke.current = []; game.current = new Game(index); game.current.startPreview(); screen.current = 'game'; restartAudioForNewScreen(); sync();
   };
@@ -230,13 +281,20 @@ function GameApp() {
     stroke.current = []; game.current = tutorialGame(lesson); screen.current = 'game'; restartAudioForNewScreen();
     lastUI.current = ''; sync();
   };
-  const retry = () => tutorial.current === null ? selectLevel(game.current.levelIndex) : startLesson(tutorial.current);
+  const retry = () => tutorial.current === null ? selectLevel(game.current.levelIndex, true) : startLesson(tutorial.current);
   const dismissHelp = () => { setShowHelp(false); void AsyncStorage.setItem(TUTORIAL_KEY, 'seen').catch(() => {}); };
   const back = () => {
     tutorial.current = null;
     stroke.current = []; game.current.cancel(); screen.current = 'levels';
     cancelAnimationFrame(frame.current); rink.current?.dispose(); rink.current = null;
     setShowObjectives(false); setReady(false); restartAudioForNewScreen(); sync();
+  };
+  const openMenuScreen = (target: 'profile' | 'achievements') => {
+    screen.current = target; lastUI.current = ''; restartAudioForNewScreen(); redraw(value => value + 1);
+  };
+  const backToCareer = () => { screen.current = 'levels'; lastUI.current = ''; redraw(value => value + 1); };
+  const changeProfile = (next: PlayerProfile) => {
+    profile.current = sanitizeProfile(next); persistProfile(profile.current); redraw(value => value + 1);
   };
   const g = game.current, aiming = g.preview.length > 1, banking = g.preview.some(p => p.bounce);
   const lesson = tutorial.current;
@@ -253,9 +311,20 @@ function GameApp() {
   const count = g.objectives.filter(o => o.complete).length;
   const victory = g.phase === 'SUCCESS';
 
+  if (screen.current === 'profile') return <SafeAreaView style={s.root}>
+    <StatusBar barStyle="light-content" />
+    <ProfileScreen profile={profile.current} progress={progress.current} achievements={achievements.current} onChange={changeProfile} onBack={backToCareer} />
+  </SafeAreaView>;
+
+  if (screen.current === 'achievements') return <SafeAreaView style={s.root}>
+    <StatusBar barStyle="light-content" />
+    <AchievementsScreen state={achievements.current} onBack={backToCareer} />
+  </SafeAreaView>;
+
   if (screen.current === 'levels') return <SafeAreaView style={s.root}>
     <StatusBar barStyle="light-content" />
-    <Campaign progress={progress.current} loaded={loaded} error={saveError} save={() => { if (loaded) persist(); }} select={selectLevel} soundOn={soundOn} toggleSound={toggleSound} />
+    <Campaign progress={progress.current} loaded={loaded} error={saveError} save={() => { if (loaded) { persist(); persistProfile(); persistAchievements(); } }} select={selectLevel} soundOn={soundOn} toggleSound={toggleSound}
+      profileName={`#${profile.current.jerseyNumber} ${profile.current.name}`} achievementCount={completedAchievementCount(achievements.current)} openProfile={() => openMenuScreen('profile')} openAchievements={() => openMenuScreen('achievements')} />
     <Button style={s.secondary} onPress={() => setShowHelp(true)}><Text style={s.secondaryText}>HOW TO PLAY</Text></Button>
     {showHelp && <View style={[StyleSheet.absoluteFill, s.overlay]}><ScrollView style={s.resultScroll} contentContainerStyle={s.resultContent}>
       <Text style={s.kicker}>WELCOME TO BARDOWN HERO</Text><Text style={s.resultTitle}>MAKE YOUR PLAY</Text>
@@ -270,6 +339,7 @@ function GameApp() {
 
   return <SafeAreaView style={s.root} {...gesture.panHandlers}>
     <StatusBar barStyle="light-content" />
+    {!!achievementQueue[0] && <AchievementToast achievement={achievementQueue[0]} />}
     <View style={s.header}>
       <Button style={s.navButton} label="Back to campaign" onPress={back}><Text style={s.navGlyph}>‹</Text></Button>
       <View style={s.headerCopy}>
@@ -322,6 +392,7 @@ function GameApp() {
             <Text style={[s.resultTitle, !victory && s.failTitle]}>{victory ? count === 3 ? 'BAR DOWN!' : 'WHAT A FINISH!' : 'SO CLOSE.'}</Text>
           </Rise>
           {victory && <Stars count={count} animate />}
+          {victory && chapterReveal && chapterReveal.chapter === chapterIndex(g.levelIndex) && <ChapterComplete chapter={chapterReveal.chapter} rewards={chapterReveal.rewards} />}
           <Text style={s.body}>{victory ? g.level.title : g.message}</Text>
           {g.objectives.map(o => <View key={o.id} style={s.objectiveRow}><Text style={[s.objectiveMark, !o.complete && s.muted]}>{o.complete ? '★' : '☆'}</Text><Text style={s.objectiveText}>{o.label}</Text></View>)}
           {!!saveError && <Button onPress={persist}><Text style={s.errorText}>{saveError}</Text></Button>}

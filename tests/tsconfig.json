@@ -4,5 +4,5 @@
     "outDir": "../.test-build", "rootDir": "../src", "skipLibCheck": true,
     "types": []
   },
-  "include": ["../src/game.ts", "../src/rink.ts", "../src/progress.ts", "../src/tutorial.ts", "../src/audioController.ts", "../src/audioEvents.ts", "../src/content/**/*.ts"]
+    "include": ["../src/game.ts", "../src/rink.ts", "../src/progress.ts", "../src/tutorial.ts", "../src/audioController.ts", "../src/audioEvents.ts", "../src/achievements.ts", "../src/profile.ts", "../src/career.ts", "../src/content/**/*.ts"]
 }

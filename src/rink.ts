@@ -4,6 +4,21 @@ import { Game, Point, GOAL_CORNERS, NET_Z, NET_HEIGHT, NET_HALF_WIDTH } from './
 
 const C = { ice: 0xdceef0, teal: 0x18dcb6, red: 0xef4d65, ink: 0x10293c, gold: 0xffcf5a };
 
+export type RinkCosmetics = {
+  jersey: number;
+  accent: number;
+  helmet: number;
+  gloves: number;
+  stick: number;
+  stickStyle: string;
+  jerseyStyle: string;
+  helmetStyle: string;
+};
+const DEFAULT_COSMETICS: RinkCosmetics = {
+  jersey: C.teal, accent: 0x9ff5df, helmet: C.teal, gloves: C.ink, stick: 0x435967,
+  jerseyStyle: 'classic', helmetStyle: 'shell', stickStyle: 'wood',
+};
+
 // Use exponential damping so a turn takes the same amount of real time on a
 // 30 Hz phone as it does on a 60 Hz phone.  The wrapped delta also prevents a
 // skater from taking the long way around when its heading crosses +/- PI.
@@ -92,7 +107,7 @@ export class Rink {
   private height = 1;
   private lastRenderTime = Number.NaN;
 
-  constructor(private gl: ExpoWebGLRenderingContext) {
+  constructor(private gl: ExpoWebGLRenderingContext, private cosmetics: RinkCosmetics = DEFAULT_COSMETICS) {
     // Keep Three pinned to r162: Expo's native context can satisfy the WebGL1
     // instanceof check even when it exposes WebGL2 methods. r163+ rejects it.
     // A TypeScript cast cannot change those runtime capabilities/prototypes.
@@ -111,7 +126,7 @@ export class Rink {
     light.position.set(-8, 20, 10);
     this.scene.add(light);
     this.buildIce();
-    this.players = [0, 1, 2, 3, 4].map(i => this.player(i < 3 ? C.teal : C.red));
+    this.players = [0, 1, 2, 3, 4].map(i => this.player(i < 3 ? this.cosmetics.jersey : C.red, false, i < 3));
     this.goalie = this.player(C.gold, true);
     this.glove = this.catchingGlove();
     this.scene.add(this.glove);
@@ -254,33 +269,54 @@ export class Rink {
     });
   }
 
-  private player(color: number, keeper = false) {
+  private player(color: number, keeper = false, customized = false) {
     const group = new THREE.Group();
-    this.box(keeper ? 1.25 : 0.85, 0.85, 0.6, 0, 1.18, 0, color, group);
+    const jersey = this.box(keeper ? 1.25 : 0.85, 0.85, 0.6, 0, 1.18, 0, color, group); jersey.name = 'jersey';
     this.box(0.87, 0.12, 0.62, 0, 0.93, 0, 0xffffff, group);
     const head = this.mesh(new THREE.SphereGeometry(0.35, 12, 10), C.ink);
     head.position.set(0, 1.95, 0); group.add(head);
-    const helmet = this.mesh(new THREE.SphereGeometry(0.38, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.58), color, true);
+    const helmet = this.mesh(new THREE.SphereGeometry(0.38, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.58), customized ? this.cosmetics.helmet : color, true);
+    helmet.name = 'helmet';
     helmet.position.set(0, 2.08, -0.01); group.add(helmet);
-    const visor = this.mesh(new THREE.BoxGeometry(0.46, 0.06, 0.04), 0xc8f4f2, true);
-    visor.position.set(0, 1.98, -0.34); group.add(visor);
+    const visor = this.mesh(new THREE.BoxGeometry(0.54, 0.16, 0.04), 0x9beaf2, true);
+    visor.position.set(0, 1.94, -0.36); visor.visible = !customized || this.cosmetics.helmetStyle === 'visor'; group.add(visor);
+    if (customized && this.cosmetics.helmetStyle === 'cage') {
+      for (const x of [-0.2, 0, 0.2]) this.box(0.025, 0.42, 0.025, x, 1.86, -0.38, 0xe0f4f6, group);
+      for (const y of [1.78, 1.92]) this.box(0.5, 0.025, 0.025, 0, y, -0.385, 0xe0f4f6, group);
+      this.box(0.38, 0.07, 0.06, 0, 1.65, -0.37, this.cosmetics.helmet, group);
+    }
     this.box(0.5, 0.16, 0.15, 0, 1.88, -0.3, 0xa9d5de, group);
     for (const x of [-0.3, 0.3]) {
       const leg = this.box(keeper ? 0.5 : 0.27, 0.63, keeper ? 0.45 : 0.27, x, 0.48, 0, keeper ? 0xf1eee4 : C.ink, group);
       leg.name = 'leg';
       this.box(0.21, 0.13, 0.65, x, 0.1, -0.1, C.ink, group);
     }
-    for (const x of [-0.65, 0.65]) this.box(0.3, 0.6, 0.3, x, 1.05, -0.14, color, group);
+    for (const x of [-0.65, 0.65]) {
+      const sleeve = this.box(0.3, 0.6, 0.3, x, 1.05, -0.14, color, group); sleeve.name = 'jerseyPiece';
+      if (customized) { const glove = this.box(0.34, 0.25, 0.36, x, 0.72, -0.22, this.cosmetics.gloves, group); glove.name = 'customGlove'; }
+    }
     // Shoulder discs and a small chest stripe read better than a flat block at
     // the elevated camera angle while keeping the silhouette lightweight.
     for (const x of [-0.48, 0.48]) {
       const shoulder = this.mesh(new THREE.SphereGeometry(0.22, 8, 6), color, true);
-      shoulder.position.set(x, 1.48, -0.02); shoulder.scale.set(1.15, 0.7, 0.9); group.add(shoulder);
+      shoulder.name = 'jerseyPiece'; shoulder.position.set(x, 1.48, -0.02); shoulder.scale.set(1.15, 0.7, 0.9); group.add(shoulder);
     }
-    this.box(keeper ? 1.05 : 0.72, 0.1, 0.03, 0, 1.2, -0.32, keeper ? 0xf1eee4 : 0x9ff5df, group);
+    const stripeColor = keeper ? 0xf1eee4 : customized ? this.cosmetics.accent : 0x9ff5df;
+    if (customized && this.cosmetics.jerseyStyle === 'double-stripe') {
+      this.box(0.72, 0.07, 0.03, 0, 1.35, -0.32, stripeColor, group);
+      this.box(0.72, 0.07, 0.03, 0, 1.12, -0.32, stripeColor, group);
+    } else {
+      this.box(keeper ? 1.05 : 0.72, 0.1, 0.03, 0, 1.2, -0.32, stripeColor, group);
+    }
+    if (customized && this.cosmetics.jerseyStyle === 'split') {
+      this.box(0.17, 0.72, 0.035, 0.22, 1.2, -0.325, stripeColor, group);
+      for (const x of [-0.48, 0.48]) this.box(0.18, 0.1, 0.035, x, 1.5, -0.25, stripeColor, group);
+    }
     if (keeper) this.blocker(group);
-    const stick = this.box(0.075, 1.2, 0.075, 0.8, 0.57, -0.35, 0x435967, group); stick.rotation.x = -0.5;
-    this.box(0.6, 0.09, 0.13, 0.6, 0.1, -0.7, C.ink, group);
+    const stickColor = customized ? this.cosmetics.stick : 0x435967;
+    const stick = this.box(customized && this.cosmetics.stickStyle === 'carbon' ? 0.095 : 0.075, 1.2, 0.075, 0.8, 0.57, -0.35, stickColor, group); stick.rotation.x = -0.5;
+    if (customized && this.cosmetics.stickStyle === 'carbon') this.box(0.12, 0.28, 0.09, 0.8, 1.1, -0.56, C.gold, group).rotation.x = -0.5;
+    this.box(0.6, 0.09, 0.13, 0.6, 0.1, -0.7, customized ? stickColor : C.ink, group);
     const shadow = this.mesh(new THREE.CircleGeometry(0.75, 20), 0x95b9c5, true);
     shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.035; group.add(shadow);
     this.scene.add(group); return group;
@@ -321,7 +357,10 @@ export class Rink {
         const visual = renderDt > 0 ? approachPoint({ x: model.position.x, z: model.position.z }, p, i < 3 ? 7.8 : 4.8, renderDt) : p;
         model.position.set(visual.x, 0, visual.z);
       const skating = !game.terminal && game.introRemaining <= 0 && !(i >= 3 && game.actionPower === 'freeze') && Math.hypot(dx, dz) > 0.00001;
-      (model.children[0] as THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial>).material.color.setHex(i < 3 ? C.teal : game.actionPower === 'freeze' ? 0x69dfff : C.red);
+      const teamColor = i < 3 ? this.cosmetics.jersey : game.actionPower === 'freeze' ? 0x69dfff : C.red;
+      model.children.filter(child => child.name === 'jersey' || child.name === 'jerseyPiece').forEach(child => {
+        ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).color.setHex(teamColor);
+      });
       model.rotation.z = skating ? Math.sin(skateMotion * 13 + i) * 0.09 : 0;
         const travelHeading = Math.atan2(-dx, -dz);
         const playDx = game.puck.x - p.x, playDz = game.puck.z - p.z;

@@ -1,6 +1,6 @@
 # Run Bardown Hero on your iPhone
 
-This is an Expo + React Native + TypeScript arcade game. It opens into a 32-level campaign with six chapters, local progress, and 96 stars to chase. Your Windows PC runs the development server; your iPhone runs the game in Expo Go. Android is also supported through Expo Go; iOS is the first playtest target.
+This is an Expo + React Native + TypeScript arcade game. It opens into a 32-level career with six chapters across Rookie, Junior, Pro, and Playoffs, local progression, and 96 stars to chase. Your Windows PC runs the development server; your iPhone runs the game in Expo Go. Android is also supported through Expo Go; iOS is the first playtest target.
 
 ## 1. Install these once
 
@@ -58,6 +58,10 @@ Audio is enabled by default: the campaign and gameplay headers include an **SND 
 
 New players see **How to Play** and can start four guided practice lessons. Reopen **HOW TO PLAY** from the campaign to replay them. Practice does not award campaign stars or unlock levels.
 
+Open **PROFILE / LOCKER** from the career screen to set a player name and number and equip a lightweight jersey, helmet, glove, and stick look. Teal starter gear is available immediately; additional original cosmetics unlock from stars, chapter trophies, perfect chapters, and achievements. There is no currency or store. Equipped gear is visible on the attacking skaters.
+
+Open **ACHIEVEMENTS** to review 20 offline milestones and their cosmetic rewards. Gameplay facts unlock them automatically. A short non-blocking banner appears when one completes, and chapter finales add a trophy/reward reveal to the result screen. Profile and achievement state are stored separately from the existing campaign save, so old level stars and unlocks remain compatible.
+
 One skater from each team chases the puck while supporting players move in formation. Receivers keep a reachable pickup lane instead of repeatedly swapping the chase. Defenders pressure the travel direction with limited anticipation and need a close stick touch to intercept; a clear pass beside them can get through. Loose pucks stay live until collected, including after they stop. Your original passer can recover one without earning a pass star; red possession ends the attempt.
 
 - **Teal** players are your team. **Red** players intercept. **Gold** is the goalie.
@@ -82,6 +86,8 @@ Presentation polish pass: skaters and the goalie now have clearer procedural hel
 ## 4. Quick playtest checklist
 
 Campaign polish: check cleared, next, and locked cards; try the continue button; open star objectives with **☆ 3** during a decision. Check the compact countdown, fading instructions during flight, result-star animation, and haptics. Repeat with the device’s reduced-motion setting enabled. Old ten-level saves should retain every star and unlock level 11 after level 10.
+
+Career progression: edit the profile name/number, equip each immediately available option, relaunch, and confirm the selection persists and appears on attacking skaters. Complete an unretried level and a three-star level, then verify achievement banners, the Achievements screen, and the Carbon stick reward. Finish a chapter finale and verify the trophy/reward reveal. Confirm locked cosmetics show their exact requirement and cannot be equipped early.
 
 New highlights: levels 17–32 add sixteen distinct authored situations across **CREATIVE CHAOS** and **LEGENDARY ICE**. Check that their coral and lime chapter rails are visually distinct, chapter scores read 24 stars each, and the campaign total reads 96. Bank and lead stars require the puck to be collected, not just aimed at the desired spot.
 
@@ -153,7 +159,7 @@ npx.cmd expo export --platform ios
 npx.cmd expo export --platform android
 ```
 
-The tests replay three-star routes through all 32 levels at 120, 60, 30, and 20 fps and cover both receiver choices in Double Take, old-save compatibility, single-run persistence rules, unlocks, powerup lifetimes, curve preservation, full simulation freeze, interception, scoring, save/rebound behavior, missed shots, canceled input, retry state, and phone-size camera projection. Exports check production bundles; they do not install an app on your phone.
+The tests replay three-star routes through all 32 levels at 120, 60, 30, and 20 fps and cover both receiver choices in Double Take, old-save compatibility, profile migration/defaults, cosmetic unlock predicates, achievement completion and duplicate prevention, chapter/full-career completion, single-run persistence rules, powerup lifetimes, curve preservation, full simulation freeze, interception, scoring, retry state, and phone-size camera projection. Exports check production bundles; they do not install an app on your phone.
 
 This gameplay and presentation pass was checked with `npm run typecheck`, `npm test`, and production Expo export checks. Physical iPhone rendering, touch feel, and frame rate still need the device playtest above.
 
@@ -165,6 +171,10 @@ This gameplay and presentation pass was checked with `npm run typecheck`, `npm t
 - `src/rink.ts`: 3D rink and placeholder models, camera, trails, and reactions.
 - `App.tsx`: touch input, game loop, lifecycle handling, and gameplay HUD.
 - `src/progress.ts`: local-save schema, best-run selection, and sequential unlock rules.
+- `src/profile.ts`: versioned local profile, cosmetic catalog, migration, and unlock requirements.
+- `src/achievements.ts`: achievement catalog, persistent counters/completions, and run-event evaluation.
+- `src/career.ts`: Rookie/Junior/Pro/Playoffs metadata plus chapter and career completion helpers.
+- `src/progressionUI.tsx`: Profile / Locker, Achievements, unlock toast, and chapter-complete presentation.
 - `tests/content.test.cjs`: catalog validation and stable-ID/index mapping. `tests/game.test.cjs` covers deterministic gameplay.
 
 To add a future level, append its authored moments, three-objective set, and campaign-card highlight in `src/content/extraLevels.ts`, then extend the explicit chapter counts in `src/content/levels.ts` if the new level starts a chapter. Do not insert or reorder shipped levels: AsyncStorage version 1 intentionally keys runs by their existing array index. Give the new entry the next stable `level-NN` ID, run the checks below, and add a deterministic successful route test. Most levels should require no change to `src/game.ts`; engine edits are reserved for new mechanics.
