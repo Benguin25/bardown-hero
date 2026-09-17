@@ -35,6 +35,14 @@ Board-bank and presentation update:
 
 The current request supersedes the original vertical-slice exclusions below.
 
+Career progression update:
+
+- The unchanged 32-level, six-chapter sequence is presented as four career stages: Rookie, Junior, Pro, and Playoffs. Chapter cards show stage, stars, trophy/perfect status, completion rewards, the current level, and the next playable level. Overall career completion is based on completed levels; stars remain the best single successful run and never gate the next level.
+- A dedicated Profile / Locker stores player name, jersey number, jersey style/color, helmet style/color, glove color, and stick style in `bardown.profile.v1`. The small original cosmetic catalog uses procedural colors and geometry only. Unlock rules use total stars, chapter completion, perfect chapters, or achievements; there is no currency or store. Selected colors and styles appear on attacking skaters in gameplay.
+- Twenty local achievements observe a single run-completion event containing facts produced by the simulation (shot style, powerup, goal height, bank/lead passes, loose-puck recovery, rebound, retry count, and objectives). They cover signature goals and passes, retry-free and three-star clears, 30/60/90 stars, chapter milestones, late highlight routes, cumulative goals/passes, and full-campaign completion. `bardown.achievements.v1` stores completion and compact counters. Unlock toasts are non-blocking and respect the existing motion provider.
+- Finishing the final uncleared level of a chapter adds a trophy/reward reveal to results. Progression metadata and predicates live in `src/career.ts`; customization in `src/profile.ts`; achievements in `src/achievements.ts`; reusable screens and notifications in `src/progressionUI.tsx`.
+- Existing `bardown.progress.v1` saves remain untouched and index-addressed. Missing or partial profile/achievement state receives tolerant defaults, so updating does not erase campaign progress. All systems remain offline and local: no account, backend, ads, purchases, premium currency, lives, multiplayer, or leaderboards.
+
 - Thirty-two authored portrait levels, grouped into six campaign chapters. The original sixteen remain unchanged and in their shipped order. Levels 17–20 extend the existing finale naturally; 21–26 emphasize creative routes and mechanic combinations; 27–32 are late-game highlights with 3–5 meaningful decisions. The expansion includes give-and-go play, a low-to-high wall cycle, side-board caroms into one-timers, cross-ice leads, double banks, deliberate rebounds, screens, safe-versus-highlight choices, a 3-on-2 rush, and a five-decision finale. Behind-the-net passing remains deferred because the current cage collision model does not support it reliably.
 - Campaign cards show distinct cleared/current/locked states, short objectives, and best-run stars. Continue selects the next uncompleted unlocked level. Totals use all 96 available stars, with all original sixteen level indices and the version-1 save schema preserved.
 - Gameplay uses a single compact navigation row, play-progress pips, a fading instruction strip, and an optional objectives sheet. The intro is a compact 3–2–1 overlay; results use staggered star animation and prominent next/retry actions. Existing dark/teal/yellow branding is retained.
@@ -154,10 +162,10 @@ Flow:
 8. Save may produce one guided rebound opportunity.
 9. Turnover/miss = fail and restart.
 
-Original vertical slice excluded menus. The current scope adds level selection and local progression; accounts, economy, customization, multiplayer, and purchases remain excluded.
+Original vertical slice excluded menus. The current scope now includes the local career, lightweight cosmetic customization, and achievements described above; accounts, economy, multiplayer, and purchases remain excluded.
 
 ## Progression Later
-Thirty-two levels, 96 local stars, six campaign chapters, and scenario powerups are in scope. The larger career ideas below remain deferred.
+Thirty-two levels, 96 local stars, six chapters, four career stages, cosmetic unlocks, achievements, and scenario powerups are in scope. Online services, economy, store, and monetization remain deferred.
 
 Career chapters:
 - Rookie

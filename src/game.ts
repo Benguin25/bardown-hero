@@ -192,6 +192,9 @@ export class Game {
   passes = 0;
   bankPasses = 0;
   leadPasses = 0;
+  // Successful attacking recoveries after a puck becomes genuinely loose.
+  // Progression observes this run fact; the renderer remains unaware of it.
+  loosePuckWins = 0;
   private actionBanked = false;
   private bankApproach = false;
   curvedActions = 0;
@@ -711,6 +714,7 @@ export class Game {
   }
 
   private receive(receiver: number) {
+    if (this.freeVelocity !== null || this.actionBanked) this.loosePuckWins++;
     if (receiver === this.carrier) {
       this.freeVelocity = null; this.pickupPlans = [null, null, null]; this.path = []; this.trail = [];
       this.pursuingAttacker = -1; this.pressureDefender = -1;

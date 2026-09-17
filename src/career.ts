@@ -1,0 +1,18 @@
+import { CHAPTERS, CHAPTER_LEVEL_COUNTS } from './content/levels';
+import { stars, type Progress } from './progress';
+export type CareerStage={id:string;label:string;chapters:number[];accent:string;reward:string};
+export const CAREER_STAGES:readonly CareerStage[]=[{id:'rookie',label:'Rookie',chapters:[0],accent:'#46C7C2',reward:'Rookie chapter trophy'},{id:'junior',label:'Junior',chapters:[1],accent:'#55A6E8',reward:'Junior chapter trophy'},{id:'pro',label:'Pro',chapters:[2,3],accent:'#E7B84B',reward:'Pro chapter trophy'},{id:'playoffs',label:'Playoffs',chapters:[4,5],accent:'#E85B65',reward:'Playoff chapter trophy'}];
+export const chapterStart=(c:number)=>CHAPTER_LEVEL_COUNTS.slice(0,c).reduce((a,b)=>a+b,0);
+export const chapterBounds=(c:number)=>({start:chapterStart(c),end:chapterStart(c)+ (CHAPTER_LEVEL_COUNTS[c]||0)-1,count:CHAPTER_LEVEL_COUNTS[c]||0});
+export const chapterIndex=(i:number)=>{let n=0;for(let c=0;c<CHAPTER_LEVEL_COUNTS.length;c++){n+=CHAPTER_LEVEL_COUNTS[c];if(i<n)return c;}return -1;};
+export const completedLevels=(p:Progress)=>Object.keys(p.runs).filter(k=>p.runs[k]?.[0]).map(Number).sort((a,b)=>a-b);
+export const chapterStars=(p:Progress,c:number)=>{const b=chapterBounds(c);return Array.from({length:b.count},(_,i)=>stars(p.runs[String(b.start+i)])).reduce((a,v)=>a+v,0)};
+export const isChapterComplete=(p:Progress,c:number)=>{const b=chapterBounds(c);return b.count>0&&Array.from({length:b.count},(_,i)=>!!p.runs[String(b.start+i)]?.[0]).every(Boolean);};
+export const isChapterPerfect=(p:Progress,c:number)=>chapterStars(p,c)===chapterBounds(c).count*3;
+export const totalStars=(p:Progress)=>completedLevels(p).reduce((a,i)=>a+stars(p.runs[String(i)]),0);
+export const availableStars=(p:Progress)=>CHAPTER_LEVEL_COUNTS.reduce((a,n,c)=>a+n*3,0);
+export const currentLevel=(p:Progress)=>{const total=CHAPTER_LEVEL_COUNTS.reduce((a,b)=>a+b,0); for(let i=0;i<total;i++) if(!p.runs[String(i)]?.[0]) return i; return total-1;};
+export const nextLevel=(p:Progress)=>{const i=currentLevel(p); return i<CHAPTER_LEVEL_COUNTS.reduce((a,b)=>a+b,0)-1?i+1:undefined;};
+export const careerCompletionPercent=(p:Progress)=>Math.round(completedLevels(p).length/CHAPTER_LEVEL_COUNTS.reduce((a,b)=>a+b,0)*100);
+export const isCareerComplete=(p:Progress)=>careerCompletionPercent(p)===100;
+export const fullCampaignComplete=isCareerComplete;
