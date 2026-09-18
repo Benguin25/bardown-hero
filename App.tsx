@@ -448,7 +448,7 @@ function GameApp() {
 
 const a = StyleSheet.create({
   sheetScrim: { backgroundColor: 'rgba(4,16,26,0.82)', justifyContent: 'center', paddingHorizontal: 18 },
-  sheet: { maxHeight: '86%', borderRadius: 24, backgroundColor: c.inkRaised, borderWidth: 1, borderColor: c.surfaceBorderStrong },
+  sheet: { flexGrow: 0, flexShrink: 1, maxHeight: '86%', borderRadius: 24, backgroundColor: c.inkRaised, borderWidth: 1, borderColor: c.surfaceBorderStrong },
   sheetBody: { padding: 22, gap: 12 },
   sheetTitle: { fontFamily: 'Archivo_900Black_Italic', fontSize: 32, lineHeight: 32, letterSpacing: -1.4, color: c.ice100 },
   errorPage: { justifyContent: 'center', paddingHorizontal: 24, gap: 12, backgroundColor: 'rgba(4,16,26,0.9)' },

@@ -95,14 +95,16 @@ export function PlayControls({ eyebrow, value, power, powerup, armed, onActivate
 }) {
   const pulse = useRef(new Animated.Value(0)).current, reduced = useReducedMotion();
   const ready = !!powerup && !armed;
+  const maxed = power >= 0.995;
+  const emphasized = ready || maxed;
   useEffect(() => {
-    if (reduced || !ready) { pulse.setValue(0); return; }
+    if (reduced || !emphasized) { pulse.setValue(0); return; }
     const loop = Animated.loop(Animated.sequence([
       Animated.timing(pulse, { toValue: 1, duration: 620, useNativeDriver: true }),
       Animated.timing(pulse, { toValue: 0, duration: 620, useNativeDriver: true }),
     ]));
     loop.start(); return () => loop.stop();
-  }, [ready, pulse, reduced]);
+  }, [emphasized, pulse, reduced]);
   const arc = armed ? 1 : power;
   const percent = Math.round((armed ? 1 : power) * 100);
   return <SafeAreaView style={h.controlsSafe} pointerEvents="box-none"><View style={h.controls} pointerEvents="box-none">
@@ -110,13 +112,13 @@ export function PlayControls({ eyebrow, value, power, powerup, armed, onActivate
       <Text style={h.aimEyebrow}>{eyebrow}</Text>
       <Text numberOfLines={1} style={h.aimValue}>{value}</Text>
     </View>
-    <Button style={h.ring} disabled={!ready} label={powerup ? `Charge ${POWER_NAMES[powerup]}` : 'Shot power'} onPress={onActivate}>
-      <PowerArc size={88} progress={arc} arc={armed || ready ? c.gold : c.teal} />
-      <Animated.View style={[h.ringDisc, !ready && !armed && h.ringDiscQuiet,
+    <Button style={h.ring} disabled={!ready} label={powerup ? `Charge ${POWER_NAMES[powerup]}` : maxed ? 'Maximum power' : `Shot power ${percent}%`} onPress={onActivate}>
+      <PowerArc size={88} progress={arc} arc={armed || ready || maxed ? c.gold : c.teal} />
+      <Animated.View style={[h.ringDisc, !ready && !armed && !maxed && h.ringDiscQuiet,
         { transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] }) }] }]}>
-        <Text style={[h.ringGlyph, !ready && !armed && h.ringGlyphQuiet]}>⚡</Text>
-        <Text style={[h.ringValue, !ready && !armed && h.ringValueQuiet]}>
-          {armed ? POWER_NAMES[armed].split(' ')[0] : ready ? 'TAP' : `${percent}%`}
+        <Text style={[h.ringGlyph, !ready && !armed && !maxed && h.ringGlyphQuiet]}>⚡</Text>
+        <Text style={[h.ringValue, !ready && !armed && !maxed && h.ringValueQuiet]}>
+          {armed ? 'CHARGED' : ready ? 'TAP' : maxed ? 'MAX' : `${percent}%`}
         </Text>
       </Animated.View>
     </Button>
