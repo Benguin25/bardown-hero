@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, View, SafeAreaView } from 'react-native';
 import { ACHIEVEMENTS, completedAchievementCount, type AchievementDefinition, type AchievementState } from './achievements';
 import { isChapterComplete, isChapterPerfect } from './career';
 import { CHAPTERS } from './content';
@@ -86,7 +86,7 @@ export function ProfileScreen({ profile, progress, achievements, onChange, onBac
   const gloves = color('gloveColor', profile.gloveColor) ?? '#17191D';
   const stick = profile.stickStyle === 'carbon' ? '#111820' : '#8B643F';
 
-  return <View style={s.root}>
+  return <SafeAreaView style={s.root}>
     <Band colors={['#0A2331', '#071B27', c.ink]} />
     <ScrollView contentContainerStyle={p.page} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
       <Rise style={p.top}>
@@ -107,7 +107,6 @@ export function ProfileScreen({ profile, progress, achievements, onChange, onBac
             <Text style={p.caseName}>#{profile.jerseyNumber} {(profile.name || 'PLAYER').toUpperCase()}</Text>
             <Text style={p.caseKit}>{profile.jerseyStyle.toUpperCase()} · {profile.helmetStyle.toUpperCase()} · {profile.stickStyle.toUpperCase()}</Text>
           </View>
-          <Text style={p.caseEdit}>TAP TO EDIT</Text>
         </View>
       </View>
 
@@ -151,13 +150,13 @@ export function ProfileScreen({ profile, progress, achievements, onChange, onBac
       })}
       <Text style={p.foot}>Cosmetics unlock through your career and medals. No currency, no store.</Text>
     </ScrollView>
-  </View>;
+  </SafeAreaView>;
 }
 
 export function AchievementsScreen({ state, progress, onBack }: { state: AchievementState; progress: Progress; onBack: () => void }) {
   const done = completedAchievementCount(state);
   const stars = totalStars(progress);
-  return <View style={s.root}>
+  return <SafeAreaView style={s.root}>
     <Band colors={['#0D2130', '#091B27', c.ink]} />
     <ScrollView contentContainerStyle={p.page} showsVerticalScrollIndicator={false}>
       <Rise style={p.top}>
@@ -198,7 +197,7 @@ export function AchievementsScreen({ state, progress, onBack }: { state: Achieve
         <View style={p.stat}><Text style={[p.statValue, p.statValueGold]}>{stars}</Text><Text style={p.statLabel}>STARS</Text></View>
       </View>
     </ScrollView>
-  </View>;
+  </SafeAreaView>;
 }
 
 export function AchievementToast({ achievement }: { achievement: AchievementDefinition }) {
@@ -230,7 +229,7 @@ export const selectedRinkCosmetics = (profile: PlayerProfile) => {
 };
 
 const p = StyleSheet.create({
-  page: { paddingHorizontal: 18, paddingTop: 54, paddingBottom: 40, gap: 14 },
+  page: { paddingHorizontal: 18, paddingTop: 14, paddingBottom: 40, gap: 14 },
   top: { flexDirection: 'row', alignItems: 'center', gap: 11 },
   topCopy: { flex: 1 },
   kicker: { ...t.eyebrow, color: c.teal, letterSpacing: 2.6 },
@@ -282,7 +281,7 @@ const p = StyleSheet.create({
   sectionRule: { flex: 1, height: 1, backgroundColor: c.surfaceBorder },
   sectionCount: { fontFamily: fonts.numeralLight, fontSize: 10, color: c.ice600 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
-  tile: { width: '31.5%', minHeight: 96, paddingVertical: 12, paddingHorizontal: 10, borderRadius: radii.chip, backgroundColor: c.surface, borderWidth: 1, borderColor: c.surfaceBorder, gap: 8 },
+  tile: { flexGrow: 1, flexBasis: 0, minWidth: 92, maxWidth: 140, minHeight: 96, paddingVertical: 12, paddingHorizontal: 10, borderRadius: radii.chip, backgroundColor: c.surface, borderWidth: 1, borderColor: c.surfaceBorder, gap: 8 },
   tileActive: { backgroundColor: c.tealDeep, borderWidth: 2, borderColor: c.teal },
   tileLocked: { borderStyle: 'dashed', borderColor: c.dashedBorder, opacity: 0.55 },
   tileName: { fontFamily: fonts.display, fontSize: 11, color: c.ice200 },
@@ -303,7 +302,7 @@ const p = StyleSheet.create({
   meter: { height: 6, borderRadius: 3, backgroundColor: c.meterTrack, overflow: 'hidden' },
   meterFill: { height: 6, backgroundColor: c.gold },
   medalGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  medalSlot: { width: '48.4%' },
+  medalSlot: { flexGrow: 1, flexBasis: 0, minWidth: 145, maxWidth: 260 },
   medal: { flex: 1, padding: 14, borderRadius: radii.card, overflow: 'hidden', backgroundColor: c.surface, borderWidth: 1, borderColor: c.surfaceBorder, gap: 10 },
   medalEarned: { borderColor: c.goldBorder, backgroundColor: 'transparent' },
   medalDisc: { width: 42, height: 42, borderRadius: 21, overflow: 'hidden', backgroundColor: c.meterTrack, alignItems: 'center', justifyContent: 'center' },

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, PanResponder, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { AppState, PanResponder, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GLView, type ExpoWebGLRenderingContext } from 'expo-gl';
 import { Game, type Point, distance, relativeAim } from './src/game';
@@ -49,6 +49,7 @@ function GameApp() {
   const recorded = useRef<Game | null>(null);
   const retries = useRef(0);
   const saveQueue = useRef(Promise.resolve());
+  const profileSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const soundSaveQueue = useRef(Promise.resolve());
   const soundEnabled = useRef(true);
   const soundPreferenceTouched = useRef(false);
@@ -117,8 +118,17 @@ function GameApp() {
   }
 
   function persistProfile(next = profile.current) {
+    if (profileSaveTimer.current) {
+      clearTimeout(profileSaveTimer.current);
+      profileSaveTimer.current = null;
+    }
     saveQueue.current = saveQueue.current.then(() => AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(next)))
       .catch(() => { if (mounted.current) setSaveError('Your changes are in memory, but could not be saved. Tap to retry.'); });
+  }
+
+  function scheduleProfileSave() {
+    if (profileSaveTimer.current) clearTimeout(profileSaveTimer.current);
+    profileSaveTimer.current = setTimeout(() => persistProfile(), 400);
   }
 
   function persistAchievements() {
@@ -191,16 +201,22 @@ function GameApp() {
       stroke.current = []; game.current.cancel(); sync();
     });
     return () => {
+      if (profileSaveTimer.current) {
+        clearTimeout(profileSaveTimer.current);
+        profileSaveTimer.current = null;
+        persistProfile();
+      }
       disposed = true; mounted.current = false; audioReady.current = false; subscription.remove();
       cancelAnimationFrame(frame.current); rink.current?.dispose(); rink.current = null; audio.dispose();
     };
   }, []);
 
+  const deferAchievementToast = screen.current === 'game' && game.current.terminal;
   useEffect(() => {
-    if (!achievementQueue.length) return;
+    if (!achievementQueue.length || deferAchievementToast) return;
     const timer = setTimeout(() => setAchievementQueue(queue => queue.slice(1)), 2400);
     return () => clearTimeout(timer);
-  }, [achievementQueue]);
+  }, [achievementQueue, deferAchievementToast]);
 
   function contextCreated(gl: ExpoWebGLRenderingContext) {
     if (!mounted.current || screen.current !== 'game') return;
@@ -284,9 +300,9 @@ function GameApp() {
   const openMenuScreen = (target: 'profile' | 'achievements') => {
     screen.current = target; lastUI.current = ''; restartAudioForNewScreen(); redraw(value => value + 1);
   };
-  const backToCareer = () => { screen.current = 'levels'; lastUI.current = ''; redraw(value => value + 1); };
+  const backToCareer = () => { persistProfile(); screen.current = 'levels'; lastUI.current = ''; redraw(value => value + 1); };
   const changeProfile = (next: PlayerProfile) => {
-    profile.current = sanitizeProfile(next); persistProfile(profile.current); redraw(value => value + 1);
+    profile.current = sanitizeProfile(next); scheduleProfileSave(); redraw(value => value + 1);
   };
   const g = game.current, aiming = g.preview.length > 1, banking = g.preview.some(p => p.bounce);
   const lesson = tutorial.current;
@@ -329,8 +345,8 @@ function GameApp() {
       save={() => { if (loaded) { persist(); persistProfile(); persistAchievements(); } }}
       select={selectLevel} soundOn={soundOn} toggleSound={toggleSound}
       profileName={playerName} playerNumber={profile.current.jerseyNumber}
-      openProfile={() => openMenuScreen('profile')} openAchievements={() => openMenuScreen('achievements')} />
-    <Button style={a.help} label="How to play" onPress={() => setShowHelp(true)}><Text style={s.secondaryText}>HOW TO PLAY</Text></Button>
+      openProfile={() => openMenuScreen('profile')} openAchievements={() => openMenuScreen('achievements')}
+      onHelp={() => setShowHelp(true)} />
     {showHelp && <View style={[StyleSheet.absoluteFill, a.sheetScrim]}>
       <ScrollView style={a.sheet} contentContainerStyle={a.sheetBody}>
         <Text style={s.eyebrow}>WELCOME TO BARDOWN HERO</Text>
@@ -359,7 +375,7 @@ function GameApp() {
     : moreLevels ? 'CHASE THE GATE ★' : 'CAMPAIGN CLEARED ★';
   const onPrimary = hasNext ? () => selectLevel(nextIndex) : victory ? back : retry;
 
-  return <View style={s.root} {...gesture.panHandlers}>
+  return <SafeAreaView style={s.root} {...gesture.panHandlers}>
     <StatusBar barStyle="light-content" />
     <View style={s.arena} onLayout={e => {
       const { width, height } = e.nativeEvent.layout;
@@ -426,12 +442,11 @@ function GameApp() {
         onActivate={() => { stroke.current = []; g.activatePowerup(); sync(); }} />
     </Quiet>}
 
-    {!!achievementQueue[0] && <AchievementToast achievement={achievementQueue[0]} />}
-  </View>;
+    {!!achievementQueue[0] && !deferAchievementToast && <AchievementToast achievement={achievementQueue[0]} />}
+  </SafeAreaView>;
 }
 
 const a = StyleSheet.create({
-  help: { position: 'absolute', bottom: 18, alignSelf: 'center', height: 34, paddingHorizontal: 16, borderRadius: 17, backgroundColor: c.chrome, borderWidth: 1, borderColor: c.chromeBorder, alignItems: 'center', justifyContent: 'center' },
   sheetScrim: { backgroundColor: 'rgba(4,16,26,0.82)', justifyContent: 'center', paddingHorizontal: 18 },
   sheet: { maxHeight: '86%', borderRadius: 24, backgroundColor: c.inkRaised, borderWidth: 1, borderColor: c.surfaceBorderStrong },
   sheetBody: { padding: 22, gap: 12 },

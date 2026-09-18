@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { Animated, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { Game } from './game';
 import type { Objective, Powerup } from './content';
 import { OBJECTIVE_SHORT } from './content';
@@ -111,7 +111,7 @@ export function PlayControls({ eyebrow, value, power, powerup, armed, onActivate
       <Text numberOfLines={1} style={h.aimValue}>{value}</Text>
     </View>
     <Button style={h.ring} disabled={!ready} label={powerup ? `Charge ${POWER_NAMES[powerup]}` : 'Shot power'} onPress={onActivate}>
-      <PowerArc size={96} progress={arc} arc={armed || ready ? c.gold : c.teal} />
+      <PowerArc size={88} progress={arc} arc={armed || ready ? c.gold : c.teal} />
       <Animated.View style={[h.ringDisc, !ready && !armed && h.ringDiscQuiet,
         { transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] }) }] }]}>
         <Text style={[h.ringGlyph, !ready && !armed && h.ringGlyphQuiet]}>⚡</Text>
@@ -153,7 +153,8 @@ export function ResultPanel({ victory, verdict, eyebrow, objectives, message, be
   return <View style={s.fill}>
     <View style={s.scrim} />
     <Glow color={victory ? c.gold : '#FF8997'} opacity={0.16} cy="34%" />
-    <View style={h.resultPage}>
+    <SafeAreaView style={h.resultSafe}>
+    <ScrollView style={h.resultPage} contentContainerStyle={h.resultPageBody} showsVerticalScrollIndicator={false}>
       <Rise style={h.resultPanel}>
         <Text style={h.resultEyebrow}>{eyebrow}</Text>
         <Text style={[h.resultVerdict, !victory && h.resultVerdictFail]}>{verdict}</Text>
@@ -183,12 +184,13 @@ export function ResultPanel({ victory, verdict, eyebrow, objectives, message, be
           <Text style={s.secondaryText}>BACK TO THE MAP</Text>
         </Button>
       </View>
-    </View>
+    </ScrollView>
+    </SafeAreaView>
   </View>;
 }
 
 const h = StyleSheet.create({
-  chrome: { position: 'absolute', top: 60, left: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 9 },
+  chrome: { position: 'absolute', top: 12, left: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 9 },
   chromeBar: { flex: 1, height: 34, borderRadius: 17, paddingHorizontal: 13, backgroundColor: c.chrome, borderWidth: 1, borderColor: c.chromeBorder, flexDirection: 'row', alignItems: 'center', gap: 9 },
   chromeTitle: { fontFamily: fonts.label, fontSize: 10, letterSpacing: 1.5, color: c.chromeText, flexShrink: 1 },
   chromeTail: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 4 },
@@ -212,20 +214,22 @@ const h = StyleSheet.create({
   calloutPlate: { maxWidth: '96%', paddingVertical: 6, paddingHorizontal: 22, backgroundColor: c.gold, transform: [{ skewX: '-8deg' }], ...shadow.plate },
   calloutText: { ...t.callout, color: c.ink, transform: [{ skewX: '8deg' }] },
 
-  controls: { position: 'absolute', left: 0, right: 0, bottom: 52, alignItems: 'center', gap: 14 },
+  controls: { position: 'absolute', left: 0, right: 0, bottom: 18, alignItems: 'center', gap: 8 },
   aimPill: { flexDirection: 'row', alignItems: 'center', gap: 8, maxWidth: '86%', paddingVertical: 6, paddingHorizontal: 16, borderRadius: 16, backgroundColor: 'rgba(6,21,32,0.66)', borderWidth: 1, borderColor: c.glassBorder },
   aimEyebrow: { fontFamily: fonts.label, fontSize: 9, letterSpacing: 2, color: c.teal },
   aimValue: { fontFamily: fonts.displayItalic, fontSize: 15, letterSpacing: -0.4, color: c.ice100, flexShrink: 1 },
-  ring: { width: 96, height: 96, alignItems: 'center', justifyContent: 'center' },
-  ringDisc: { position: 'absolute', top: 11, left: 11, right: 11, bottom: 11, borderRadius: 37, backgroundColor: c.gold, alignItems: 'center', justifyContent: 'center', ...shadow.gold },
+  ring: { width: 88, height: 88, alignItems: 'center', justifyContent: 'center' },
+  ringDisc: { position: 'absolute', top: 10, left: 10, right: 10, bottom: 10, borderRadius: 34, backgroundColor: c.gold, alignItems: 'center', justifyContent: 'center', ...shadow.gold },
   ringDiscQuiet: { backgroundColor: 'rgba(6,21,32,0.7)', borderWidth: 1, borderColor: c.glassBorder, shadowOpacity: 0, elevation: 0 },
   ringGlyph: { fontSize: 20, lineHeight: 23 },
   ringGlyphQuiet: { opacity: 0.4 },
   ringValue: { fontFamily: fonts.numeral, fontSize: 11, color: c.ink, marginTop: 3 },
   ringValueQuiet: { color: c.ice400 },
 
-  resultPage: { flex: 1, paddingTop: 64, paddingHorizontal: 20, paddingBottom: 44 },
-  resultPanel: { borderRadius: radii.modal + 2, backgroundColor: c.glass, borderWidth: 1, borderColor: c.glassBorderStrong, paddingVertical: 26, paddingHorizontal: 22, alignItems: 'center' },
+  resultSafe: { flex: 1 },
+  resultPage: { flex: 1 },
+  resultPageBody: { flexGrow: 1, paddingTop: 12, paddingHorizontal: 16, paddingBottom: 12 },
+  resultPanel: { borderRadius: radii.modal + 2, backgroundColor: c.glass, borderWidth: 1, borderColor: c.glassBorderStrong, paddingVertical: 18, paddingHorizontal: 18, alignItems: 'center' },
   resultEyebrow: { ...t.eyebrow, color: c.teal, letterSpacing: 3.2, textAlign: 'center' },
   resultVerdict: { ...t.displayXL, color: c.ice100, marginTop: 12, textAlign: 'center' },
   resultVerdictFail: { color: '#FF8997' },
@@ -245,5 +249,5 @@ const h = StyleSheet.create({
   resultMessage: { ...t.body, color: c.ice400, marginTop: 16, textAlign: 'center' },
   resultBest: { fontFamily: fonts.numeralLight, fontSize: 10, color: c.ice600, marginTop: 6 },
   resultError: { marginTop: 10 },
-  resultActions: { marginTop: 'auto', paddingTop: 16, gap: 9 },
+  resultActions: { marginTop: 10, paddingTop: 8, gap: 8 },
 });
