@@ -190,7 +190,7 @@ export function CampaignMap({ progress, loaded, error, save, select, soundOn, to
     </View>;
   });
 
-  return <SafeAreaView ref={root} style={s.root} onLayout={event => setViewport(event.nativeEvent.layout)}>
+  return <View ref={root} style={s.root} onLayout={event => setViewport(event.nativeEvent.layout)}>
     <Band colors={activeVenue.band} />
     <ScrollView ref={scroll} showsVerticalScrollIndicator={false} contentContainerStyle={m.scroll}>
       <View style={m.content} onLayout={event => setContentHeight(event.nativeEvent.layout.height)}>
@@ -203,7 +203,7 @@ export function CampaignMap({ progress, loaded, error, save, select, soundOn, to
       </Text>}
     </ScrollView>
 
-    <View style={m.header} pointerEvents="box-none">
+    <SafeAreaView style={m.headerSafe} pointerEvents="box-none"><View style={m.header} pointerEvents="box-none">
       <Button style={[s.chromePill, m.playerPill]} label="Open the locker" onPress={openProfile}>
         <View style={m.playerTile}><Text style={m.playerTileNumber}>{playerNumber}</Text></View>
         <Text numberOfLines={1} style={m.playerName}>{profileName}</Text>
@@ -216,13 +216,15 @@ export function CampaignMap({ progress, loaded, error, save, select, soundOn, to
           <Text style={m.soundGlyph}>{soundOn ? '♪' : '♪̸'}</Text>
         </Button>
       </View>
-    </View>
+    </View></SafeAreaView>
 
-    <Button style={m.help} label="How to play" onPress={onHelp}><Text style={s.secondaryText}>HOW TO PLAY</Text></Button>
+    <SafeAreaView style={m.helpSafe} pointerEvents="box-none">
+      <Button style={m.help} label="How to play" onPress={onHelp}><Text style={s.secondaryText}>HOW TO PLAY</Text></Button>
+    </SafeAreaView>
 
     {card !== null && <LevelCard index={card.index} origin={card} viewport={viewport} progress={progress}
       onClose={() => setCard(null)} onPlay={() => { const index = card.index; setCard(null); select(index); }} />}
-  </SafeAreaView>;
+  </View>;
 }
 
 export function LevelCard({ index, origin, viewport, progress, onClose, onPlay }: {
@@ -331,8 +333,10 @@ const m = StyleSheet.create({
   loading: { textAlign: 'center', marginTop: 18, paddingHorizontal: 24 },
   errorTap: { marginHorizontal: 18, marginTop: 14 },
 
-  header: { position: 'absolute', left: 18, right: 18, top: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  help: { position: 'absolute', bottom: 8, alignSelf: 'center', height: 34, paddingHorizontal: 16, borderRadius: 17, backgroundColor: c.chrome, borderWidth: 1, borderColor: c.chromeBorder, alignItems: 'center', justifyContent: 'center' },
+  headerSafe: { position: 'absolute', top: 0, left: 0, right: 0 },
+  header: { marginTop: 10, marginHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  helpSafe: { position: 'absolute', bottom: 0, left: 0, right: 0 },
+  help: { marginBottom: 8, alignSelf: 'center', height: 34, paddingHorizontal: 16, borderRadius: 17, backgroundColor: c.chrome, borderWidth: 1, borderColor: c.chromeBorder, alignItems: 'center', justifyContent: 'center' },
   playerPill: { paddingLeft: 6, gap: 8, flexShrink: 1, maxWidth: 168 },
   playerTile: { width: 24, height: 24, borderRadius: 8, backgroundColor: c.teal, alignItems: 'center', justifyContent: 'center' },
   playerTileNumber: { fontFamily: fonts.displayItalic, fontSize: 11, color: c.ink },

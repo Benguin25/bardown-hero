@@ -57,7 +57,10 @@ export function frameRink(camera: THREE.OrthographicCamera, width: number, heigh
   const halfHeight = Math.max(Math.max(11.8 / aspect, 18) / camera.zoom, (maxY - minY) / (2 * usable));
   const lowerCenter = maxY - halfHeight + 2 * halfHeight * topPadding / height;
   const upperCenter = minY + halfHeight - 2 * halfHeight * bottomPadding / height;
-  const center = Math.max(lowerCenter, Math.min(upperCenter, 0));
+  // Compose the rink slightly high in the viewport. The controls occupy the
+  // lower edge, while centring the full projected boards left a conspicuous
+  // band of empty arena above the play on tall phones.
+  const center = Math.max(lowerCenter, Math.min(upperCenter, -2.25));
   camera.left = -halfHeight * aspect * camera.zoom;
   camera.right = halfHeight * aspect * camera.zoom;
   camera.top = center + halfHeight * camera.zoom;

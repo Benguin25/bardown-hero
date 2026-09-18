@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, PanResponder, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { AppState, PanResponder, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GLView, type ExpoWebGLRenderingContext } from 'expo-gl';
 import { Game, type Point, distance, relativeAim } from './src/game';
@@ -375,7 +375,7 @@ function GameApp() {
     : moreLevels ? 'CHASE THE GATE ★' : 'CAMPAIGN CLEARED ★';
   const onPrimary = hasNext ? () => selectLevel(nextIndex) : victory ? back : retry;
 
-  return <SafeAreaView style={s.root} {...gesture.panHandlers}>
+  return <View style={s.root} {...gesture.panHandlers}>
     <StatusBar barStyle="light-content" />
     <View style={s.arena} onLayout={e => {
       const { width, height } = e.nativeEvent.layout;
@@ -443,7 +443,7 @@ function GameApp() {
     </Quiet>}
 
     {!!achievementQueue[0] && !deferAchievementToast && <AchievementToast achievement={achievementQueue[0]} />}
-  </SafeAreaView>;
+  </View>;
 }
 
 const a = StyleSheet.create({

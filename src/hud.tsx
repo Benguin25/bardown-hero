@@ -28,7 +28,7 @@ export function objectiveValue(game: Game, id: Objective): string {
 export function HudChrome({ title, index, count, objectives, justEarned, onBack, onRestart }: {
   title: string; index: number; count: number; objectives: boolean[]; justEarned: number; onBack: () => void; onRestart: () => void;
 }) {
-  return <View style={h.chrome} pointerEvents="box-none">
+  return <SafeAreaView style={h.chromeSafe} pointerEvents="box-none"><View style={h.chrome} pointerEvents="box-none">
     <Button style={s.chromeSquare} label="Back to the map" onPress={onBack}><Text style={s.chromeGlyph}>‹</Text></Button>
     <View style={h.chromeBar}>
       <Text numberOfLines={1} style={h.chromeTitle}>{title}</Text>
@@ -39,7 +39,7 @@ export function HudChrome({ title, index, count, objectives, justEarned, onBack,
       </View>
     </View>
     <Button style={s.chromeSquare} label="Restart the level" onPress={onRestart}><Text style={[s.chromeGlyph, h.restartGlyph]}>↻</Text></Button>
-  </View>;
+  </View></SafeAreaView>;
 }
 
 /** Countdown over the live rink: 3 → 2 → 1, objectives staggering in. */
@@ -105,7 +105,7 @@ export function PlayControls({ eyebrow, value, power, powerup, armed, onActivate
   }, [ready, pulse, reduced]);
   const arc = armed ? 1 : power;
   const percent = Math.round((armed ? 1 : power) * 100);
-  return <View style={h.controls} pointerEvents="box-none">
+  return <SafeAreaView style={h.controlsSafe} pointerEvents="box-none"><View style={h.controls} pointerEvents="box-none">
     <View style={h.aimPill}>
       <Text style={h.aimEyebrow}>{eyebrow}</Text>
       <Text numberOfLines={1} style={h.aimValue}>{value}</Text>
@@ -120,7 +120,7 @@ export function PlayControls({ eyebrow, value, power, powerup, armed, onActivate
         </Text>
       </Animated.View>
     </Button>
-  </View>;
+  </View></SafeAreaView>;
 }
 
 function ResultStar({ earned, index, animate }: { earned: boolean; index: number; animate: boolean }) {
@@ -190,7 +190,8 @@ export function ResultPanel({ victory, verdict, eyebrow, objectives, message, be
 }
 
 const h = StyleSheet.create({
-  chrome: { position: 'absolute', top: 12, left: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 9 },
+  chromeSafe: { position: 'absolute', top: 0, left: 0, right: 0 },
+  chrome: { marginTop: 10, marginHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 9 },
   chromeBar: { flex: 1, height: 34, borderRadius: 17, paddingHorizontal: 13, backgroundColor: c.chrome, borderWidth: 1, borderColor: c.chromeBorder, flexDirection: 'row', alignItems: 'center', gap: 9 },
   chromeTitle: { fontFamily: fonts.label, fontSize: 10, letterSpacing: 1.5, color: c.chromeText, flexShrink: 1 },
   chromeTail: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 4 },
@@ -214,7 +215,8 @@ const h = StyleSheet.create({
   calloutPlate: { maxWidth: '96%', paddingVertical: 6, paddingHorizontal: 22, backgroundColor: c.gold, transform: [{ skewX: '-8deg' }], ...shadow.plate },
   calloutText: { ...t.callout, color: c.ink, transform: [{ skewX: '8deg' }] },
 
-  controls: { position: 'absolute', left: 0, right: 0, bottom: 18, alignItems: 'center', gap: 8 },
+  controlsSafe: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  controls: { paddingBottom: 8, alignItems: 'center', gap: 8 },
   aimPill: { flexDirection: 'row', alignItems: 'center', gap: 8, maxWidth: '86%', paddingVertical: 6, paddingHorizontal: 16, borderRadius: 16, backgroundColor: 'rgba(6,21,32,0.66)', borderWidth: 1, borderColor: c.glassBorder },
   aimEyebrow: { fontFamily: fonts.label, fontSize: 9, letterSpacing: 2, color: c.teal },
   aimValue: { fontFamily: fonts.displayItalic, fontSize: 15, letterSpacing: -0.4, color: c.ice100, flexShrink: 1 },
@@ -228,7 +230,7 @@ const h = StyleSheet.create({
 
   resultSafe: { flex: 1 },
   resultPage: { flex: 1 },
-  resultPageBody: { flexGrow: 1, paddingTop: 12, paddingHorizontal: 16, paddingBottom: 12 },
+  resultPageBody: { flexGrow: 1, justifyContent: 'center', paddingTop: 28, paddingHorizontal: 16, paddingBottom: 12 },
   resultPanel: { borderRadius: radii.modal + 2, backgroundColor: c.glass, borderWidth: 1, borderColor: c.glassBorderStrong, paddingVertical: 18, paddingHorizontal: 18, alignItems: 'center' },
   resultEyebrow: { ...t.eyebrow, color: c.teal, letterSpacing: 3.2, textAlign: 'center' },
   resultVerdict: { ...t.displayXL, color: c.ice100, marginTop: 12, textAlign: 'center' },
