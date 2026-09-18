@@ -3,6 +3,7 @@
 
 export const c = {
   ink: '#04101A',
+  inkDeep: '#071620',
   inkRaised: '#071D2A',
   surface: '#0A2434',
   surfaceBorder: '#16394A',
@@ -30,8 +31,10 @@ export const c = {
   chromeText: '#DFF0F7',
   bodyBright: '#CFE3EC',
   nodeLocked: '#0B1A24',
+  lockedNum: '#6F93A6',
   meterTrack: '#12303F',
   dashedBorder: '#1F4A5E',
+  skin: '#C78F68',
   // Translucent layers
   glass: 'rgba(220,245,255,0.07)',
   glassSoft: 'rgba(220,245,255,0.05)',
@@ -51,6 +54,27 @@ export const c = {
   goldHalo: 'rgba(255,197,49,0.22)',
   dashedEdge: 'rgba(157,188,203,0.28)',
   hairline: 'rgba(157,188,203,0.18)',
+  // Home / campaign redesign. Values the handoff marks NEW; the rest of that
+  // list already exists above under this file's own names (glassSoft is
+  // quietFill, chromeSolid is glassFill, goldEdge is goldWashBorder, and so on).
+  overlayScrim: 'rgba(4,16,26,0.72)',
+  quietFillUp: 'rgba(220,245,255,0.06)',
+  tealWash: 'rgba(23,226,173,0.12)',
+  tealWashBorder: 'rgba(23,226,173,0.35)',
+  tealIconFill: 'rgba(23,226,173,0.14)',
+  tealIconBorder: 'rgba(23,226,173,0.32)',
+  goldIconFill: 'rgba(255,197,49,0.14)',
+  goldWashUp: 'rgba(255,197,49,0.10)',
+  goldWashChip: 'rgba(255,197,49,0.12)',
+  goldWashBorderUp: 'rgba(255,197,49,0.32)',
+  pathDim: 'rgba(157,188,203,0.34)',
+  pathDone: 'rgba(23,226,173,0.85)',
+  lockTile: 'rgba(157,188,203,0.12)',
+  stripe: 'rgba(157,188,203,0.12)',
+  stripeSoft: 'rgba(157,188,203,0.10)',
+  stripeTeal: 'rgba(23,226,173,0.14)',
+  grabber: 'rgba(180,220,240,0.28)',
+  bottomBand: 'rgba(6,21,32,0.94)',
 } as const;
 
 // Custom families carry their own weight and slant: never pair these with
@@ -88,4 +112,7 @@ export const shadow = {
   modal: { shadowColor: '#000', shadowOpacity: 0.66, shadowRadius: 35, shadowOffset: { width: 0, height: 30 }, elevation: 24 },
   gold: { shadowColor: c.gold, shadowOpacity: 0.34, shadowRadius: 22, shadowOffset: { width: 0, height: 14 }, elevation: 14 },
   plate: { shadowColor: c.gold, shadowOpacity: 0.28, shadowRadius: 15, shadowOffset: { width: 0, height: 10 }, elevation: 10 },
+  // CSS blur maps to roughly half the radius in RN, so 44px blur -> 22.
+  card: { shadowColor: '#000', shadowOpacity: 0.45, shadowRadius: 22, shadowOffset: { width: 0, height: 22 }, elevation: 16 },
+  sheet: { shadowColor: '#000', shadowOpacity: 0.6, shadowRadius: 30, shadowOffset: { width: 0, height: -26 }, elevation: 26 },
 } as const;
