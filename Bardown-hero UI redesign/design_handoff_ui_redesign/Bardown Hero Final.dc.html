@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><script src="./image-slot.js"></script><link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,600;0,700;0,800;0,900;1,800;1,900&family=Barlow+Condensed:wght@500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"><style>body{margin:0;background:#070c12}*{box-sizing:border-box}a{color:#17e2ad;text-decoration:none}a:hover{color:#ffc531}</style></helmet>
+
+<div style="max-width:1560px;margin:0 auto;padding:52px 40px 80px;font-family:Archivo,-apple-system,'Helvetica Neue',sans-serif">
+
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:40px;flex-wrap:wrap">
+    <div style="max-width:560px">
+      <div style="font:800 10px 'Barlow Condensed',sans-serif;color:#17e2ad;letter-spacing:4px">BARDOWN HERO · UI REDESIGN · FINAL</div>
+      <h1 style="font:900 italic 46px/.96 Archivo,sans-serif;color:#f2fbfd;letter-spacing:-2px;margin:14px 0 0">A CAREER YOU<br>CAN SEE.</h1>
+      <p style="font:400 14px/1.7 'Barlow Condensed',sans-serif;color:#8fb0c0;letter-spacing:.3px;margin:16px 0 0">Eight screens, one system. The campaign becomes a physical climb from a backyard pond to the big league; every other screen inherits the same ink, type and star language. Built as a reference for implementation in the Expo / React Native app — every value below is literal and buildable with flex, gradients and SVG.</p>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;max-width:660px">
+      <div style="width:150px;padding:13px 14px;border-radius:13px;background:#0c1922;border:1px solid #1a2f3c"><div style="width:100%;height:30px;border-radius:7px;background:#04101a;margin-bottom:9px"></div><div style="font:700 11px 'Space Mono',monospace;color:#eaf6fa">#04101A</div><div style="font:800 9px 'Barlow Condensed',sans-serif;color:#5d788a;letter-spacing:1.4px;margin-top:3px">INK · APP BG</div></div>
+      <div style="width:150px;padding:13px 14px;border-radius:13px;background:#0c1922;border:1px solid #1a2f3c"><div style="width:100%;height:30px;border-radius:7px;background:#17e2ad;margin-bottom:9px"></div><div style="font:700 11px 'Space Mono',monospace;color:#eaf6fa">#17E2AD</div><div style="font:800 9px 'Barlow Condensed',sans-serif;color:#5d788a;letter-spacing:1.4px;margin-top:3px">TEAL · ACTION</div></div>
+      <div style="width:150px;padding:13px 14px;border-radius:13px;background:#0c1922;border:1px solid #1a2f3c"><div style="width:100%;height:30px;border-radius:7px;background:#ffc531;margin-bottom:9px"></div><div style="font:700 11px 'Space Mono',monospace;color:#eaf6fa">#FFC531</div><div style="font:800 9px 'Barlow Condensed',sans-serif;color:#5d788a;letter-spacing:1.4px;margin-top:3px">GOLD · STARS</div></div>
+      <div style="width:150px;padding:13px 14px;border-radius:13px;background:#0c1922;border:1px solid #1a2f3c"><div style="width:100%;height:30px;border-radius:7px;background:#0a2434;border:1px solid #16394a;margin-bottom:9px"></div><div style="font:700 11px 'Space Mono',monospace;color:#eaf6fa">#0A2434</div><div style="font:800 9px 'Barlow Condensed',sans-serif;color:#5d788a;letter-spacing:1.4px;margin-top:3px">SURFACE · CARDS</div></div>
+      <div style="width:310px;padding:13px 14px;border-radius:13px;background:#0c1922;border:1px solid #1a2f3c">
+        <div style="font:900 italic 20px Archivo,sans-serif;color:#f2fbfd;letter-spacing:-.6px">Archivo 900 italic</div>
+        <div style="font:700 13px 'Barlow Condensed',sans-serif;color:#b9d6e2;letter-spacing:1.6px;margin-top:5px">BARLOW CONDENSED 700–800 · LABELS</div>
+        <div style="font:700 12px 'Space Mono',monospace;color:#8fb0c0;margin-top:5px">Space Mono 700 · numerals</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:1px;background:#16242f;margin:38px 0 34px"></div>
+
+  <div style="display:flex;align-items:baseline;gap:12px">
+    <span style="font:800 10px 'Barlow Condensed',sans-serif;color:#ffc531;letter-spacing:3.4px">SECTION 01</span>
+    <span style="font:900 italic 24px Archivo,sans-serif;color:#f2fbfd;letter-spacing:-.8px">THE CAMPAIGN MAP</span>
+  </div>
+  <p style="font:400 13px/1.7 'Barlow Condensed',sans-serif;color:#7c95a2;letter-spacing:.3px;margin:10px 0 26px;max-width:860px">Replaces the scrolling card list in <code style="font:400 11px 'Space Mono',monospace;color:#8fb0c0">src/ui.tsx</code>. One continuous vertical path, scrolling bottom-to-top, through six venues — one per existing chapter in <code style="font:400 11px 'Space Mono',monospace;color:#8fb0c0">src/content/levels.ts</code>: Backyard Pond → Community Rink → Junior Barn → College Arena → Minor Pro → The Big League. Nodes are 52px star rings (gold conic arc = stars earned ÷ 3); the current node is 88px with the player avatar standing on it. Each venue is sealed by a star gate.</p>
+
+  <div style="display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start">
+
+    <div style="display:flex;flex-direction:column;gap:11px;width:402px">
+      <div style="display:flex;align-items:baseline;gap:9px"><span style="font:700 11px 'Space Mono',monospace;color:#ffc531">01</span><span style="font:900 13px Archivo,sans-serif;color:#eaf6fa">CAMPAIGN MAP</span></div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+        <div style="width:402px;height:874px;background:#04101a;position:relative;overflow:hidden;font-family:Archivo,-apple-system,sans-serif">
+          <div style="position:absolute;left:0;right:0;top:0;height:270px;overflow:hidden">
+            <div style="position:absolute;inset:0;background:linear-gradient(180deg,#0a1a22,#071620)"></div>
+            <div style="position:absolute;left:-70px;top:40px;width:250px;height:250px;border-radius:50%;border:2px solid rgba(157,188,203,.07)"></div>
+          </div>
+          <div style="position:absolute;left:0;right:0;top:270px;height:430px;overflow:hidden">
+            <div style="position:absolute;inset:0;background:linear-gradient(180deg,#07202e 0%,#0a2a3a 42%,#061a26 100%)"></div>
+            <div style="position:absolute;right:-90px;top:90px;width:300px;height:300px;border-radius:50%;border:2px solid rgba(120,190,215,.1)"></div>
+            <div style="position:absolute;left:0;right:0;top:210px;height:2px;background:rgba(120,190,215,.08)"></div>
+          </div>
+          <div style="position:absolute;left:0;right:0;top:700px;bottom:0;background:linear-gradient(180deg,#061821,#04101a)"></div>
+
+          <div style="position:absolute;left:44px;top:96px;bottom:60px;width:2px;background:repeating-linear-gradient(180deg,rgba(157,188,203,.32) 0 5px,transparent 5px 12px)"></div>
+          <div style="position:absolute;left:44px;top:560px;bottom:60px;width:2px;background:repeating-linear-gradient(180deg,#17e2ad 0 5px,transparent 5px 12px)"></div>
+
+          <div style="position:absolute;left:0;right:0;top:52px;display:flex;align-items:center;justify-content:space-between;padding:0 18px">
+            <div style="display:flex;align-items:center;gap:8px;height:34px;padding:0 13px 0 6px;border-radius:17px;background:rgba(6,21,32,.82);border:1px solid rgba(180,220,240,.14)">
+              <div style="width:24px;height:24px;border-radius:8px;background:#17e2ad;display:flex;align-items:center;justify-content:center"><span style="font:900 italic 11px Archivo,sans-serif;color:#04101a">9</span></div>
+              <span style="font:800 10px 'Barlow Condensed',sans-serif;color:#dff0f7;letter-spacing:1.4px">#9 PLAYER</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;height:34px;padding:0 13px;border-radius:17px;background:rgba(6,21,32,.82);border:1px solid rgba(180,220,240,.14)"><span style="color:#ffc531;font-size:12px">★</span><span style="font:700 12px 'Space Mono',monospace;color:#ffc531">9</span><span style="font:400 10px 'Space Mono',monospace;color:#5d788a">/96</span></div>
+          </div>
+
+          <div style="position:absolute;left:18px;right:18px;top:118px;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:15px;background:rgba(6,21,32,.7);border:1px dashed rgba(157,188,203,.28)">
+            <div style="width:40px;height:40px;border-radius:11px;background:rgba(157,188,203,.12);display:flex;align-items:center;justify-content:center;flex:none"><span style="font-size:17px;line-height:1;opacity:.55">🔒</span></div>
+            <div style="flex:1">
+              <div style="font:800 9px 'Barlow Condensed',sans-serif;color:#7fa0b0;letter-spacing:2.4px">VENUE 03 · JUNIOR BARN</div>
+              <div style="font:900 italic 15px Archivo,sans-serif;color:#9dbccb;letter-spacing:-.3px;margin-top:3px">SEALED · 12 ★ TO OPEN</div>
+            </div>
+            <div style="font:700 14px 'Space Mono',monospace;color:#ffc531">9<span style="color:#40606f">/12</span></div>
+          </div>
+
+          <div style="position:absolute;left:18px;right:18px;top:200px;display:flex;align-items:center;gap:10px">
+            <div style="height:1px;flex:1;background:linear-gradient(90deg,rgba(23,226,173,0),rgba(23,226,173,.5))"></div>
+            <div style="font:800 9px 'Barlow Condensed',sans-serif;color:#17e2ad;letter-spacing:3px">VENUE 02 · COMMUNITY RINK</div>
+            <div style="height:1px;flex:1;background:linear-gradient(90deg,rgba(23,226,173,.5),rgba(23,226,173,0))"></div>
+          </div>
+
+          <div style="position:absolute;left:18px;right:18px;top:246px;display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:13px;background:rgba(255,197,49,.09);border:1px solid rgba(255,197,49,.3)">
+            <span style="color:#ffc531;font-size:14px">★</span>
+            <span style="font:800 10px 'Barlow Condensed',sans-serif;color:#ffc531;letter-spacing:1.6px;flex:1">PERFECT-RUN TROPHY · 9 / 12 ★</span>
+            <span style="font:400 10px 'Space Mono',monospace;color:#c49a30">3 LEFT</span>
+          </div>
+
+          <div style="position:absolute;left:82px;top:312px;display:flex;align-items:center;gap:13px;opacity:.5">
+            <div style="width:52px;height:52px;border-radius:50%;background:rgba(157,188,203,.3);display:flex;align-items:center;justify-content:center;flex:none"><div style="width:41px;height:41px;border-radius:50%;background:#0b1a24;border:1px dashed rgba(157,188,203,.3);display:flex;align-items:center;justify-content:center"><span style="font:700 14px 'Space Mono',monospace;color:#6f93a6">08</span></div></div>
+            <div><div style="font:900 12px Archivo,sans-serif;color:#7fa0b0">SHELF IT CLEAN</div><div style="font:800 9px 'Barlow Condensed',sans-serif;color:#40606f;letter-spacing:1.4px;margin-top:2px">LOCKED</div></div>
+          </div>
+          <div style="position:absolute;left:24px;top:392px;display:flex;align-items:center;gap:13px;opacity:.62">
+            <div style="width:52px;height:52px;border-radius:50%;background:rgba(157,188,203,.3);display:flex;align-items:center;justify-content:center;flex:none"><div style="width:41px;height:41px;border-radius:50%;background:#0b1a24;border:1px dashed rgba(157,188,203,.32);display:flex;align-items:center;justify-content:center"><span style="font:700 14px 'Space Mono',monospace;color:#6f93a6">07</span></div></div>
+            <div><div style="font:900 12px Archivo,sans-serif;color:#9dbccb">SLOT THE SEAM</div><div style="font:800 9px 'Barlow Condensed',sans-serif;color:#40606f;letter-spacing:1.4px;margin-top:2px">LOCKED</div></div>
+          </div>
+          <div style="position:absolute;left:96px;top:466px;display:flex;align-items:center;gap:13px;opacity:.82">
+            <div style="width:52px;height:52px;border-radius:50%;background:rgba(157,188,203,.34);display:flex;align-items:center;justify-content:center;flex:none"><div style="width:41px;height:41px;border-radius:50%;background:#0b1a24;border:1px solid rgba(157,188,203,.3);display:flex;align-items:center;justify-content:center"><span style="font:700 14px 'Space Mono',monospace;color:#9dbccb">06</span></div></div>
+            <div><div style="font:900 12px Archivo,sans-serif;color:#cfe3ec">BREAKAWAY HEAT</div><div style="font:800 9px 'Barlow Condensed',sans-serif;color:#5d788a;letter-spacing:1.4px;margin-top:2px">NEXT AFTER THIS</div></div>
+          </div>
+
+          <div style="position:absolute;left:18px;top:540px;right:18px;display:flex;align-items:center;gap:15px">
+            <div style="position:relative;width:88px;height:88px;flex:none">
+              <div style="position:absolute;inset:0;border-radius:50%;background:rgba(255,197,49,.22);box-shadow:0 0 0 8px rgba(255,197,49,.1),0 18px 44px rgba(255,197,49,.24)"></div>
+              <div style="position:absolute;inset:7px;border-radius:50%;background:#ffc531;display:flex;flex-direction:column;align-items:center;justify-content:center">
+                <span style="font:700 19px 'Space Mono',monospace;color:#04101a;line-height:1">05</span>
+                <span style="font:800 9px 'Barlow Condensed',sans-serif;color:#04101a;letter-spacing:1.3px;margin-top:2px">PLAY</span>
+              </div>
+              <div style="position:absolute;left:-16px;top:-30px;width:44px;height:52px">
+                <div style="position:absolute;left:10px;top:0;width:24px;height:22px;border-radius:9px;background:#c78f68;border:2px solid #04101a"><div style="position:absolute;left:-2px;top:-3px;right:-2px;height:14px;background:#eaf6fa;border:2px solid #04101a;border-radius:12px 12px 4px 4px"></div></div>
+                <div style="position:absolute;left:6px;top:20px;width:32px;height:28px;border-radius:8px;background:#17e2ad;border:2px solid #04101a;display:flex;align-items:center;justify-content:center"><span style="font:900 11px Archivo,sans-serif;color:#04101a">9</span></div>
+              </div>
+            </div>
+            <div style="flex:1">
+              <div style="font:800 9px 'Barlow Condensed',sans-serif;color:#ffc531;letter-spacing:2.4px">YOU ARE HERE</div>
+              <div style="font:900 italic 24px/1 Archivo,sans-serif;color:#f2fbfd;letter-spacing:-.9px;margin-top:5px">SAVE &amp;<br>SCRAMBLE</div>
+              <div style="font:500 12px 'Barlow Condensed',sans-serif;color:#8fb0c0;margin-top:6px;letter-spacing:.4px">Tap the puck to see the three stars.</div>
+            </div>
+          </div>
+
+          <div style="position:absolute;left:30px;top:668px;display:flex;align-items:center;gap:13px">
+            <div style="width:52px;height:52px;border-radius:50%;background:#ffc531;display:flex;align-items:center;justify-content:center;flex:none"><div style="width:41px;height:41px;border-radius:50%;background:#0d2e28;display:flex;align-items:center;justify-content:center"><span style="font:700 14px 'Space Mono',monospace;color:#17e2ad">04</span></div></div>
+            <div><div style="font:900 12px Archivo,sans-serif;color:#eaf6fa">TWO CLOSED LANES</div><div style="font:800 9px 'Barlow Condensed',sans-serif;color:#17e2ad;letter-spacing:1.4px;margin-top:2px">3 / 3 ★ PERFECT</div></div>
+          </div>
+
+          <div style="position:absolute;left:18px;right:18px;top:750px;display:flex;align-items:center;gap:10px">
+            <div style="height:1px;flex:1;background:rgba(157,188,203,.18)"></div>
+            <div style="font:800 9px 'Barlow Condensed',sans-serif;color:#5d788a;letter-spacing:3px">VENUE 01 · BACKYARD POND</div>
+            <div style="height:1px;flex:1;background:rgba(157,188,203,.18)"></div>
+          </div>
+
+          <div style="position:absolute;left:88px;top:794px;display:flex;align-items:center;gap:13px">
+            <div style="width:52px;height:52px;border-radius:50%;background:conic-gradient(#ffc531 0 120deg,rgba(255,197,49,.2) 0 360deg);display:flex;align-items:center;justify-content:center;flex:none"><div style="width:41px;height:41px;border-radius:50%;background:#0d2e28;display:flex;align-items:center;justify-content:center"><span style="font:700 14px 'Space Mono',monospace;color:#17e2ad">03</span></div></div>
+            <div><div style="font:900 12px Archivo,sans-serif;color:#eaf6fa">CROSS-ICE ONE-TIMER</div><div style="font:800 9px 'Barlow Condensed',sans-serif;color:#5d788a;letter-spacing:1.4px;margin-top:2px">1 / 3 ★ · REPLAY</div></div>
+          </div>
+        </div>
+      </x-import>
+      <div style="font:400 12px/1.6 'Barlow Condensed',sans-serif;color:#6e8b9b;letter-spacing:.3px">Path: 2px dashed column at x=44, teal behind cleared nodes, grey ahead. Node x alternates 24 / 82 / 96 to meander. Scroll lands the current node at 62% height.</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:11px;width:402px">
+      <div style="display:flex;align-items:baseline;gap:9px"><span style="font:700 11px 'Space Mono',monospace;color:#ffc531">02</span><span style="font:900 13px Archivo,sans-serif;color:#eaf6fa">LEVEL CARD (expands from node)</span></div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+        <div style="width:402px;height:874px;background:#04101a;position:relative;overflow:hidden;font-family:Archivo,-apple-system,sans-serif">
+          <div style="position:absolute;inset:0;background:linear-gradient(180deg,#071c27,#04101a)"></div>
+          <div style="position:absolute;right:-90px;top:130px;width:300px;height:300px;border-radius:50%;border:2px solid rgba(120,190,215,.06)"></div>
+          <div style="position:absolute;left:44px;top:0;bottom:0;width:2px;background:repeating-linear-gradient(180deg,rgba(157,188,203,.14) 0 5px,transparent 5px 12px)"></div>
+
+          <div style="position:absolute;left:78px;top:150px;display:flex;align-items:center;gap:12px;opacity:.28">
+            <div style="width:48px;height:48px;border-radius:50%;border:1px dashed rgba(157,188,203,.4);display:flex;align-items:center;justify-content:center"><span style="font:700 13px 'Space Mono',monospace;color:#6f93a6">07</span></div>
+            <div style="font:900 11px Archivo,sans-serif;color:#7fa0b0">SLOT THE SEAM</div>
+          </div>
+          <div style="position:absolute;left:26px;top:224px;display:flex;align-items:center;gap:12px;opacity:.28">
+            <div style="width:48px;height:48px;border-radius:50%;border:1px solid rgba(157,188,203,.4);display:flex;align-items:center;justify-content:center"><span style="font:700 13px 'Space Mono',monospace;color:#9dbccb">06</span></div>
+            <div style="font:900 11px Archivo,sans-serif;color:#9dbccb">BREAKAWAY HEAT</div>
+          </div>
+
+          <div style="position:absolute;left:14px;right:14px;top:300px;border-radius:24px;background:#071d2a;border:1px solid #1d4e5e;box-shadow:0 30px 70px rgba(0,0,0,.66);overflow:hidden">
+            <div style="position:relative;height:104px;overflow:hidden;background:linear-gradient(160deg,#0c2b3a,#071d2a)">
+              <div style="position:absolute;left:16px;top:14px;display:flex;align-items:center;gap:8px">
+                <div style="width:34px;height:34px;border-radius:50%;background:#ffc531;display:flex;align-items:center;justify-content:center"><span style="font:700 13px 'Space Mono',monospace;color:#04101a">05</span></div>
+                <span style="font:800 9px 'Barlow Condensed',sans-serif;color:#17e2ad;letter-spacing:2.2px">COMMUNITY RINK</span>
+              </div>
+              <div style="position:absolute;right:14px;top:14px;width:30px;height:30px;border-radius:15px;background:rgba(4,16,26,.72);display:flex;align-items:center;justify-content:center"><span style="font-size:15px;color:#9dbccb;line-height:1">✕</span></div>
+            </div>
+            <div style="padding:2px 20px 20px">
+              <div style="font:900 italic 32px/.96 Archivo,sans-serif;color:#f2fbfd;letter-spacing:-1.4px">SAVE &amp;<br>SCRAMBLE</div>
+              <div style="font:500 14px/1.35 'Barlow Condensed',sans-serif;color:#8fb0c0;margin-top:10px;letter-spacing:.4px">The second chance is the best chance.</div>
+              <div style="display:flex;gap:9px;margin-top:18px">
+                <div style="flex:1;padding:11px 8px;border-radius:12px;background:#0a2434;border:1px solid #16394a;display:flex;flex-direction:column;align-items:center;gap:5px"><span style="color:#2f5668;font-size:16px">★</span><span style="font:800 9px 'Barlow Condensed',sans-serif;color:#8fb0c0;letter-spacing:1.1px">SCORE</span></div>
+                <div style="flex:1;padding:11px 8px;border-radius:12px;background:#0a2434;border:1px solid #16394a;display:flex;flex-direction:column;align-items:center;gap:5px"><span style="color:#2f5668;font-size:16px">★</span><span style="font:800 9px 'Barlow Condensed',sans-serif;color:#8fb0c0;letter-spacing:1.1px">REBOUND</span></div>
+                <div style="flex:1;padding:11px 8px;border-radius:12px;background:#0a2434;border:1px solid #16394a;display:flex;flex-direction:column;align-items:center;gap:5px"><span style="color:#2f5668;font-size:16px">★</span><span style="font:800 9px 'Barlow Condensed',sans-serif;color:#8fb0c0;letter-spacing:1.1px">TOP SHELF</span></div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding-top:14px;border-top:1px solid #12303f">
+                <span style="font:800 9px 'Barlow Condensed',sans-serif;color:#5d788a;letter-spacing:1.8px">BEST RUN</span>
+                <span style="font:400 11px 'Space Mono',monospace;color:#8fb0c0">NOT PLAYED YET</span>
+              </div>
+              <div style="margin-top:16px;height:60px;border-radius:15px;background:#17e2ad;display:flex;align-items:center;justify-content:center;gap:10px"><span style="font-size:17px;color:#04101a">▶</span><span style="font:900 italic 20px Archivo,sans-serif;color:#04101a;letter-spacing:-.5px">HIT THE ICE</span></div>
+            </div>
+          </div>
+
+          <div style="position:absolute;left:30px;bottom:96px;display:flex;align-items:center;gap:12px;opacity:.28">
+            <div style="width:48px;height:48px;border-radius:50%;background:#ffc531;display:flex;align-items:center;justify-content:center"><div style="width:38px;height:38px;border-radius:50%;background:#0d2e28;display:flex;align-items:center;justify-content:center"><span style="font:700 13px 'Space Mono',monospace;color:#17e2ad">04</span></div></div>
+            <div style="font:900 11px Archivo,sans-serif;color:#eaf6fa">TWO CLOSED LANES</div>
+          </div>
+        </div>
+      </x-import>
+      <div style="font:400 12px/1.6 'Barlow Condensed',sans-serif;color:#6e8b9b;letter-spacing:.3px">Animation: card scales 0.55 → 1 with origin at the node's centre, 220ms ease-out; map dims to 28% opacity over 160ms. ✕ or backdrop tap reverses it.</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:11px;width:402px">
+      <div style="display:flex;align-items:baseline;gap:9px"><span style="font:700 11px 'Space Mono',monospace;color:#ffc531">03</span><span style="font:900 13px Archivo,sans-serif;color:#eaf6fa">VENUE UNLOCKED</span></div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+        <div style="width:402px;height:874px;background:#04101a;position:relative;overflow:hidden;font-family:Archivo,-apple-system,sans-serif">
+          <div style="position:absolute;left:0;right:0;top:0;height:540px;overflow:hidden">
+            <div style="position:absolute;inset:0;background:linear-gradient(180deg,#123024 0%,#0a2230 48%,#04101a 100%)"></div>
+            <div style="position:absolute;left:-60px;top:60px;width:280px;height:280px;border-radius:50%;border:2px solid rgba(255,197,49,.07)"></div>
+          </div>
+          <div style="position:absolute;inset:0;background:radial-gradient(75% 40% at 50% 46%,rgba(255,197,49,.22),transparent 64%)"></div>
+          <div style="position:absolute;left:44px;top:430px;bottom:0;width:2px;background:repeating-linear-gradient(180deg,#17e2ad 0 5px,transparent 5px 12px)"></div>
+
+          <div style="position:absolute;left:0;right:0;top:286px;text-align:center;padding:0 26px">
+            <div style="font:800 9px 'Barlow Condensed',sans-serif;color:#17e2ad;letter-spacing:3.6px">12 / 12 ★ EARNED</div>
+            <div style="font:900 italic 44px/.94 Archivo,sans-serif;color:#ffc531;letter-spacing:-2px;margin-top:12px;text-shadow:0 10px 44px rgba(255,197,49,.34)">GATE<br>BROKEN</div>
+            <div style="font:500 15px/1.4 'Barlow Condensed',sans-serif;color:#cfe3ec;margin-top:14px;letter-spacing:.4px">Community Rink is behind you. The barn is louder.</div>
+          </div>
+
+          <div style="position:absolute;left:20px;right:20px;top:470px;border-radius:20px;background:rgba(6,21,32,.78);border:1px solid rgba(255,197,49,.34);padding:16px 18px;display:flex;align-items:center;gap:14px">
+            <div style="width:48px;height:48px;border-radius:13px;background:linear-gradient(160deg,#ffd76b,#e8a51d);display:flex;align-items:center;justify-content:center;flex:none"><span style="font-size:21px;line-height:1">★</span></div>
+            <div style="flex:1">
+              <div style="font:800 9px 'Barlow Condensed',sans-serif;color:#ffc531;letter-spacing:2.2px">VENUE 03 UNLOCKED</div>
+              <div style="font:900 italic 21px Archivo,sans-serif;color:#f2fbfd;letter-spacing:-.6px;margin-top:4px">JUNIOR BARN</div>
+              <div style="font:500 12px 'Barlow Condensed',sans-serif;color:#8fb0c0;margin-top:4px;letter-spacing:.4px">6 levels · new locker reward at 3 ★</div>
+            </div>
+          </div>
+
+          <div style="position:absolute;left:18px;right:18px;top:576px;display:flex;align-items:center;gap:10px">
+            <div style="height:1px;flex:1;background:linear-gradient(90deg,rgba(255,197,49,0),rgba(255,197,49,.5))"></div>
+            <div style="font:800 9px 'Barlow Condensed',sans-serif;color:#ffc531;letter-spacing:3px">VENUE 03 · JUNIOR BARN</div>
+            <div style="height:1px;flex:1;background:linear-gradient(90deg,rgba(255,197,49,.5),rgba(255,197,49,0))"></div>
+          </div>
+
+          <div style="position:absolute;left:18px;top:630px;right:18px;display:flex;align-items:center;gap:15px">
+            <div style="position:relative;width:88px;height:88px;flex:none">
+              <div style="position:absolute;inset:0;border-radius:50%;background:rgba(255,197,49,.22);box-shadow:0 0 0 8px rgba(255,197,49,.1),0 18px 44px rgba(255,197,49,.22)"></div>
+              <div style="position:absolute;inset:7px;border-radius:50%;background:#ffc531;display:flex;flex-direction:column;align-items:center;justify-content:center">
+                <span style="font:700 19px 'Space Mono',monospace;color:#04101a;line-height:1">09</span>
+                <span style="font:800 9px 'Barlow Condensed',sans-serif;color:#04101a;letter-spacing:1.3px;margin-top:2px">PLAY</span>
+              </div>
+              <div style="position:absolute;left:-16px;top:-30px;width:44px;height:52px">
+                <div style="position:absolute;left:10px;top:0;width:24px;height:22px;border-radius:9px;background:#c78f68;border:2px solid #04101a"><div style="position:absolute;left:-2px;top:-3px;right:-2px;height:14px;background:#eaf6fa;border:2px solid #04101a;border-radius:12px 12px 4px 4px"></div></div>
+                <div style="position:absolute;left:6px;top:20px;width:32px;height:28px;border-radius:8px;background:#17e2ad;border:2px solid #04101a;display:flex;align-items:center;justify-content:center"><span style="font:900 11px Archivo,sans-serif;color:#04101a">9</span></div>
+              </div>
+            </div>
+            <div style="flex:1">
+              <div style="font:800 9px 'Barlow Condensed',sans-serif;color:#ffc531;letter-spacing:2.4px">FIRST SHIFT IN THE BARN</div>
+              <div style="font:900 italic 24px/1 Archivo,sans-serif;color:#f2fbfd;letter-spacing:-.9px;margin-top:5px">HEAVY<br>TRAFFIC</div>
+            </div>
+          </div>
+
+          <div style="position:absolute;left:20px;right:20px;bottom:44px;height:58px;border-radius:29px;background:#17e2ad;display:flex;align-items:center;justify-content:center"><span style="font:900 italic 19px Archivo,sans-serif;color:#04101a">WALK INTO THE BARN →</span></div>
+        </div>
+      </x-import>
+      <div style="font:400 12px/1.6 'Barlow Condensed',sans-serif;color:#6e8b9b;letter-spacing:.3px">Fires when a chapter's star total hits its gate. Avatar animates up the path into the new venue, then this state lands.</div>
+    </div>
+  </div>
+
+  <div style="height:1px;background:#16242f;margin:40px 0 34px"></div>
+
+  <div style="display:flex;align-items:baseline;gap:12px">
+    <span style="font:800 10px 'Barlow Condensed',sans-serif;color:#ffc531;letter-spacing:3.4px">SECTION 02</span>
+    <span style="font:900 italic 24px Archivo,sans-serif;color:#f2fbfd;letter-spacing:-.8px">PLAYING A LEVEL</span>
+  </div>
+  <p style="font:400 13px/1.7 'Barlow Condensed',sans-serif;color:#7c95a2;letter-spacing:.3px;margin:10px 0 26px;max-width:860px">Rink-first. The bottom slab of the current build is gone — shot power lives in the ring around the fire button, aim in a single pill, objectives as three dots top-right. Callouts are skewed gold plates. Replaces the header / arena / bottom blocks in <code style="font:400 11px 'Space Mono',monospace;color:#8fb0c0">App.tsx</code>.</p>
+
+  <div style="display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start">
+
+    <div style="display:flex;flex-direction:column;gap:11px;width:402px">
+      <div style="display:flex;align-items:baseline;gap:9px"><span style="font:700 11px 'Space Mono',monospace;color:#ffc531">04</span><span style="font:900 13px Archivo,sans-serif;color:#eaf6fa">INTRO COUNTDOWN</span></div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+        <div style="width:402px;height:874px;background:#04101a;position:relative;overflow:hidden;font-family:Archivo,-apple-system,sans-serif">
+          <div style="position:absolute;inset:0;background:repeating-linear-gradient(135deg,#0a2030 0 14px,#081a27 14px 28px)"></div>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center"><div style="font:400 10px/1.8 'Space Mono',monospace;color:#3f5f71;letter-spacing:1.5px;text-align:center">EXPO-GL RINK<br>src/rink.ts · three.js</div></div>
+          <div style="position:absolute;inset:0;background:rgba(4,16,26,.62)"></div>
+
+          <div style="position:absolute;top:60px;left:12px;right:12px;display:flex;align-items:center;gap:9px">
+            <div style="width:34px;height:34px;border-radius:11px;background:rgba(6,21,32,.7);border:1px solid rgba(180,220,240,.13);display:flex;align-items:center;justify-content:center"><span style="font-size:17px;color:#9dbccb;line-height:1;margin-top:-2px">‹</span></div>
+            <div style="flex:1;display:flex;align-items:center;gap:9px;height:34px;padding:0 13px;border-radius:17px;background:rgba(6,21,32,.7);border:1px solid rgba(180,220,240,.13)">
+              <span style="font:800 10px 'Barlow Condensed',sans-serif;color:#dff0f7;letter-spacing:1.5px">SAVE &amp; SCRAMBLE</span>
+              <div style="flex:1"></div>
+              <span style="font:400 10px 'Space Mono',monospace;color:#5d788a">05/32</span>
+            </div>
+          </div>
+
+          <div style="position:absolute;left:0;right:0;top:262px;display:flex;flex-direction:column;align-items:center">
+            <div style="font:900 italic 128px/1 Archivo,sans-serif;color:#ffc531;letter-spacing:-6px;text-shadow:0 14px 60px rgba(255,197,49,.34)">3</div>
+            <div style="font:800 10px 'Barlow Condensed',sans-serif;color:#17e2ad;letter-spacing:4px;margin-top:6px">MAKE IT COUNT</div>
+          </div>
+
+          <div style="position:absolute;left:24px;right:24px;top:500px;display:flex;flex-direction:column;gap:9px">
+            <div style="display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:14px;background:rgba(6,21,32,.72);border:1px solid rgba(180,220,240,.14)">
+              <div style="width:30px;height:30px;border-radius:50%;border:1.5px solid rgba(255,197,49,.5);display:flex;align-items:center;justify-content:center;flex:none"><span style="color:#ffc531;font-size:13px">★</span></div>
+              <span style="font:700 13px 'Barlow Condensed',sans-serif;color:#eaf6fa;letter-spacing:1.2px;flex:1">SCORE A GOAL</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:14px;background:rgba(6,21,32,.72);border:1px solid rgba(180,220,240,.14)">
+              <div style="width:30px;height:30px;border-radius:50%;border:1.5px solid rgba(255,197,49,.5);display:flex;align-items:center;justify-content:center;flex:none"><span style="color:#ffc531;font-size:13px">★</span></div>
+              <span style="font:700 13px 'Barlow Condensed',sans-serif;color:#eaf6fa;letter-spacing:1.2px;flex:1">BURY A REBOUND</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:14px;background:rgba(6,21,32,.72);border:1px solid rgba(180,220,240,.14)">
+              <div style="width:30px;height:30px;border-radius:50%;border:1.5px solid rgba(255,197,49,.5);display:flex;align-items:center;justify-content:center;flex:none"><span style="color:#ffc531;font-size:13px">★</span></div>
+              <span style="font:700 13px 'Barlow Condensed',sans-serif;color:#eaf6fa;letter-spacing:1.2px;flex:1">GO TOP SHELF</span>
+            </div>
+          </div>
+
+          <div style="position:absolute;left:0;right:0;bottom:56px;text-align:center"><span style="font:500 13px 'Barlow Condensed',sans-serif;color:#7fa0b0;letter-spacing:1.4px">DRAG ANYWHERE TO DRAW YOUR PLAY</span></div>
+        </div>
+      </x-import>
+      <div style="font:400 12px/1.6 'Barlow Condensed',sans-serif;color:#6e8b9b;letter-spacing:.3px">Numeral swaps 3→2→1 at 1s intervals, scaling 1.3→1 each tick. Objective rows stagger in 60ms apart.</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:11px;width:402px">
+      <div style="display:flex;align-items:baseline;gap:9px"><span style="font:700 11px 'Space Mono',monospace;color:#ffc531">05</span><span style="font:900 13px Archivo,sans-serif;color:#eaf6fa">IN-GAME HUD</span></div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+        <div style="width:402px;height:874px;background:#04101a;position:relative;overflow:hidden;font-family:Archivo,-apple-system,sans-serif">
+          <div style="position:absolute;inset:0;background:repeating-linear-gradient(135deg,#0a2030 0 14px,#081a27 14px 28px)"></div>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center"><div style="font:400 10px/1.8 'Space Mono',monospace;color:#3f5f71;letter-spacing:1.5px;text-align:center">EXPO-GL RINK<br>src/rink.ts · three.js</div></div>
+          <div style="position:absolute;inset:0;background:radial-gradient(120% 60% at 50% 112%,rgba(23,226,173,.12),transparent 58%)"></div>
+
+          <div style="position:absolute;top:60px;left:12px;right:12px;display:flex;align-items:center;gap:9px">
+            <div style="width:34px;height:34px;border-radius:11px;background:rgba(6,21,32,.7);border:1px solid rgba(180,220,240,.13);display:flex;align-items:center;justify-content:center"><span style="font-size:17px;color:#9dbccb;line-height:1;margin-top:-2px">‹</span></div>
+            <div style="flex:1;display:flex;align-items:center;gap:9px;height:34px;padding:0 13px;border-radius:17px;background:rgba(6,21,32,.7);border:1px solid rgba(180,220,240,.13)">
+              <span style="font:800 10px 'Barlow Condensed',sans-serif;color:#dff0f7;letter-spacing:1.5px">BREAKAWAY HEAT</span>
+              <div style="flex:1"></div>
+              <span style="color:#17e2ad;font-size:9px">●</span><span style="color:#ffc531;font-size:9px">●</span><span style="color:#2f5668;font-size:9px">●</span>
+            </div>
+            <div style="width:34px;height:34px;border-radius:11px;background:rgba(6,21,32,.7);border:1px solid rgba(180,220,240,.13);display:flex;align-items:center;justify-content:center"><span style="font-size:15px;color:#9dbccb;line-height:1">↻</span></div>
+          </div>
+
+          <div style="position:absolute;top:27%;left:0;right:0;display:flex;justify-content:center">
+            <div style="padding:6px 22px;background:#ffc531;transform:skewX(-8deg);box-shadow:0 10px 30px rgba(255,197,49,.28)"><span style="display:inline-block;transform:skewX(8deg);font:900 italic 34px Archivo,sans-serif;color:#04101a;letter-spacing:-1.2px">BAR DOWN!</span></div>
+          </div>
+
+          <div style="position:absolute;bottom:52px;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:14px">
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 16px;border-radius:16px;background:rgba(6,21,32,.66);border:1px solid rgba(180,220,240,.12)">
+              <span style="font:800 9px 'Barlow Condensed',sans-serif;color:#17e2ad;letter-spacing:2px">AIM</span>
+              <span style="font:900 italic 15px Archivo,sans-serif;color:#f2fbfd;letter-spacing:-.4px">HIGH RIGHT</span>
+            </div>
+            <div style="position:relative;width:96px;height:96px">
+              <div style="position:absolute;inset:0;border-radius:50%;border:5px solid rgba(180,220,240,.16)"></div>
+              <div style="position:absolute;inset:0;border-radius:50%;border:5px solid #ffc531;border-right-color:transparent;border-bottom-color:transparent;transform:rotate(128deg)"></div>
+              <div style="position:absolute;inset:11px;border-radius:50%;background:#ffc531;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 14px 34px rgba(255,197,49,.3)">
+                <span style="font-size:20px;line-height:1">⚡</span>
+                <span style="font:700 11px 'Space Mono',monospace;color:#04101a;margin-top:3px">78%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </x-import>
+      <div style="font:400 12px/1.6 'Barlow Condensed',sans-serif;color:#6e8b9b;letter-spacing:.3px">Power ring: 5px stroke, sweeps 0→360° as the tap charges. Callout plate skewX(-8°), text counter-skewed, 180ms pop then hold 700ms.</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:11px;width:402px">
+      <div style="display:flex;align-items:baseline;gap:9px"><span style="font:700 11px 'Space Mono',monospace;color:#ffc531">06</span><span style="font:900 13px Archivo,sans-serif;color:#eaf6fa">RESULT</span></div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+        <div style="width:402px;height:874px;background:#04101a;position:relative;overflow:hidden;font-family:Archivo,-apple-system,sans-serif">
+          <div style="position:absolute;inset:0;background:repeating-linear-gradient(135deg,#0a2030 0 14px,#081a27 14px 28px);opacity:.5"></div>
+          <div style="position:absolute;inset:0;background:rgba(4,16,26,.62)"></div>
+          <div style="position:relative;height:100%;padding:64px 20px 44px;display:flex;flex-direction:column">
+            <div style="border-radius:26px;background:rgba(220,245,255,.07);border:1px solid rgba(180,220,240,.16);padding:26px 22px;display:flex;flex-direction:column;align-items:center">
+              <div style="font:800 9px 'Barlow Condensed',sans-serif;color:#17e2ad;letter-spacing:3.2px">LEVEL 02 CLEARED</div>
+              <div style="font:900 italic 46px/1 Archivo,sans-serif;color:#f2fbfd;letter-spacing:-2px;margin-top:12px;text-align:center">BAR<br>DOWN</div>
+              <div style="display:flex;gap:10px;margin-top:20px">
+                <div style="width:46px;height:46px;border-radius:50%;background:#ffc531;display:flex;align-items:center;justify-content:center"><span style="font-size:20px;line-height:1">★</span></div>
+                <div style="width:46px;height:46px;border-radius:50%;background:#ffc531;display:flex;align-items:center;justify-content:center"><span style="font-size:20px;line-height:1">★</span></div>
+                <div style="width:46px;height:46px;border-radius:50%;background:#ffc531;display:flex;align-items:center;justify-content:center"><span style="font-size:20px;line-height:1">★</span></div>
+              </div>
+              <div style="align-self:stretch;height:1px;background:rgba(180,220,240,.14);margin:22px 0 16px"></div>
+              <div style="align-self:stretch;display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;align-items:center;gap:10px"><span style="color:#17e2ad;font-size:12px">●</span><span style="font:600 12px 'Barlow Condensed',sans-serif;color:#dff0f7;letter-spacing:.7px;flex:1">SCORE A GOAL</span><span style="font:400 10px 'Space Mono',monospace;color:#6f93a6">1 SHOT</span></div>
+                <div style="display:flex;align-items:center;gap:10px"><span style="color:#17e2ad;font-size:12px">●</span><span style="font:600 12px 'Barlow Condensed',sans-serif;color:#dff0f7;letter-spacing:.7px;flex:1">LAND A CURVED PLAY</span><span style="font:400 10px 'Space Mono',monospace;color:#6f93a6">1.8m</span></div>
+                <div style="display:flex;align-items:center;gap:10px"><span style="color:#17e2ad;font-size:12px">●</span><span style="font:600 12px 'Barlow Condensed',sans-serif;color:#dff0f7;letter-spacing:.7px;flex:1">GO TOP SHELF</span><span style="font:400 10px 'Space Mono',monospace;color:#6f93a6">BAR</span></div>
+              </div>
+            </div>
+            <div style="margin-top:16px;border-radius:20px;background:rgba(220,245,255,.05);border:1px dashed rgba(180,220,240,.2);padding:13px;display:flex;align-items:center;gap:12px">
+              <div style="width:86px;height:52px;border-radius:9px;background:repeating-linear-gradient(135deg,#0d2534 0 8px,#0a1e2b 8px 16px);flex:none"></div>
+              <div style="flex:1"><div style="font:800 9px 'Barlow Condensed',sans-serif;color:#17e2ad;letter-spacing:1.8px">REPLAY</div><div style="font:500 12px/1.3 'Barlow Condensed',sans-serif;color:#8fb0c0;margin-top:3px;letter-spacing:.3px">Tap to watch the goal again</div></div>
+            </div>
+            <div style="margin-top:auto;display:flex;flex-direction:column;gap:9px">
+              <div style="height:58px;border-radius:29px;background:#17e2ad;display:flex;align-items:center;justify-content:center"><span style="font:900 italic 18px Archivo,sans-serif;color:#04101a">NEXT RUSH →</span></div>
+              <div style="height:46px;border-radius:23px;background:rgba(220,245,255,.07);border:1px solid rgba(180,220,240,.14);display:flex;align-items:center;justify-content:center"><span style="font:800 11px 'Barlow Condensed',sans-serif;color:#b9d6e2;letter-spacing:1.6px">BACK TO THE MAP</span></div>
+            </div>
+          </div>
+        </div>
+      </x-import>
+      <div style="font:400 12px/1.6 'Barlow Condensed',sans-serif;color:#6e8b9b;letter-spacing:.3px">Stars land one at a time, 140ms apart, scale 1.6→1 with a haptic tick. "BACK TO THE MAP" returns the avatar walking to the next node.</div>
+    </div>
+  </div>
+
+  <div style="height:1px;background:#16242f;margin:40px 0 34px"></div>
+
+  <div style="display:flex;align-items:baseline;gap:12px">
+    <span style="font:800 10px 'Barlow Condensed',sans-serif;color:#ffc531;letter-spacing:3.4px">SECTION 03</span>
+    <span style="font:900 italic 24px Archivo,sans-serif;color:#f2fbfd;letter-spacing:-.8px">CAREER SCREENS</span>
+  </div>
+  <p style="font:400 13px/1.7 'Barlow Condensed',sans-serif;color:#7c95a2;letter-spacing:.3px;margin:10px 0 26px;max-width:860px">Both reached from the map header, both restyled from <code style="font:400 11px 'Space Mono',monospace;color:#8fb0c0">src/progressionUI.tsx</code>. The locker keeps the existing CSS-drawn player figure and re-frames it as a venue-lit display case; medals move from a text list to a gold-when-earned grid.</p>
+
+  <div style="display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start">
+
+    <div style="display:flex;flex-direction:column;gap:11px;width:402px">
+      <div style="display:flex;align-items:baseline;gap:9px"><span style="font:700 11px 'Space Mono',monospace;color:#ffc531">07</span><span style="font:900 13px Archivo,sans-serif;color:#eaf6fa">LOCKER</span></div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+        <div style="width:402px;height:874px;background:#04101a;position:relative;overflow:hidden;font-family:Archivo,-apple-system,sans-serif">
+          <div style="position:absolute;inset:0;background:linear-gradient(180deg,#0a2331,#04101a 62%)"></div>
+          <div style="position:relative;height:100%;padding:54px 18px 34px;display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;align-items:center;gap:11px">
+              <div style="width:34px;height:34px;border-radius:11px;background:rgba(6,21,32,.8);border:1px solid rgba(180,220,240,.13);display:flex;align-items:center;justify-content:center"><span style="font-size:17px;color:#9dbccb;line-height:1;margin-top:-2px">‹</span></div>
+              <div style="flex:1">
+                <div style="font:800 9px 'Barlow Condensed',sans-serif;color:#17e2ad;letter-spacing:2.6px">THE LOCKER</div>
+                <div style="font:900 italic 22px Archivo,sans-serif;color:#f2fbfd;letter-spacing:-.8px;margin-top:2px">MAKE IT YOURS</div>
+              </div>
+            </div>
+
+            <div style="position:relative;border-radius:20px;overflow:hidden;background:linear-gradient(180deg,#123c48,#0b2836);border:1px solid #1d4e5e;height:322px;display:flex;justify-content:center">
+              <div style="position:absolute;left:0;right:0;top:0;height:170px;background:radial-gradient(80% 100% at 50% 0%,rgba(23,226,173,.26),transparent 70%)"></div>
+              <div style="position:absolute;width:210px;height:210px;border-radius:50%;top:22px;border:2px solid rgba(180,235,235,.14)"></div>
+              <div style="width:190px;height:240px;margin-top:22px;position:relative">
+                <div style="position:absolute;left:66px;top:4px;width:58px;height:55px;z-index:5;background:#c78f68;border-radius:24px;border:2px solid #04101a">
+                  <div style="position:absolute;left:-3px;top:-4px;width:60px;height:34px;background:#eaf6fa;border:2px solid #04101a;border-radius:30px 30px 8px 8px"></div>
+                  <div style="position:absolute;right:-5px;top:20px;width:17px;height:21px;background:#eaf6fa;border-radius:7px;border:2px solid #04101a"></div>
+                </div>
+                <div style="position:absolute;top:72px;left:26px;width:31px;height:89px;border-radius:13px;border:3px solid #04101a;background:#17e2ad;transform:rotate(12deg);z-index:2"><div style="position:absolute;left:1px;right:1px;bottom:-8px;height:28px;border-radius:8px;border:2px solid #04101a;background:#0d1620"></div></div>
+                <div style="position:absolute;top:72px;right:26px;width:31px;height:89px;border-radius:13px;border:3px solid #04101a;background:#17e2ad;transform:rotate(-12deg);z-index:2"><div style="position:absolute;left:1px;right:1px;bottom:-8px;height:28px;border-radius:8px;border:2px solid #04101a;background:#0d1620"></div></div>
+                <div style="position:absolute;top:57px;left:45px;width:100px;height:102px;border-radius:17px;border:4px solid #9ff5df;background:#17e2ad;display:flex;align-items:center;justify-content:center;overflow:hidden;z-index:3">
+                  <div style="position:absolute;left:0;right:0;height:12px;top:17px;background:#9ff5df"></div>
+                  <span style="font:900 39px Archivo,sans-serif;color:#04101a;z-index:4">9</span>
+                </div>
+                <div style="position:absolute;top:151px;left:57px;width:34px;height:65px;border-radius:8px;background:#16333f;transform:rotate(4deg);z-index:1"><div style="position:absolute;left:-6px;bottom:-4px;width:46px;height:13px;border-radius:5px;background:#091520;border-bottom:2px solid #91aab4"></div></div>
+                <div style="position:absolute;top:151px;right:57px;width:34px;height:65px;border-radius:8px;background:#16333f;transform:rotate(-4deg);z-index:1"><div style="position:absolute;left:-6px;bottom:-4px;width:46px;height:13px;border-radius:5px;background:#091520;border-bottom:2px solid #91aab4"></div></div>
+                <div style="position:absolute;right:12px;top:65px;width:8px;height:157px;border-radius:3px;background:#8b643f;transform:rotate(13deg);border:1px solid #04101a;z-index:6"><div style="position:absolute;right:-4px;bottom:-5px;width:42px;height:13px;border-radius:4px;background:#8b643f;transform:rotate(-9deg);border:1px solid #04101a"></div></div>
+              </div>
+              <div style="position:absolute;left:0;right:0;bottom:0;padding:11px 16px;background:rgba(4,16,26,.88);display:flex;align-items:center;justify-content:space-between">
+                <div>
+                  <div style="font:900 16px Archivo,sans-serif;color:#f2fbfd">#9 PLAYER</div>
+                  <div style="font:800 9px 'Barlow Condensed',sans-serif;color:#17e2ad;letter-spacing:1.6px;margin-top:3px">CLASSIC · SHELL · WOOD</div>
+                </div>
+                <div style="font:400 10px 'Space Mono',monospace;color:#6f93a6">TAP TO EDIT</div>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:9px">
+              <div style="flex:1;padding:11px 13px;border-radius:13px;background:#0a2434;border:1px solid #16394a"><div style="font:800 9px 'Barlow Condensed',sans-serif;color:#5d788a;letter-spacing:1.4px">NAME</div><div style="font:900 15px Archivo,sans-serif;color:#f2fbfd;margin-top:4px">Player</div></div>
+              <div style="width:96px;padding:11px 13px;border-radius:13px;background:#0a2434;border:1px solid #16394a"><div style="font:800 9px 'Barlow Condensed',sans-serif;color:#5d788a;letter-spacing:1.4px">NUMBER</div><div style="font:700 15px 'Space Mono',monospace;color:#f2fbfd;margin-top:4px">9</div></div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:10px;margin-top:2px">
+              <span style="font:800 9px 'Barlow Condensed',sans-serif;color:#ffc531;letter-spacing:2.6px">JERSEY STYLE</span>
+              <div style="height:1px;flex:1;background:#16394a"></div>
+              <span style="font:400 10px 'Space Mono',monospace;color:#5d788a">2 / 6</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px">
+              <div style="padding:12px 10px;border-radius:13px;background:#0d3a35;border:2px solid #17e2ad;display:flex;flex-direction:column;gap:8px"><div style="height:34px;border-radius:7px;background:#17e2ad"></div><div style="font:900 11px Archivo,sans-serif;color:#eaf6fa">Classic</div><div style="font:800 8px 'Barlow Condensed',sans-serif;color:#17e2ad;letter-spacing:1.2px">EQUIPPED</div></div>
+              <div style="padding:12px 10px;border-radius:13px;background:#0a2434;border:1px solid #16394a;display:flex;flex-direction:column;gap:8px"><div style="height:34px;border-radius:7px;background:linear-gradient(180deg,#17e2ad 0 40%,#eaf6fa 40% 60%,#17e2ad 60%)"></div><div style="font:900 11px Archivo,sans-serif;color:#eaf6fa">Stripe</div><div style="font:800 8px 'Barlow Condensed',sans-serif;color:#5d788a;letter-spacing:1.2px">OWNED</div></div>
+              <div style="padding:12px 10px;border-radius:13px;background:#0a2434;border:1px dashed #1f4a5e;display:flex;flex-direction:column;gap:8px;opacity:.55"><div style="height:34px;border-radius:7px;background:#16394a"></div><div style="font:900 11px Archivo,sans-serif;color:#7fa0b0">Heritage</div><div style="font:800 8px 'Barlow Condensed',sans-serif;color:#ffc531;letter-spacing:1.2px">3 ★ POND</div></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:2px">
+              <span style="font:800 9px 'Barlow Condensed',sans-serif;color:#ffc531;letter-spacing:2.6px">HELMET</span>
+              <div style="height:1px;flex:1;background:#16394a"></div>
+              <span style="font:400 10px 'Space Mono',monospace;color:#5d788a">1 / 4</span>
+            </div>
+            <div style="display:flex;gap:9px">
+              <div style="flex:1;padding:10px;border-radius:12px;background:#0d3a35;border:2px solid #17e2ad;display:flex;align-items:center;gap:9px"><div style="width:26px;height:20px;border-radius:9px 9px 3px 3px;background:#eaf6fa;flex:none"></div><div style="font:900 11px Archivo,sans-serif;color:#eaf6fa">Shell</div></div>
+              <div style="flex:1;padding:10px;border-radius:12px;background:#0a2434;border:1px dashed #1f4a5e;display:flex;align-items:center;gap:9px;opacity:.55"><div style="width:26px;height:20px;border-radius:9px 9px 3px 3px;background:#16394a;flex:none"></div><div style="flex:1"><div style="font:900 11px Archivo,sans-serif;color:#7fa0b0">Cage</div><div style="font:800 8px 'Barlow Condensed',sans-serif;color:#ffc531;letter-spacing:1.2px;margin-top:2px">3 ★ RINK</div></div></div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:10px;margin-top:2px">
+              <span style="font:800 9px 'Barlow Condensed',sans-serif;color:#ffc531;letter-spacing:2.6px">STICK</span>
+              <div style="height:1px;flex:1;background:#16394a"></div>
+              <span style="font:400 10px 'Space Mono',monospace;color:#5d788a">1 / 3</span>
+            </div>
+            <div style="display:flex;gap:9px">
+              <div style="flex:1;padding:10px;border-radius:12px;background:#0d3a35;border:2px solid #17e2ad;display:flex;align-items:center;gap:9px"><div style="width:26px;height:6px;border-radius:3px;background:#8b643f;flex:none"></div><div style="font:900 11px Archivo,sans-serif;color:#eaf6fa">Wood</div></div>
+              <div style="flex:1;padding:10px;border-radius:12px;background:#0a2434;border:1px dashed #1f4a5e;display:flex;align-items:center;gap:9px;opacity:.55"><div style="width:26px;height:6px;border-radius:3px;background:#16394a;flex:none"></div><div style="flex:1"><div style="font:900 11px Archivo,sans-serif;color:#7fa0b0">Composite</div><div style="font:800 8px 'Barlow Condensed',sans-serif;color:#ffc531;letter-spacing:1.2px;margin-top:2px">BAR DOWN MEDAL</div></div></div>
+            </div>
+          </div>
+        </div>
+      </x-import>
+      <div style="font:400 12px/1.6 'Barlow Condensed',sans-serif;color:#6e8b9b;letter-spacing:.3px">Player figure is the existing CSS/View construction from <code style="font:400 11px 'Space Mono',monospace;color:#8fb0c0">LockerAvatar</code>, unchanged in geometry — only the case around it is new. Locked items name their unlock condition.</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:11px;width:402px">
+      <div style="display:flex;align-items:baseline;gap:9px"><span style="font:700 11px 'Space Mono',monospace;color:#ffc531">08</span><span style="font:900 13px Archivo,sans-serif;color:#eaf6fa">MEDALS</span></div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+        <div style="width:402px;height:874px;background:#04101a;position:relative;overflow:hidden;font-family:Archivo,-apple-system,sans-serif">
+          <div style="position:absolute;inset:0;background:linear-gradient(180deg,#0d2130,#04101a 58%)"></div>
+          <div style="position:relative;height:100%;padding:54px 18px 34px;display:flex;flex-direction:column;gap:15px">
+            <div style="display:flex;align-items:center;gap:11px">
+              <div style="width:34px;height:34px;border-radius:11px;background:rgba(6,21,32,.8);border:1px solid rgba(180,220,240,.13);display:flex;align-items:center;justify-content:center"><span style="font-size:17px;color:#9dbccb;line-height:1;margin-top:-2px">‹</span></div>
+              <div style="flex:1">
+                <div style="font:800 9px 'Barlow Condensed',sans-serif;color:#17e2ad;letter-spacing:2.6px">CAREER MILESTONES</div>
+                <div style="font:900 italic 22px Archivo,sans-serif;color:#f2fbfd;letter-spacing:-.8px;margin-top:2px">MEDALS</div>
+              </div>
+              <div style="text-align:right"><div style="font:700 17px 'Space Mono',monospace;color:#ffc531">4<span style="color:#40606f">/20</span></div></div>
+            </div>
+
+            <div style="height:6px;border-radius:3px;background:#12303f;overflow:hidden"><div style="width:20%;height:6px;background:#ffc531"></div></div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div style="padding:14px;border-radius:15px;background:linear-gradient(160deg,#2a2413,#0f1a20);border:1px solid #6b5c2a;display:flex;flex-direction:column;gap:10px">
+                <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(160deg,#ffd76b,#e8a51d);display:flex;align-items:center;justify-content:center"><span style="font-size:19px;line-height:1">★</span></div>
+                <div><div style="font:900 14px Archivo,sans-serif;color:#f2fbfd">First Goal</div><div style="font:500 11px/1.35 'Barlow Condensed',sans-serif;color:#9dbccb;margin-top:3px;letter-spacing:.3px">Score your first goal.</div></div>
+              </div>
+              <div style="padding:14px;border-radius:15px;background:linear-gradient(160deg,#2a2413,#0f1a20);border:1px solid #6b5c2a;display:flex;flex-direction:column;gap:10px">
+                <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(160deg,#ffd76b,#e8a51d);display:flex;align-items:center;justify-content:center"><span style="font-size:19px;line-height:1">★</span></div>
+                <div><div style="font:900 14px Archivo,sans-serif;color:#f2fbfd">Mega Curve</div><div style="font:500 11px/1.35 'Barlow Condensed',sans-serif;color:#9dbccb;margin-top:3px;letter-spacing:.3px">Score using a mega curve.</div></div>
+              </div>
+              <div style="padding:14px;border-radius:15px;background:#0a2434;border:1px solid #16394a;display:flex;flex-direction:column;gap:10px">
+                <div style="width:42px;height:42px;border-radius:50%;background:#12303f;display:flex;align-items:center;justify-content:center"><span style="color:#2f5668;font-size:17px">★</span></div>
+                <div><div style="font:900 14px Archivo,sans-serif;color:#9dbccb">Bar Down</div><div style="font:500 11px/1.35 'Barlow Condensed',sans-serif;color:#6e91a3;margin-top:3px;letter-spacing:.3px">Score a bar-down goal.</div><div style="font:800 8px 'Barlow Condensed',sans-serif;color:#ffc531;letter-spacing:1.3px;margin-top:7px">REWARD · GOLD RUSH</div></div>
+              </div>
+              <div style="padding:14px;border-radius:15px;background:#0a2434;border:1px solid #16394a;display:flex;flex-direction:column;gap:10px">
+                <div style="width:42px;height:42px;border-radius:50%;background:#12303f;display:flex;align-items:center;justify-content:center"><span style="color:#2f5668;font-size:17px">★</span></div>
+                <div><div style="font:900 14px Archivo,sans-serif;color:#9dbccb">One-Timer</div><div style="font:500 11px/1.35 'Barlow Condensed',sans-serif;color:#6e91a3;margin-top:3px;letter-spacing:.3px">Score with a one-timer.</div></div>
+              </div>
+              <div style="padding:14px;border-radius:15px;background:#0a2434;border:1px solid #16394a;display:flex;flex-direction:column;gap:10px">
+                <div style="width:42px;height:42px;border-radius:50%;background:#12303f;display:flex;align-items:center;justify-content:center"><span style="color:#2f5668;font-size:17px">★</span></div>
+                <div><div style="font:900 14px Archivo,sans-serif;color:#9dbccb">Fire Puck</div><div style="font:500 11px/1.35 'Barlow Condensed',sans-serif;color:#6e91a3;margin-top:3px;letter-spacing:.3px">Score with maximum power.</div></div>
+              </div>
+              <div style="padding:14px;border-radius:15px;background:#0a2434;border:1px solid #16394a;display:flex;flex-direction:column;gap:10px">
+                <div style="width:42px;height:42px;border-radius:50%;background:#12303f;display:flex;align-items:center;justify-content:center"><span style="color:#2f5668;font-size:17px">★</span></div>
+                <div><div style="font:900 14px Archivo,sans-serif;color:#9dbccb">Bank Assist</div><div style="font:500 11px/1.35 'Barlow Condensed',sans-serif;color:#6e91a3;margin-top:3px;letter-spacing:.3px">Complete a bank pass assist.</div></div>
+              </div>
+            </div>
+
+            <div style="margin-top:auto;display:flex;gap:9px">
+              <div style="flex:1;padding:12px 14px;border-radius:13px;background:#0a2434;border:1px solid #16394a"><div style="font:700 17px 'Space Mono',monospace;color:#f2fbfd">4</div><div style="font:800 9px 'Barlow Condensed',sans-serif;color:#5d788a;letter-spacing:1.3px;margin-top:2px">GOALS</div></div>
+              <div style="flex:1;padding:12px 14px;border-radius:13px;background:#0a2434;border:1px solid #16394a"><div style="font:700 17px 'Space Mono',monospace;color:#f2fbfd">7</div><div style="font:800 9px 'Barlow Condensed',sans-serif;color:#5d788a;letter-spacing:1.3px;margin-top:2px">PASSES</div></div>
+              <div style="flex:1;padding:12px 14px;border-radius:13px;background:#0a2434;border:1px solid #16394a"><div style="font:700 17px 'Space Mono',monospace;color:#ffc531">9</div><div style="font:800 9px 'Barlow Condensed',sans-serif;color:#5d788a;letter-spacing:1.3px;margin-top:2px">STARS</div></div>
+            </div>
+          </div>
+        </div>
+      </x-import>
+      <div style="font:400 12px/1.6 'Barlow Condensed',sans-serif;color:#6e8b9b;letter-spacing:.3px">Earned tiles get the gold gradient + warm border; locked stay on surface. Toast on unlock reuses the same tile at the top of the play screen.</div>
+    </div>
+
+    <div style="width:402px;padding:22px;border-radius:18px;background:#0c1922;border:1px solid #1a2f3c">
+      <div style="font:800 9px 'Barlow Condensed',sans-serif;color:#ffc531;letter-spacing:2.8px">ART REQUIRED</div>
+      <div style="font:900 italic 20px Archivo,sans-serif;color:#f2fbfd;letter-spacing:-.6px;margin-top:8px">WHAT STILL NEEDS DRAWING</div>
+      <div style="font:400 12px/1.7 'Barlow Condensed',sans-serif;color:#7c95a2;letter-spacing:.3px;margin-top:12px">Every venue band in these mocks is stylized geometry — gradients and faint rink circles — and it ships as-is. To make the map feel like a place, commission:</div>
+      <div style="display:flex;flex-direction:column;gap:11px;margin-top:14px">
+        <div style="display:flex;gap:11px;align-items:baseline"><span style="font:700 11px 'Space Mono',monospace;color:#17e2ad">6×</span><div style="flex:1"><div style="font:900 12px Archivo,sans-serif;color:#eaf6fa">VENUE BACKDROPS · 402×430 @3×</div><div style="font:400 12px/1.6 'Barlow Condensed',sans-serif;color:#7c95a2;letter-spacing:.3px">One per venue. Must read behind a dark scrim and hold legible text on top — keep detail low and value dark.</div></div></div>
+        <div style="display:flex;gap:11px;align-items:baseline"><span style="font:700 11px 'Space Mono',monospace;color:#17e2ad">32×</span><div style="flex:1"><div style="font:900 12px Archivo,sans-serif;color:#eaf6fa">LEVEL STILLS · 168×108 @3×</div><div style="font:400 12px/1.6 'Barlow Condensed',sans-serif;color:#7c95a2;letter-spacing:.3px">One per level, shown in the level card header. A captured frame of the play works.</div></div></div>
+        <div style="display:flex;gap:11px;align-items:baseline"><span style="font:700 11px 'Space Mono',monospace;color:#17e2ad">2×</span><div style="flex:1"><div style="font:900 12px Archivo,sans-serif;color:#eaf6fa">ICONS · LOCK, BOLT</div><div style="font:400 12px/1.6 'Barlow Condensed',sans-serif;color:#7c95a2;letter-spacing:.3px">The mocks use glyphs as stand-ins. Everything else (★ ▶ ‹ ↻ ●) stays as type.</div></div></div>
+      </div>
+      <div style="height:1px;background:#1a2f3c;margin:20px 0 16px"></div>
+      <div style="font:800 9px 'Barlow Condensed',sans-serif;color:#ffc531;letter-spacing:2.8px">IMPLEMENTATION ORDER</div>
+      <div style="font:900 italic 20px Archivo,sans-serif;color:#f2fbfd;letter-spacing:-.6px;margin-top:8px">WHAT TO BUILD FIRST</div>
+      <div style="display:flex;flex-direction:column;gap:14px;margin-top:18px">
+        <div style="display:flex;gap:12px"><span style="font:700 12px 'Space Mono',monospace;color:#17e2ad">1</span><div style="flex:1"><div style="font:900 12px Archivo,sans-serif;color:#eaf6fa">VENUE MODEL</div><div style="font:400 12px/1.6 'Barlow Condensed',sans-serif;color:#7c95a2;letter-spacing:.3px">Add a venue field + star gate to each chapter in <code style="font:400 11px 'Space Mono',monospace;color:#8fb0c0">src/content/levels.ts</code>. Nothing else can land without it.</div></div></div>
+        <div style="display:flex;gap:12px"><span style="font:700 12px 'Space Mono',monospace;color:#17e2ad">2</span><div style="flex:1"><div style="font:900 12px Archivo,sans-serif;color:#eaf6fa">MAP SCREEN</div><div style="font:400 12px/1.6 'Barlow Condensed',sans-serif;color:#7c95a2;letter-spacing:.3px">Replace the Campaign list in <code style="font:400 11px 'Space Mono',monospace;color:#8fb0c0">src/ui.tsx</code> with the path. Star rings via react-native-svg Circle + strokeDasharray.</div></div></div>
+        <div style="display:flex;gap:12px"><span style="font:700 12px 'Space Mono',monospace;color:#17e2ad">3</span><div style="flex:1"><div style="font:900 12px Archivo,sans-serif;color:#eaf6fa">LEVEL CARD</div><div style="font:400 12px/1.6 'Barlow Condensed',sans-serif;color:#7c95a2;letter-spacing:.3px">Modal over the map, scaling from the tapped node's measured position.</div></div></div>
+        <div style="display:flex;gap:12px"><span style="font:700 12px 'Space Mono',monospace;color:#17e2ad">4</span><div style="flex:1"><div style="font:900 12px Archivo,sans-serif;color:#eaf6fa">HUD + RESULT</div><div style="font:400 12px/1.6 'Barlow Condensed',sans-serif;color:#7c95a2;letter-spacing:.3px">Strip the bottom slab in <code style="font:400 11px 'Space Mono',monospace;color:#8fb0c0">App.tsx</code>; move power into the button ring. Result keeps its data, new shell.</div></div></div>
+        <div style="display:flex;gap:12px"><span style="font:700 12px 'Space Mono',monospace;color:#17e2ad">5</span><div style="flex:1"><div style="font:900 12px Archivo,sans-serif;color:#eaf6fa">CAREER SCREENS</div><div style="font:400 12px/1.6 'Barlow Condensed',sans-serif;color:#7c95a2;letter-spacing:.3px">Restyle locker + medals in <code style="font:400 11px 'Space Mono',monospace;color:#8fb0c0">src/progressionUI.tsx</code>. Pure presentation, no logic change.</div></div></div>
+        <div style="display:flex;gap:12px"><span style="font:700 12px 'Space Mono',monospace;color:#17e2ad">6</span><div style="flex:1"><div style="font:900 12px Archivo,sans-serif;color:#eaf6fa">VENUE ART</div><div style="font:400 12px/1.6 'Barlow Condensed',sans-serif;color:#7c95a2;letter-spacing:.3px">Commission six backdrops. Until they exist, the stylized geometry here ships fine.</div></div></div>
+      </div>
+      <div style="height:1px;background:#1a2f3c;margin:20px 0 16px"></div>
+      <div style="font:400 12px/1.7 'Barlow Condensed',sans-serif;color:#7c95a2;letter-spacing:.3px">Fonts: Archivo + Barlow Condensed + Space Mono via <code style="font:400 11px 'Space Mono',monospace;color:#8fb0c0">expo-font</code>. Nothing here needs a new dependency beyond <code style="font:400 11px 'Space Mono',monospace;color:#8fb0c0">react-native-svg</code> (already used) for the star rings and power arc.</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}"></script>
+</body>
+</html>
