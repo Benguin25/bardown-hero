@@ -170,7 +170,11 @@ export function CampaignMap({ progress, loaded, error, save, select, soundOn, to
         onPress={(x, y) => tapNode(index, x, y)} />);
     }
     return <View key={venue.id} style={m.venue}
-      onLayout={event => { setSectionHeights(heights => ({ ...heights, [venue.id]: event.nativeEvent.layout.height })); if (holdsFocus) setSectionY(event.nativeEvent.layout.y); }}>
+      onLayout={event => {
+        const { height, y } = event.nativeEvent.layout;
+        setSectionHeights(heights => ({ ...heights, [venue.id]: height }));
+        if (holdsFocus) setSectionY(y);
+      }}>
       <Band colors={venue.band} />
       <Glow color={venue.accent} opacity={0.1} cy="34%" ry="52%" />
       {!!sectionHeights[venue.id] && <>
