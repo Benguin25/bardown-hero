@@ -18,7 +18,7 @@ import { LESSONS, lessonComplete, tutorialGame } from './src/tutorial';
 import { completedAchievementCount, emptyAchievements, observeAchievementEvent, parseAchievements, type AchievementDefinition } from './src/achievements';
 import { defaultProfile, parseProfile, sanitizeProfile, type PlayerProfile } from './src/profile';
 import { AchievementToast, AchievementsScreen, ProfileScreen, selectedRinkCosmetics } from './src/progressionUI';
-import { HomeScreen, ShopScreen } from './src/menuUI';
+import { HomeScreen, SettingsScreen, ShopScreen } from './src/menuUI';
 import { buyWithPucks, emptyShop, parseShop, puckBalance, type ShopItem } from './src/store';
 
 const SAVE_KEY = 'bardown.progress.v1';
@@ -42,7 +42,7 @@ function GameApp() {
   const frame = useRef(0);
   const mounted = useRef(true);
   const active = useRef(true);
-  const screen = useRef<'home' | 'levels' | 'game' | 'profile' | 'achievements' | 'shop' | 'venue'>('home');
+  const screen = useRef<'home' | 'levels' | 'game' | 'profile' | 'achievements' | 'shop' | 'settings' | 'venue'>('home');
   const menuReturn = useRef<'home' | 'levels'>('home');
   const tutorial = useRef<number | null>(null);
   const chased = useRef(false);
@@ -308,7 +308,7 @@ function GameApp() {
     cancelAnimationFrame(frame.current); rink.current?.dispose(); rink.current = null;
     setReady(false); restartAudioForNewScreen(); sync();
   };
-  const openMenuScreen = (target: 'profile' | 'achievements' | 'shop', from: 'home' | 'levels' = screen.current === 'home' ? 'home' : 'levels') => {
+  const openMenuScreen = (target: 'profile' | 'achievements' | 'shop' | 'settings', from: 'home' | 'levels' = screen.current === 'home' ? 'home' : 'levels') => {
     menuReturn.current = from;
     screen.current = target; lastUI.current = ''; restartAudioForNewScreen(); redraw(value => value + 1);
   };
@@ -329,7 +329,6 @@ function GameApp() {
     : lesson !== null ? LESSONS[lesson].title : g.reboundUsed ? 'BURY IT' : g.moment.title;
   const count = g.objectives.filter(o => o.complete).length;
   const victory = g.phase === 'SUCCESS';
-  const playerName = `#${profile.current.jerseyNumber} ${profile.current.name || 'PLAYER'}`;
   const buyShopItem = (item: ShopItem) => {
     const next = buyWithPucks(shop.current, item, puckBalance(shop.current, progress.current, achievements.current));
     if (!next) return false;
@@ -352,7 +351,7 @@ function GameApp() {
     <HomeScreen name={profile.current.name || 'Player'} pucks={puckBalance(shop.current, progress.current, achievements.current)} soundOn={soundOn}
       onPlay={() => { screen.current = 'levels'; redraw(value => value + 1); }} onLocker={() => openMenuScreen('profile', 'home')}
       onShop={() => openMenuScreen('shop', 'home')} onAchievements={() => openMenuScreen('achievements', 'home')}
-      onHelp={() => setShowHelp(true)} onSound={toggleSound} />
+      onHelp={() => setShowHelp(true)} onSettings={() => openMenuScreen('settings', 'home')} />
     {helpSheet('BACK TO HOME')}
   </View>;
 
@@ -371,6 +370,11 @@ function GameApp() {
     <ShopScreen state={shop.current} progress={progress.current} achievements={achievements.current} onBuy={buyShopItem} onBack={backToMenu} />
   </View>;
 
+  if (screen.current === 'settings') return <View style={s.root}>
+    <StatusBar barStyle="light-content" />
+    <SettingsScreen soundOn={soundOn} onToggleSound={toggleSound} onBack={backToMenu} />
+  </View>;
+
   if (screen.current === 'venue' && venueReveal !== null) {
     const venue = VENUES[venueReveal];
     const nextLevel = Math.min(venue.start, LEVELS.length - 1);
@@ -385,10 +389,10 @@ function GameApp() {
     <StatusBar barStyle="light-content" />
     <CampaignMap progress={progress.current} loaded={loaded} error={saveError}
       save={() => { if (loaded) { persist(); persistProfile(); persistAchievements(); } }}
-      select={selectLevel} soundOn={soundOn} toggleSound={toggleSound}
-      profileName={playerName} playerNumber={profile.current.jerseyNumber}
+      select={selectLevel} playerNumber={profile.current.jerseyNumber}
       openHome={() => { screen.current = 'home'; redraw(value => value + 1); }}
       openProfile={() => openMenuScreen('profile', 'levels')} openShop={() => openMenuScreen('shop', 'levels')} openAchievements={() => openMenuScreen('achievements', 'levels')}
+      openSettings={() => openMenuScreen('settings', 'levels')}
       onHelp={() => setShowHelp(true)} />
     {helpSheet('BACK TO THE MAP')}
   </View>;

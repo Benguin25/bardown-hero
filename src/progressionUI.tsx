@@ -184,7 +184,7 @@ export function AchievementsScreen({ state, progress, onBack }: { state: Achieve
                 {complete && <Band colors={[c.goldLight, '#F2B93B', c.goldDark]} />}
                 <Text style={[p.medalGlyph, !complete && p.medalGlyphLocked]}>★</Text>
               </View>
-              <View>
+              <View style={p.medalCopy}>
                 <Text style={[p.medalTitle, !complete && p.dim]}>{achievement.title}</Text>
                 <Text style={[p.medalBody, !complete && p.medalBodyLocked]}>{achievement.description}</Text>
                 {!!reward && <Text style={p.medalReward}>{complete ? 'UNLOCKED' : 'REWARD'} · {reward.label.toUpperCase()}</Text>}
@@ -304,11 +304,12 @@ const p = StyleSheet.create({
 
   meter: { height: 6, borderRadius: 3, backgroundColor: c.meterTrack, overflow: 'hidden' },
   meterFill: { height: 6, backgroundColor: c.gold },
-  medalGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  medalSlot: { flexGrow: 1, flexBasis: 0, minWidth: 145, maxWidth: 260 },
-  medal: { flex: 1, padding: 14, borderRadius: radii.card, overflow: 'hidden', backgroundColor: c.surface, borderWidth: 1, borderColor: c.surfaceBorder, gap: 10 },
+  medalGrid: { gap: 9 },
+  medalSlot: { alignSelf: 'stretch' },
+  medal: { minHeight: 86, padding: 13, borderRadius: radii.card, overflow: 'hidden', backgroundColor: c.surface, borderWidth: 1, borderColor: c.surfaceBorder, flexDirection: 'row', alignItems: 'center', gap: 12 },
   medalEarned: { borderColor: c.goldBorder, backgroundColor: 'transparent' },
   medalDisc: { width: 42, height: 42, borderRadius: 21, overflow: 'hidden', backgroundColor: c.meterTrack, alignItems: 'center', justifyContent: 'center' },
+  medalCopy: { flex: 1, minWidth: 0 },
   medalDiscEarned: { backgroundColor: 'transparent' },
   medalGlyph: { fontSize: 19, lineHeight: 23, color: c.ink },
   medalGlyphLocked: { color: c.ice700, fontSize: 17 },

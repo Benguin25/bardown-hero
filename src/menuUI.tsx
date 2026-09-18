@@ -6,9 +6,9 @@ import { SHOP_ITEMS, puckBalance, type ShopItem, type ShopState } from './store'
 import { Band, Button, Glow, Rise, s } from './ui';
 import { c, fonts, radii } from './theme';
 
-export function HomeScreen({ name, pucks, soundOn, onPlay, onLocker, onShop, onAchievements, onHelp, onSound }: {
+export function HomeScreen({ name, pucks, soundOn, onPlay, onLocker, onShop, onAchievements, onHelp, onSettings }: {
   name: string; pucks: number; soundOn: boolean; onPlay: () => void; onLocker: () => void; onShop: () => void;
-  onAchievements: () => void; onHelp: () => void; onSound: () => void;
+  onAchievements: () => void; onHelp: () => void; onSettings: () => void;
 }) {
   return <SafeAreaView style={s.root}><View style={m.home}><Band colors={['#0D3540', '#071F2D', c.ink]} /><Glow color={c.teal} opacity={0.15} cy="18%" />
     <Rise style={m.hero}><Text style={m.kicker}>ONE PUCK. BIG PLAYS.</Text><Text style={m.logo}>BARDOWN<Text style={m.teal}> HERO</Text></Text><Text style={m.welcome}>WELCOME BACK, {name.toUpperCase()}</Text></Rise>
@@ -16,9 +16,22 @@ export function HomeScreen({ name, pucks, soundOn, onPlay, onLocker, onShop, onA
     <View style={m.menu}>
       <Button style={m.play} onPress={onPlay}><Text style={m.playText}>PLAY</Text><Text style={m.arrow}>▶</Text></Button>
       <View style={m.menuRow}><Button style={m.menuButton} onPress={onLocker}><Text style={m.menuText}>LOCKER</Text></Button><Button style={m.menuButton} onPress={onShop}><Text style={m.menuText}>SHOP</Text></Button></View>
-      <View style={m.menuRow}><Button style={m.menuButton} onPress={onAchievements}><Text style={m.menuText}>ACHIEVEMENTS</Text></Button><Button style={m.menuButton} onPress={onHelp}><Text style={m.menuText}>HOW TO PLAY</Text></Button></View>
+      <View style={m.menuRow}><Button style={m.menuButton} onPress={onAchievements}><Text style={m.menuText}>ACHIEVEMENTS</Text></Button><Button style={m.menuButton} onPress={onSettings}><Text style={m.menuText}>SETTINGS</Text></Button></View>
+      <Button style={m.menuButton} onPress={onHelp}><Text style={m.menuText}>HOW TO PLAY</Text></Button>
     </View>
-    <Button style={m.sound} onPress={onSound}><Text style={m.soundText}>SOUND {soundOn ? 'ON' : 'OFF'}</Text></Button>
+    <Text style={m.soundText}>MUSIC {soundOn ? 'ON' : 'OFF'}</Text>
+  </View></SafeAreaView>;
+}
+
+export function SettingsScreen({ soundOn, onToggleSound, onBack }: { soundOn: boolean; onToggleSound: () => void; onBack: () => void }) {
+  return <SafeAreaView style={s.root}><View style={m.settingsPage}>
+    <Band colors={['#0C2C39', '#071F2D', c.ink]} /><Glow color={c.teal} opacity={0.12} cy="12%" />
+    <View style={m.shopHead}><Button style={s.chromeSquare} label="Back" onPress={onBack}><Text style={s.chromeGlyph}>‹</Text></Button><View><Text style={m.kicker}>GAME OPTIONS</Text><Text style={m.shopTitle}>SETTINGS</Text></View></View>
+    <View style={m.settingCard}>
+      <View style={m.settingCopy}><Text style={m.settingTitle}>MUSIC & SOUND</Text><Text style={m.settingBody}>Background music, rink sounds, and gameplay cues.</Text></View>
+      <Button style={[m.toggle, soundOn && m.toggleOn]} label={`Music ${soundOn ? 'on' : 'off'}`} onPress={onToggleSound}><Text style={[m.toggleText, soundOn && m.toggleTextOn]}>{soundOn ? 'ON' : 'OFF'}</Text></Button>
+    </View>
+    <Text style={m.settingsNote}>Your preference is saved automatically.</Text>
   </View></SafeAreaView>;
 }
 
@@ -48,6 +61,7 @@ export function ShopScreen({ state, progress, achievements, onBuy, onBack }: {
 const m = StyleSheet.create({
   home: { flex: 1, padding: 20, justifyContent: 'center' }, hero: { alignItems: 'center', marginBottom: 24 }, kicker: { color: c.teal, fontFamily: fonts.label, fontSize: 10, letterSpacing: 2.2 }, logo: { color: c.ice100, fontFamily: fonts.displayItalic, fontSize: 38, lineHeight: 42, letterSpacing: -1.7, marginTop: 5 }, teal: { color: c.teal }, welcome: { color: c.ice400, fontFamily: fonts.labelSoft, fontSize: 11, letterSpacing: 1.1, marginTop: 9 },
   balance: { alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 15, height: 38, borderRadius: 19, backgroundColor: c.surface, borderWidth: 1, borderColor: c.surfaceBorderStrong, marginBottom: 16 }, balanceSmall: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 11, height: 36, borderRadius: 18, backgroundColor: c.surface }, puckGlyph: { color: c.gold, fontSize: 13 }, balanceValue: { color: c.gold, fontFamily: fonts.numeral, fontSize: 16 }, balanceLabel: { color: c.ice400, fontFamily: fonts.label, fontSize: 9, letterSpacing: 1.2 },
-  menu: { gap: 9 }, play: { minHeight: 72, borderRadius: radii.card, backgroundColor: c.teal, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, playText: { color: c.ink, fontFamily: fonts.displayItalic, fontSize: 27 }, arrow: { color: c.ink, fontSize: 22 }, menuRow: { flexDirection: 'row', gap: 9 }, menuButton: { flex: 1, minHeight: 54, paddingHorizontal: 8, borderRadius: radii.chip, backgroundColor: c.surface, borderWidth: 1, borderColor: c.surfaceBorderStrong, alignItems: 'center', justifyContent: 'center' }, menuText: { color: c.ice200, fontFamily: fonts.label, fontSize: 11, letterSpacing: .7 }, sound: { alignSelf: 'center', marginTop: 18, padding: 10 }, soundText: { color: c.ice500, fontFamily: fonts.label, fontSize: 10, letterSpacing: 1.2 },
+  menu: { gap: 9 }, play: { minHeight: 72, borderRadius: radii.card, backgroundColor: c.teal, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, playText: { color: c.ink, fontFamily: fonts.displayItalic, fontSize: 27 }, arrow: { color: c.ink, fontSize: 22 }, menuRow: { flexDirection: 'row', gap: 9 }, menuButton: { flex: 1, minHeight: 54, paddingHorizontal: 8, borderRadius: radii.chip, backgroundColor: c.surface, borderWidth: 1, borderColor: c.surfaceBorderStrong, alignItems: 'center', justifyContent: 'center' }, menuText: { color: c.ice200, fontFamily: fonts.label, fontSize: 11, letterSpacing: .7 }, soundText: { color: c.ice500, fontFamily: fonts.label, fontSize: 10, letterSpacing: 1.2, textAlign: 'center', marginTop: 14 },
   shopPage: { padding: 18, paddingBottom: 42, gap: 12 }, shopHead: { flexDirection: 'row', alignItems: 'center', gap: 12 }, shopTitle: { color: '#eff8fa', fontSize: 31, fontWeight: '900', fontStyle: 'italic' }, shopIntro: { color: '#9eb5c0', fontSize: 12, lineHeight: 17 }, notice: { color: '#ffcf5a', fontSize: 11, fontWeight: '900', textAlign: 'center', padding: 10, borderRadius: 10, backgroundColor: '#2b3029' }, item: { minHeight: 94, borderRadius: 15, padding: 12, backgroundColor: '#10283a', borderWidth: 1, borderColor: '#294354', flexDirection: 'row', alignItems: 'center', gap: 11 }, itemArt: { width: 62, height: 68, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, carbon: { backgroundColor: '#151c25' }, itemGlyph: { color: '#071624', fontSize: 25, fontWeight: '900' }, itemCopy: { flex: 1 }, itemKind: { color: '#23dcb6', fontSize: 8, fontWeight: '900', letterSpacing: 1.3 }, itemName: { color: '#eff8fa', fontSize: 16, fontWeight: '900', marginTop: 3 }, cash: { color: '#768f9c', fontSize: 8, fontWeight: '800', marginTop: 7 }, buy: { minWidth: 70, height: 40, paddingHorizontal: 9, borderRadius: 11, backgroundColor: '#ffcf5a', alignItems: 'center', justifyContent: 'center' }, owned: { backgroundColor: '#18483f' }, unaffordable: { opacity: .58 }, buyText: { color: '#071624', fontSize: 10, fontWeight: '900' }, careerBox: { marginTop: 4, padding: 16, borderRadius: 14, borderWidth: 1, borderColor: '#345263', backgroundColor: '#0d2232', gap: 5 },
+  settingsPage: { flex: 1, padding: 18, gap: 20 }, settingCard: { marginTop: 18, minHeight: 92, padding: 16, borderRadius: radii.card, backgroundColor: c.surface, borderWidth: 1, borderColor: c.surfaceBorderStrong, flexDirection: 'row', alignItems: 'center', gap: 14 }, settingCopy: { flex: 1 }, settingTitle: { color: c.ice100, fontFamily: fonts.display, fontSize: 16 }, settingBody: { color: c.ice400, fontFamily: fonts.body, fontSize: 12, lineHeight: 17, marginTop: 4 }, toggle: { width: 62, height: 38, borderRadius: 19, backgroundColor: c.meterTrack, borderWidth: 1, borderColor: c.surfaceBorderStrong, alignItems: 'center', justifyContent: 'center' }, toggleOn: { backgroundColor: c.teal }, toggleText: { color: c.ice400, fontFamily: fonts.label, fontSize: 11 }, toggleTextOn: { color: c.ink }, settingsNote: { color: c.ice600, fontFamily: fonts.body, fontSize: 11, textAlign: 'center' },
 });
