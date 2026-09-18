@@ -22,6 +22,7 @@ function unlockLabel(cosmetic: Cosmetic): string {
   if (requirement.type === 'stars') return `${requirement.value} ★ TOTAL`;
   if (requirement.type === 'chapter') return `CLEAR ${VENUES[Number(requirement.value)]?.name ?? 'A VENUE'}`;
   if (requirement.type === 'perfectChapter') return `3 ★ ${VENUES[Number(requirement.value)]?.name ?? 'A VENUE'}`;
+  if (requirement.type === 'shop') return 'SHOP PURCHASE';
   return `${String(requirement.value).replace(/-/g, ' ').toUpperCase()} MEDAL`;
 }
 
@@ -53,7 +54,7 @@ function LockerAvatar({ profile, jersey, helmet, gloves, stick }: {
       <Text style={[p.avatarNumber, { color: numberColor }]}>{profile.jerseyNumber}</Text>
     </View>
     <View style={[p.leg, p.legLeft]}><View style={p.skate} /></View><View style={[p.leg, p.legRight]}><View style={p.skate} /></View>
-    <View style={[p.avatarStick, { backgroundColor: stick }, profile.stickStyle === 'carbon' && p.carbonStick]}><View style={[p.stickBlade, { backgroundColor: stick }]} />{profile.stickStyle === 'carbon' && <View style={p.stickTape} />}</View>
+    <View style={[p.avatarStick, { backgroundColor: stick }, profile.stickStyle.includes('carbon') && p.carbonStick]}><View style={[p.stickBlade, { backgroundColor: stick }]} />{profile.stickStyle.includes('carbon') && <View style={p.stickTape} />}</View>
   </View>;
 }
 
@@ -61,7 +62,7 @@ function LockerAvatar({ profile, jersey, helmet, gloves, stick }: {
 function Swatch({ cosmetic, kind, jersey }: { cosmetic: Cosmetic; kind: CosmeticKind; jersey: string }) {
   if (cosmetic.color) return <View style={[p.swatch, { backgroundColor: cosmetic.color }]} />;
   if (kind === 'helmetStyle') return <View style={p.swatchBox}><View style={p.helmetSwatch} />{cosmetic.id === 'cage' && <View style={p.helmetSwatchCage} />}{cosmetic.id === 'visor' && <View style={p.helmetSwatchVisor} />}</View>;
-  if (kind === 'stickStyle') return <View style={p.swatchBox}><View style={[p.stickSwatch, { backgroundColor: cosmetic.id === 'carbon' ? '#111820' : '#8B643F' }]} /></View>;
+  if (kind === 'stickStyle') return <View style={p.swatchBox}><View style={[p.stickSwatch, { backgroundColor: cosmetic.id.includes('carbon') ? '#111820' : '#8B643F' }]} /></View>;
   return <View style={[p.swatch, { backgroundColor: jersey, overflow: 'hidden' }]}>
     {cosmetic.id === 'stripe' && <><View style={[p.swatchStripe, { top: 10 }]} /><View style={[p.swatchStripe, { top: 20 }]} /></>}
     {cosmetic.id === 'heritage' && <View style={p.swatchSplit} />}
@@ -69,8 +70,9 @@ function Swatch({ cosmetic, kind, jersey }: { cosmetic: Cosmetic; kind: Cosmetic
   </View>;
 }
 
-export function ProfileScreen({ profile, progress, achievements, onChange, onBack }: {
+export function ProfileScreen({ profile, progress, achievements, shopOwned = [], onChange, onBack }: {
   profile: PlayerProfile; progress: Progress; achievements: AchievementState;
+  shopOwned?: string[];
   onChange: (profile: PlayerProfile) => void; onBack: () => void;
 }) {
   const unlocks = useMemo(() => ({
@@ -78,13 +80,14 @@ export function ProfileScreen({ profile, progress, achievements, onChange, onBac
     completedChapters: new Set(CHAPTERS.map((_, i) => i).filter(i => isChapterComplete(progress, i))),
     perfectChapters: new Set(CHAPTERS.map((_, i) => i).filter(i => isChapterPerfect(progress, i))),
     achievements: new Set(Object.keys(achievements.completed)),
-  }), [progress, achievements]);
+    shopOwned: new Set(shopOwned),
+  }), [progress, achievements, shopOwned]);
   const choose = (kind: CosmeticKind, id: string) => onChange({ ...profile, [kind]: id });
   const color = (kind: CosmeticKind, id: string) => COSMETICS.find(item => item.kind === kind && item.id === id)?.color;
   const jersey = color('jerseyColor', profile.jerseyColor) ?? '#F4FAFF';
   const helmet = color('helmetColor', profile.helmetColor) ?? '#FFFFFF';
   const gloves = color('gloveColor', profile.gloveColor) ?? '#17191D';
-  const stick = profile.stickStyle === 'carbon' ? '#111820' : '#8B643F';
+  const stick = profile.stickStyle.includes('carbon') ? '#111820' : '#8B643F';
 
   return <SafeAreaView style={s.root}>
     <Band colors={['#0A2331', '#071B27', c.ink]} />
@@ -148,7 +151,7 @@ export function ProfileScreen({ profile, progress, achievements, onChange, onBac
           </View>
         </View>;
       })}
-      <Text style={p.foot}>Cosmetics unlock through your career and medals. No currency, no store.</Text>
+      <Text style={p.foot}>Cosmetics unlock through your career, medals, and Shop purchases.</Text>
     </ScrollView>
   </SafeAreaView>;
 }
@@ -221,7 +224,7 @@ export const selectedRinkCosmetics = (profile: PlayerProfile) => {
     accent: profile.jerseyStyle === 'heritage' ? 0xffcf5a : 0x9ff5df,
     helmet: hex(findColor('helmetColor', profile.helmetColor, '#FFFFFF')),
     gloves: hex(findColor('gloveColor', profile.gloveColor, '#17191D')),
-    stick: profile.stickStyle === 'carbon' ? 0x111820 : 0x8b643f,
+    stick: profile.stickStyle.includes('carbon') ? 0x111820 : 0x8b643f,
     stickStyle: profile.stickStyle,
     jerseyStyle: profile.jerseyStyle === 'stripe' ? 'double-stripe' : profile.jerseyStyle === 'heritage' ? 'split' : 'classic',
     helmetStyle: profile.helmetStyle,

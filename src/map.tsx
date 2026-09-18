@@ -104,10 +104,10 @@ function CurrentRow({ index, playerNumber, onPress, onLayout }: {
   </View>;
 }
 
-export function CampaignMap({ progress, loaded, error, save, select, soundOn, toggleSound, profileName, playerNumber, openProfile, openAchievements, onHelp }: {
+export function CampaignMap({ progress, loaded, error, save, select, soundOn, toggleSound, profileName, playerNumber, openHome, openProfile, openShop, openAchievements, onHelp }: {
   progress: Progress; loaded: boolean; error: string; save: () => void; select: (index: number) => void;
   soundOn: boolean; toggleSound: () => void; profileName: string; playerNumber: number;
-  openProfile: () => void; openAchievements: () => void; onHelp: () => void;
+  openHome: () => void; openProfile: () => void; openShop: () => void; openAchievements: () => void; onHelp: () => void;
 }) {
   const root = useRef<View | null>(null);
   const scroll = useRef<ScrollView | null>(null);
@@ -212,6 +212,7 @@ export function CampaignMap({ progress, loaded, error, save, select, soundOn, to
         <Button style={s.chromePill} label="Open medals" onPress={openAchievements}>
           <Text style={m.starGlyph}>★</Text><Text style={m.starCount}>{total}</Text><Text style={m.starOf}>/{TOTAL_STARS}</Text>
         </Button>
+        <Button style={s.chromeSquare} label="Open shop" onPress={openShop}><Text style={m.shopGlyph}>$</Text></Button>
         <Button style={s.chromeSquare} label={`Sound ${soundOn ? 'on' : 'off'}`} onPress={toggleSound}>
           <Text style={m.soundGlyph}>{soundOn ? '♪' : '♪̸'}</Text>
         </Button>
@@ -219,7 +220,7 @@ export function CampaignMap({ progress, loaded, error, save, select, soundOn, to
     </View></SafeAreaView>
 
     <SafeAreaView style={m.helpSafe} pointerEvents="box-none">
-      <Button style={m.help} label="How to play" onPress={onHelp}><Text style={s.secondaryText}>HOW TO PLAY</Text></Button>
+      <View style={m.bottomNav}><Button style={m.help} label="Home" onPress={openHome}><Text style={s.secondaryText}>HOME</Text></Button><Button style={m.help} label="How to play" onPress={onHelp}><Text style={s.secondaryText}>HOW TO PLAY</Text></Button></View>
     </SafeAreaView>
 
     {card !== null && <LevelCard index={card.index} origin={card} viewport={viewport} progress={progress}
@@ -336,7 +337,8 @@ const m = StyleSheet.create({
   headerSafe: { position: 'absolute', top: 0, left: 0, right: 0 },
   header: { marginTop: 10, marginHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   helpSafe: { position: 'absolute', bottom: 0, left: 0, right: 0 },
-  help: { marginBottom: 8, alignSelf: 'center', height: 34, paddingHorizontal: 16, borderRadius: 17, backgroundColor: c.chrome, borderWidth: 1, borderColor: c.chromeBorder, alignItems: 'center', justifyContent: 'center' },
+  bottomNav: { marginBottom: 8, alignSelf: 'center', flexDirection: 'row', gap: 8 },
+  help: { height: 34, paddingHorizontal: 16, borderRadius: 17, backgroundColor: c.chrome, borderWidth: 1, borderColor: c.chromeBorder, alignItems: 'center', justifyContent: 'center' },
   playerPill: { paddingLeft: 6, gap: 8, flexShrink: 1, maxWidth: 168 },
   playerTile: { width: 24, height: 24, borderRadius: 8, backgroundColor: c.teal, alignItems: 'center', justifyContent: 'center' },
   playerTileNumber: { fontFamily: fonts.displayItalic, fontSize: 11, color: c.ink },
@@ -346,6 +348,7 @@ const m = StyleSheet.create({
   starCount: { fontFamily: fonts.numeral, fontSize: 12, color: c.gold },
   starOf: { fontFamily: fonts.numeralLight, fontSize: 10, color: c.ice600, marginLeft: -2 },
   soundGlyph: { fontSize: 15, color: c.locked, fontFamily: fonts.bodyStrong },
+  shopGlyph: { fontSize: 13, color: c.gold, fontFamily: fonts.numeral },
 
   banner: { marginHorizontal: 18, height: 46, flexDirection: 'row', alignItems: 'center', gap: 10 },
   bannerLabel: { fontFamily: fonts.label, fontSize: 9, letterSpacing: 3 },

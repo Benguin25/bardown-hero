@@ -18,12 +18,15 @@ import { LESSONS, lessonComplete, tutorialGame } from './src/tutorial';
 import { completedAchievementCount, emptyAchievements, observeAchievementEvent, parseAchievements, type AchievementDefinition } from './src/achievements';
 import { defaultProfile, parseProfile, sanitizeProfile, type PlayerProfile } from './src/profile';
 import { AchievementToast, AchievementsScreen, ProfileScreen, selectedRinkCosmetics } from './src/progressionUI';
+import { HomeScreen, ShopScreen } from './src/menuUI';
+import { buyWithPucks, emptyShop, parseShop, puckBalance, type ShopItem } from './src/store';
 
 const SAVE_KEY = 'bardown.progress.v1';
 const TUTORIAL_KEY = 'bardown.tutorial.v1';
 const SOUND_KEY = 'bardown.sound-enabled.v1';
 const PROFILE_KEY = 'bardown.profile.v1';
 const ACHIEVEMENTS_KEY = 'bardown.achievements.v1';
+const SHOP_KEY = 'bardown.shop.v1';
 
 /** Stroke length stands in for shot power while the play is being drawn. */
 function drawPower(preview: readonly Point[]) {
@@ -39,13 +42,15 @@ function GameApp() {
   const frame = useRef(0);
   const mounted = useRef(true);
   const active = useRef(true);
-  const screen = useRef<'levels' | 'game' | 'profile' | 'achievements' | 'venue'>('levels');
+  const screen = useRef<'home' | 'levels' | 'game' | 'profile' | 'achievements' | 'shop' | 'venue'>('home');
+  const menuReturn = useRef<'home' | 'levels'>('home');
   const tutorial = useRef<number | null>(null);
   const chased = useRef(false);
   const [showHelp, setShowHelp] = useState(false);
   const progress = useRef(emptyProgress());
   const profile = useRef(defaultProfile());
   const achievements = useRef(emptyAchievements());
+  const shop = useRef(emptyShop());
   const recorded = useRef<Game | null>(null);
   const retries = useRef(0);
   const saveQueue = useRef(Promise.resolve());
@@ -137,6 +142,11 @@ function GameApp() {
       .catch(() => { if (mounted.current) setSaveError('Progress is in memory, but could not be saved. Tap to retry saving.'); });
   }
 
+  function persistShop() {
+    saveQueue.current = saveQueue.current.then(() => AsyncStorage.setItem(SHOP_KEY, JSON.stringify(shop.current)))
+      .catch(() => { if (mounted.current) setSaveError('Your Shop purchase is in memory, but could not be saved.'); });
+  }
+
   function persistSound(enabled: boolean) {
     soundSaveQueue.current = soundSaveQueue.current
       .then(() => AsyncStorage.setItem(SOUND_KEY, enabled ? 'on' : 'off'))
@@ -165,11 +175,12 @@ function GameApp() {
   useEffect(() => {
     mounted.current = true;
     AsyncStorage.getItem(TUTORIAL_KEY).then(value => { if (mounted.current && !value) setShowHelp(true); }).catch(() => {});
-    Promise.all([AsyncStorage.getItem(SAVE_KEY), AsyncStorage.getItem(PROFILE_KEY), AsyncStorage.getItem(ACHIEVEMENTS_KEY)])
-      .then(([savedProgress, savedProfile, savedAchievements]) => {
+    Promise.all([AsyncStorage.getItem(SAVE_KEY), AsyncStorage.getItem(PROFILE_KEY), AsyncStorage.getItem(ACHIEVEMENTS_KEY), AsyncStorage.getItem(SHOP_KEY)])
+      .then(([savedProgress, savedProfile, savedAchievements, savedShop]) => {
         progress.current = parseProgress(savedProgress);
         profile.current = parseProfile(savedProfile);
         achievements.current = parseAchievements(savedAchievements);
+        shop.current = parseShop(savedShop);
       })
       .then(() => { if (mounted.current) setLoaded(true); })
       .catch(() => { if (mounted.current) setSaveError('Could not load your save. Close and reopen the app to retry.'); });
@@ -297,10 +308,11 @@ function GameApp() {
     cancelAnimationFrame(frame.current); rink.current?.dispose(); rink.current = null;
     setReady(false); restartAudioForNewScreen(); sync();
   };
-  const openMenuScreen = (target: 'profile' | 'achievements') => {
+  const openMenuScreen = (target: 'profile' | 'achievements' | 'shop', from: 'home' | 'levels' = screen.current === 'home' ? 'home' : 'levels') => {
+    menuReturn.current = from;
     screen.current = target; lastUI.current = ''; restartAudioForNewScreen(); redraw(value => value + 1);
   };
-  const backToCareer = () => { persistProfile(); screen.current = 'levels'; lastUI.current = ''; redraw(value => value + 1); };
+  const backToMenu = () => { persistProfile(); screen.current = menuReturn.current; lastUI.current = ''; redraw(value => value + 1); };
   const changeProfile = (next: PlayerProfile) => {
     profile.current = sanitizeProfile(next); scheduleProfileSave(); redraw(value => value + 1);
   };
@@ -318,15 +330,45 @@ function GameApp() {
   const count = g.objectives.filter(o => o.complete).length;
   const victory = g.phase === 'SUCCESS';
   const playerName = `#${profile.current.jerseyNumber} ${profile.current.name || 'PLAYER'}`;
+  const buyShopItem = (item: ShopItem) => {
+    const next = buyWithPucks(shop.current, item, puckBalance(shop.current, progress.current, achievements.current));
+    if (!next) return false;
+    shop.current = next; persistShop(); redraw(value => value + 1); return true;
+  };
+  const helpSheet = (backLabel: string) => showHelp && <View style={[StyleSheet.absoluteFill, a.sheetScrim]}>
+    <ScrollView style={a.sheet} contentContainerStyle={a.sheetBody}>
+      <Text style={s.eyebrow}>WELCOME TO BARDOWN HERO</Text><Text style={a.sheetTitle}>MAKE YOUR PLAY</Text>
+      <Text style={s.body}>Drag anywhere to draw from the puck. Lift to play. Time freezes while you aim.</Text>
+      <Text style={s.body}>Teal is your team. Red defenders race for passes and loose pucks. Lead a teammate into space or curve around pressure. A red pickup ends the rush.</Text>
+      <Text style={s.body}>Flick through the net to shoot. Move left or right for the side; follow through farther beyond the goal for a high shot. A centered low flick tests the pads for a rebound.</Text>
+      <Text style={s.body}>Tap the gold ring before drawing when a powerup is lit. Goals unlock levels. Earn all three stars together in one run.</Text>
+      <Button style={s.primary} onPress={() => { dismissHelp(); startLesson(0); }}><Text style={s.primaryText}>GUIDED TUTORIAL</Text></Button>
+      <Button style={s.secondary} onPress={dismissHelp}><Text style={s.secondaryText}>{backLabel}</Text></Button>
+    </ScrollView>
+  </View>;
+
+  if (screen.current === 'home') return <View style={s.root}>
+    <StatusBar barStyle="light-content" />
+    <HomeScreen name={profile.current.name || 'Player'} pucks={puckBalance(shop.current, progress.current, achievements.current)} soundOn={soundOn}
+      onPlay={() => { screen.current = 'levels'; redraw(value => value + 1); }} onLocker={() => openMenuScreen('profile', 'home')}
+      onShop={() => openMenuScreen('shop', 'home')} onAchievements={() => openMenuScreen('achievements', 'home')}
+      onHelp={() => setShowHelp(true)} onSound={toggleSound} />
+    {helpSheet('BACK TO HOME')}
+  </View>;
 
   if (screen.current === 'profile') return <View style={s.root}>
     <StatusBar barStyle="light-content" />
-    <ProfileScreen profile={profile.current} progress={progress.current} achievements={achievements.current} onChange={changeProfile} onBack={backToCareer} />
+    <ProfileScreen profile={profile.current} progress={progress.current} achievements={achievements.current} shopOwned={shop.current.owned} onChange={changeProfile} onBack={backToMenu} />
   </View>;
 
   if (screen.current === 'achievements') return <View style={s.root}>
     <StatusBar barStyle="light-content" />
-    <AchievementsScreen state={achievements.current} progress={progress.current} onBack={backToCareer} />
+    <AchievementsScreen state={achievements.current} progress={progress.current} onBack={backToMenu} />
+  </View>;
+
+  if (screen.current === 'shop') return <View style={s.root}>
+    <StatusBar barStyle="light-content" />
+    <ShopScreen state={shop.current} progress={progress.current} achievements={achievements.current} onBuy={buyShopItem} onBack={backToMenu} />
   </View>;
 
   if (screen.current === 'venue' && venueReveal !== null) {
@@ -345,20 +387,10 @@ function GameApp() {
       save={() => { if (loaded) { persist(); persistProfile(); persistAchievements(); } }}
       select={selectLevel} soundOn={soundOn} toggleSound={toggleSound}
       profileName={playerName} playerNumber={profile.current.jerseyNumber}
-      openProfile={() => openMenuScreen('profile')} openAchievements={() => openMenuScreen('achievements')}
+      openHome={() => { screen.current = 'home'; redraw(value => value + 1); }}
+      openProfile={() => openMenuScreen('profile', 'levels')} openShop={() => openMenuScreen('shop', 'levels')} openAchievements={() => openMenuScreen('achievements', 'levels')}
       onHelp={() => setShowHelp(true)} />
-    {showHelp && <View style={[StyleSheet.absoluteFill, a.sheetScrim]}>
-      <ScrollView style={a.sheet} contentContainerStyle={a.sheetBody}>
-        <Text style={s.eyebrow}>WELCOME TO BARDOWN HERO</Text>
-        <Text style={a.sheetTitle}>MAKE YOUR PLAY</Text>
-        <Text style={s.body}>Drag anywhere to draw from the puck. Lift to play. Time freezes while you aim.</Text>
-        <Text style={s.body}>Teal is your team. Red defenders race for passes and loose pucks. Lead a teammate into space or curve around pressure. A red pickup ends the rush.</Text>
-        <Text style={s.body}>Flick through the net to shoot. Move left or right for the side; follow through farther beyond the goal for a high shot. A centered low flick tests the pads for a rebound.</Text>
-        <Text style={s.body}>Tap the gold ring before drawing when a powerup is lit. Goals unlock levels. Earn all three stars together in one run.</Text>
-        <Button style={s.primary} onPress={() => { dismissHelp(); startLesson(0); }}><Text style={s.primaryText}>GUIDED TUTORIAL</Text></Button>
-        <Button style={s.secondary} onPress={dismissHelp}><Text style={s.secondaryText}>BACK TO THE MAP</Text></Button>
-      </ScrollView>
-    </View>}
+    {helpSheet('BACK TO THE MAP')}
   </View>;
 
   const resultObjectives: ResultObjective[] = g.objectives.map(objective => ({
