@@ -9,12 +9,16 @@
       "supportsTablet": false
     },
     "plugins": [
-      ["expo-audio", {
-        "microphonePermission": false,
-        "recordAudioAndroid": false,
-        "enableBackgroundRecording": false,
-        "enableBackgroundPlayback": false
-      }]
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "enableBackgroundRecording": false,
+          "enableBackgroundPlayback": false
+        }
+      ],
+      "expo-font"
     ]
   }
 }

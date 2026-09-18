@@ -107,6 +107,13 @@ export const OBJECTIVE_LABELS: Record<Objective, string> = {
 };
 
 
+// Short forms for the star tiles on the level card and the result rows.
+export const OBJECTIVE_SHORT: Record<Objective, string> = {
+  goal: 'SCORE', top: 'TOP SHELF', curve: 'CURVE',
+  passes: 'EVERY PASS', rebound: 'REBOUND', fire: 'FIRE PUCK', freeze: 'FREEZE',
+  bank: 'BANK PASS', lead: 'LEAD PASS',
+};
+
 export const LEVELS: readonly AuthoredLevel[] = [...RAW_LEVELS.map((level, index) => ({
   ...level,
   id: `level-${String(index + 1).padStart(2, '0')}`,

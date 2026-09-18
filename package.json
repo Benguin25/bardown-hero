@@ -10,13 +10,18 @@
     "test": "tsc -p tests/tsconfig.json && node --test tests/*.test.cjs"
   },
   "dependencies": {
+    "@expo-google-fonts/archivo": "^0.4.2",
+    "@expo-google-fonts/barlow-condensed": "^0.4.1",
+    "@expo-google-fonts/space-mono": "^0.4.2",
     "@react-native-async-storage/async-storage": "2.2.0",
     "expo": "~57.0.22",
     "expo-audio": "~57.0.5",
+    "expo-font": "~57.0.4",
     "expo-gl": "~57.0.2",
     "expo-haptics": "~57.0.3",
     "react": "19.2.3",
     "react-native": "0.86.3",
+    "react-native-svg": "15.15.4",
     "three": "0.162.0"
   },
   "devDependencies": {

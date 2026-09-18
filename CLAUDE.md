@@ -4,7 +4,7 @@
 Build a polished-feeling arcade hockey prototype, not a hockey simulator.
 
 ## Priorities
-Current user direction: a polished sixteen-level arcade campaign in the established dark/teal/yellow identity. Preserve swipe controls, authored movement, live receiver retrieval, board reflection, and goalie behavior. Keep the rink prominent, chrome compact, objectives readable, and campaign states clear. Use subtle transitions, star celebrations, and haptics, respecting reduced motion. iOS comes first; Android remains supported. League/world star gates and monetization remain deferred.
+Current user direction: a polished thirty-two-level arcade campaign on the ink/teal/gold UI-redesign identity (see `src/theme.ts`). The campaign reads as a physical climb through six venues on one map, not a level list. Preserve swipe controls, authored movement, live receiver retrieval, board reflection, and goalie behavior. Keep the rink prominent, chrome compact, objectives readable, and campaign states clear. Use subtle transitions, star celebrations, and haptics, respecting reduced motion. iOS comes first; Android remains supported. Monetization remains deferred.
 
 1. Core swipe gameplay
 2. Juice / responsiveness
@@ -22,7 +22,7 @@ Current user direction: a polished sixteen-level arcade campaign in the establis
 - Keep scenario logic data-driven enough that another scenario can be added later.
 - Preserve exaggerated curved puck paths. Do not "fix" them into realism.
 - Stars belong to a single successful run. Persist the best run; never combine objectives across attempts.
-- Completing a level unlocks the next regardless of star count. Powerups must be tapped at their authored decision and last for one action.
+- Completing a level unlocks the next within its venue. A venue itself opens on a total-star gate (`src/venues.ts`); gates never exceed the stars available before them, so replaying earlier levels always breaks one. Powerups must be tapped at their authored decision and last for one action.
 - Use placeholder assets when needed.
 - Keep gameplay code understandable and easy to iterate on.
 
