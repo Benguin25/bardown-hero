@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, SafeAreaView, ScrollView, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import { Animated, Easing, SafeAreaView, ScrollView, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { HIGHLIGHTS, LEVELS, OBJECTIVE_SHORT } from './content';
 import { isUnlocked, stars, type Progress } from './progress';
 import { TOTAL_STARS, VENUES, currentLevel, isPlayable, isVenueOpen, totalStars, venueStars, venueOfLevel, type Venue } from './venues';
-import { Band, Button, DashLine, Glow, Rule, StarRing, useReducedMotion, useShake, s } from './ui';
+import { Band, Button, DashLine, Fade, Glow, Rule, StarRing, useReducedMotion, useShake, s } from './ui';
 import { c, fonts, radii, shadow, t } from './theme';
 
 // Node x offsets meander around the dashed climb at x = 44.
@@ -104,10 +104,62 @@ function CurrentRow({ index, playerNumber, onPress, onLayout }: {
   </View>;
 }
 
-export function CampaignMap({ progress, loaded, error, save, select, playerNumber, openHome, openProfile, openShop, openAchievements, openSettings, onHelp }: {
+/** One destination in the Clubhouse sheet: icon tile, name, one line of copy. */
+function SheetRow({ tint, name, sub, onPress }: { tint: 'teal' | 'gold'; name: string; sub: string; onPress: () => void }) {
+  return <Button style={m.sheetRow} label={`${name}. ${sub}.`} onPress={onPress}>
+    <View style={[m.sheetIcon, tint === 'teal' ? m.sheetIconTeal : m.sheetIconGold]} />
+    <View style={m.sheetRowCopy}>
+      <Text style={m.sheetRowName}>{name}</Text>
+      <Text style={m.sheetRowSub}>{sub}</Text>
+    </View>
+    <Text style={m.sheetChevron}>›</Text>
+  </Button>;
+}
+
+/** The five non-climb destinations, each with a name and what is inside. */
+function ClubhouseSheet({ name, playerNumber, pucks, earned, medals, onClose, openProfile, openShop, openMedals, openSettings, onHelp }: {
+  name: string; playerNumber: number; pucks: number; earned: number; medals: number; onClose: () => void;
+  openProfile: () => void; openShop: () => void; openMedals: () => void; openSettings: () => void; onHelp: () => void;
+}) {
+  const rise = useRef(new Animated.Value(0)).current, reduced = useReducedMotion();
+  useEffect(() => {
+    const animation = Animated.timing(rise, { toValue: 1, duration: reduced ? 0 : 220, easing: Easing.out(Easing.cubic), useNativeDriver: true });
+    animation.start(); return () => animation.stop();
+  }, [rise, reduced]);
+  const translateY = rise.interpolate({ inputRange: [0, 1], outputRange: [420, 0] });
+  return <View style={s.fill}>
+    <Animated.View style={[s.fill, m.sheetScrim, { opacity: rise }]}>
+      <Button style={s.fill} quiet label="Close the clubhouse" onPress={onClose}><View /></Button>
+    </Animated.View>
+    <Animated.View style={[m.sheet, { transform: [{ translateY }] }]}>
+      <Button style={m.grabberTap} quiet label="Close the clubhouse" onPress={onClose}><View style={m.grabber} /></Button>
+      <View style={m.sheetHead}>
+        <View>
+          <Text style={m.sheetEyebrow}>{name.toUpperCase()} · #{playerNumber}</Text>
+          <Text style={m.sheetTitle}>CLUBHOUSE</Text>
+        </View>
+        <View style={m.sheetPuck}>
+          <Text style={m.sheetPuckGlyph}>●</Text><Text style={m.sheetPuckValue}>{pucks}</Text><Text style={m.sheetPuckLabel}>PUCKS</Text>
+        </View>
+      </View>
+      <View style={m.sheetRows}>
+        <SheetRow tint="teal" name="LOCKER" sub="Jerseys, sticks and earned gear" onPress={openProfile} />
+        <SheetRow tint="gold" name="SHOP" sub="Spend pucks on cosmetics" onPress={openShop} />
+        <SheetRow tint="gold" name="MEDALS" sub={`${earned} of ${TOTAL_STARS} stars · ${medals} achievements`} onPress={openMedals} />
+        <View style={m.sheetQuietRow}>
+          <Button style={m.sheetQuiet} onPress={onHelp}><Text style={m.sheetQuietText}>HOW TO PLAY</Text></Button>
+          <Button style={m.sheetQuiet} onPress={openSettings}><Text style={m.sheetQuietText}>SETTINGS</Text></Button>
+        </View>
+      </View>
+    </Animated.View>
+  </View>;
+}
+
+export function CampaignMap({ progress, loaded, error, save, select, playerName, playerNumber, pucks, medals, openHome, openProfile, openShop, openMedals, openSettings, onHelp }: {
   progress: Progress; loaded: boolean; error: string; save: () => void; select: (index: number) => void;
-  playerNumber: number; openHome: () => void; openProfile: () => void; openShop: () => void;
-  openAchievements: () => void; openSettings: () => void; onHelp: () => void;
+  playerName: string; playerNumber: number; pucks: number; medals: number;
+  openHome: () => void; openProfile: () => void; openShop: () => void;
+  openMedals: () => void; openSettings: () => void; onHelp: () => void;
 }) {
   const root = useRef<View | null>(null);
   const scroll = useRef<ScrollView | null>(null);
@@ -117,6 +169,7 @@ export function CampaignMap({ progress, loaded, error, save, select, playerNumbe
   const [sectionY, setSectionY] = useState(0);
   const [sectionHeights, setSectionHeights] = useState<Record<string, number>>({});
   const [card, setCard] = useState<{ index: number; x: number; y: number } | null>(null);
+  const [clubhouseOpen, setClubhouseOpen] = useState(false);
   const settled = useRef(false);
   const gate = useShake();
 
@@ -135,7 +188,7 @@ export function CampaignMap({ progress, loaded, error, save, select, playerNumbe
   useEffect(() => {
     if (settled.current || !loaded || !contentHeight || !currentY) return;
     settled.current = true;
-    const node = sectionY + currentY + 108; // 108 = map scroll padding above the first band.
+    const node = sectionY + currentY + 136; // 136 = map scroll padding above the first band.
     const y = Math.max(0, Math.min(contentHeight - viewport.height, node - viewport.height * 0.62 + NODE_PITCH));
     requestAnimationFrame(() => scroll.current?.scrollTo({ y, animated: false }));
   }, [loaded, contentHeight, currentY, sectionY, viewport.height]);
@@ -203,17 +256,27 @@ export function CampaignMap({ progress, loaded, error, save, select, playerNumbe
       </Text>}
     </ScrollView>
 
-    <SafeAreaView style={m.headerSafe} pointerEvents="box-none"><View style={m.header} pointerEvents="box-none">
-      <Button style={s.chromeSquare} label="Home" onPress={openHome}><Text style={m.toolGlyph}>⌂</Text></Button>
-      <Button style={s.chromeSquare} label="Open locker" onPress={openProfile}><Text style={m.clothesGlyph}>👕</Text></Button>
-      <Button style={s.chromeSquare} label={`Open medals. ${total} stars earned.`} onPress={openAchievements}><Text style={m.starGlyph}>★</Text></Button>
-      <Button style={s.chromeSquare} label="Open shop" onPress={openShop}><Text style={m.shopGlyph}>$</Text></Button>
-      <Button style={s.chromeSquare} label="Settings" onPress={openSettings}><Text style={m.toolGlyph}>⚙</Text></Button>
-      <Button style={s.chromeSquare} label="How to play" onPress={onHelp}><Text style={m.helpGlyph}>?</Text></Button>
-    </View></SafeAreaView>
+    <View pointerEvents="none" style={m.topFade}><Fade color={c.ink} from={0.94} to={0} /></View>
+    <View style={m.topBar} pointerEvents="box-none">
+      <Button style={m.homeTap} label="Home" onPress={openHome}><View style={m.homePill}><Text style={m.homePillText}>HOME</Text></View></Button>
+      <Text style={m.climbTitle}>THE CLIMB</Text>
+      <View style={m.starPill}>
+        <Text style={m.starPillGlyph}>★</Text><Text style={m.starPillValue}>{total}</Text><Text style={m.starPillOf}>/{TOTAL_STARS}</Text>
+      </View>
+    </View>
+
+    <View style={m.bottomBand} />
+    <Button style={m.clubhouse} label="Open the clubhouse" onPress={() => setClubhouseOpen(true)}>
+      <View style={m.burger}><View style={m.burgerBar} /><View style={m.burgerBar} /><View style={m.burgerBar} /></View>
+      <Text style={m.clubhouseText}>CLUBHOUSE</Text>
+    </Button>
 
     {card !== null && <LevelCard index={card.index} origin={card} viewport={viewport} progress={progress}
       onClose={() => setCard(null)} onPlay={() => { const index = card.index; setCard(null); select(index); }} />}
+
+    {clubhouseOpen && <ClubhouseSheet name={playerName} playerNumber={playerNumber} pucks={pucks} earned={total} medals={medals}
+      onClose={() => setClubhouseOpen(false)}
+      openProfile={openProfile} openShop={openShop} openMedals={openMedals} openSettings={openSettings} onHelp={onHelp} />}
   </View>;
 }
 
@@ -316,20 +379,59 @@ const title = (name: string) => name.charAt(0) + name.slice(1).toLowerCase();
 const tagline = (venue: Venue) => venue.order >= 4 ? 'The building is louder.' : 'The ice gets faster from here.';
 
 const m = StyleSheet.create({
-  scroll: { paddingTop: 68, paddingBottom: 72 },
+  // Clears the 96px top fade and the 96px bottom band that holds CLUBHOUSE.
+  scroll: { paddingTop: 96, paddingBottom: 104 },
   content: { position: 'relative' },
   venue: { position: 'relative', paddingBottom: 6 },
   path: { position: 'absolute', left: PATH_X, width: 2 },
   loading: { textAlign: 'center', marginTop: 18, paddingHorizontal: 24 },
   errorTap: { marginHorizontal: 18, marginTop: 14 },
 
-  headerSafe: { position: 'absolute', top: 0, left: 0, right: 0 },
-  header: { marginTop: 10, marginHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
-  starGlyph: { color: c.gold, fontSize: 15 },
-  toolGlyph: { color: c.chromeText, fontSize: 16, fontFamily: fonts.bodyStrong },
-  clothesGlyph: { fontSize: 14 },
-  helpGlyph: { color: c.teal, fontSize: 16, fontFamily: fonts.numeral },
-  shopGlyph: { fontSize: 13, color: c.gold, fontFamily: fonts.numeral },
+  // Top bar (3b): three labelled things in place of the six chrome squares.
+  // Sits at 46 with a 44px row so the 32px pills clear the touch-target floor
+  // while the visual pill still runs 52..84 as the design specifies.
+  topFade: { position: 'absolute', left: 0, right: 0, top: 0, height: 96 },
+  topBar: { position: 'absolute', left: 16, right: 16, top: 46, height: 44, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  homeTap: { height: 44, justifyContent: 'center' },
+  homePill: { height: 32, paddingHorizontal: 13, borderRadius: 16, backgroundColor: c.quietFillUp, borderWidth: 1, borderColor: c.glassBorderStrong, justifyContent: 'center' },
+  homePillText: { color: c.ice300, fontFamily: fonts.label, fontSize: 10, letterSpacing: 1.6 },
+  climbTitle: { flex: 1, textAlign: 'center', color: c.ice100, fontFamily: fonts.displayItalic, fontSize: 18, letterSpacing: -0.6 },
+  starPill: { height: 32, paddingHorizontal: 12, borderRadius: 16, backgroundColor: c.goldWashUp, borderWidth: 1, borderColor: c.goldEdge, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  starPillGlyph: { color: c.gold, fontSize: 11 },
+  starPillValue: { color: c.gold, fontFamily: fonts.numeral, fontSize: 12 },
+  starPillOf: { color: c.ice600, fontFamily: fonts.numeralLight, fontSize: 11 },
+
+  // Bottom bar: one labelled CLUBHOUSE at thumb height.
+  bottomBand: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 96, backgroundColor: c.bottomBand, borderTopWidth: 1, borderTopColor: c.chromeBorder },
+  clubhouse: { position: 'absolute', left: 16, right: 16, bottom: 38, height: 52, borderRadius: 15, backgroundColor: c.surface, borderWidth: 1, borderColor: c.surfaceBorderStrong, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  burger: { gap: 2.5 },
+  burgerBar: { width: 14, height: 2, backgroundColor: c.ice300 },
+  clubhouseText: { color: c.ice300, fontFamily: fonts.label, fontSize: 12, letterSpacing: 1.6 },
+
+  // Clubhouse sheet (3c).
+  sheetScrim: { backgroundColor: c.overlayScrim },
+  sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingTop: 18, paddingHorizontal: 18, paddingBottom: 34, borderTopLeftRadius: 26, borderTopRightRadius: 26, backgroundColor: c.inkRaised, borderTopWidth: 1, borderTopColor: c.glassBorder, ...shadow.sheet },
+  grabberTap: { alignSelf: 'center', paddingHorizontal: 24, paddingBottom: 18 },
+  grabber: { width: 46, height: 4, borderRadius: 2, backgroundColor: c.grabber },
+  sheetHead: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 16 },
+  sheetEyebrow: { color: c.ice600, fontFamily: fonts.label, fontSize: 9, letterSpacing: 2.6 },
+  sheetTitle: { marginTop: 4, color: c.ice100, fontFamily: fonts.displayItalic, fontSize: 26, letterSpacing: -1.1 },
+  sheetPuck: { height: 30, paddingHorizontal: 12, borderRadius: 15, backgroundColor: c.goldWashUp, borderWidth: 1, borderColor: c.goldEdge, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  sheetPuckGlyph: { color: c.gold, fontSize: 10 },
+  sheetPuckValue: { color: c.gold, fontFamily: fonts.numeral, fontSize: 12 },
+  sheetPuckLabel: { color: c.goldQuiet, fontFamily: fonts.label, fontSize: 9, letterSpacing: 1.2 },
+  sheetRows: { gap: 8 },
+  sheetRow: { height: 62, borderRadius: 15, backgroundColor: c.surface, borderWidth: 1, borderColor: c.surfaceBorderStrong, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 13 },
+  sheetIcon: { width: 32, height: 32, borderRadius: 10, borderWidth: 1 },
+  sheetIconTeal: { backgroundColor: c.tealIconFill, borderColor: c.tealIconBorder },
+  sheetIconGold: { backgroundColor: c.goldIconFill, borderColor: c.goldEdge },
+  sheetRowCopy: { flex: 1 },
+  sheetRowName: { color: c.ice200, fontFamily: fonts.label, fontSize: 13, letterSpacing: 0.9 },
+  sheetRowSub: { marginTop: 1, color: c.ice600, fontFamily: fonts.body, fontSize: 11 },
+  sheetChevron: { color: c.ice700, fontSize: 15 },
+  sheetQuietRow: { flexDirection: 'row', gap: 8 },
+  sheetQuiet: { flex: 1, height: 46, borderRadius: 14, backgroundColor: c.quietFillUp, borderWidth: 1, borderColor: c.glassBorder, alignItems: 'center', justifyContent: 'center' },
+  sheetQuietText: { color: c.ice300, fontFamily: fonts.label, fontSize: 11, letterSpacing: 1.3 },
 
   banner: { marginHorizontal: 18, height: 46, flexDirection: 'row', alignItems: 'center', gap: 10 },
   bannerLabel: { fontFamily: fonts.label, fontSize: 9, letterSpacing: 3 },

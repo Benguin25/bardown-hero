@@ -18,6 +18,8 @@ export type Venue = {
   /** Stylized band backdrop until real venue art exists. */
   band: readonly [string, string, string];
   accent: string;
+  /** Commissioned art, when it lands. Absent means the stripe placeholder. */
+  venueArt?: string;
 };
 
 const NAMES = ['BACKYARD POND', 'COMMUNITY RINK', 'JUNIOR BARN', 'COLLEGE ARENA', 'MINOR PRO', 'THE BIG LEAGUE'];
@@ -82,6 +84,21 @@ export function sealedVenue(progress: Progress): Venue | undefined {
   const total = totalStars(progress);
   return VENUES.find(venue => !isVenueOpen(progress, venue, total));
 }
+
+/**
+ * How close the player is to breaking the next gate, 0..1. Drives the bar on
+ * the sealed-gate card and the "5 ★ OPENS COMMUNITY RINK" line on home.
+ * 1 when nothing is sealed — there is no gate left to fill.
+ */
+export function nextGateProgress(progress: Progress): number {
+  const venue = sealedVenue(progress);
+  if (!venue || venue.gateStars <= 0) return 1;
+  return Math.max(0, Math.min(1, totalStars(progress) / venue.gateStars));
+}
+
+/** Level count behind the CAMPAIGN button, so it can say what it opens. */
+export const currentVenueLevelCount = (progress: Progress) =>
+  venueOfLevel(currentLevel(progress)).count;
 
 export const openVenues = (progress: Progress) => {
   const total = totalStars(progress);

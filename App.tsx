@@ -13,7 +13,7 @@ import { audio } from './src/sound';
 import { SOUND_PLAYS_IN_SILENT_MODE } from './src/audioPolicy';
 import { drainSoundEvents } from './src/audioEvents';
 import { emptyProgress, parseProgress, recordRun, stars } from './src/progress';
-import { VENUES, isPlayable, openVenues, venueOfLevel } from './src/venues';
+import { VENUES, currentLevel, isPlayable, openVenues, venueOfLevel } from './src/venues';
 import { LESSONS, lessonComplete, tutorialGame } from './src/tutorial';
 import { completedAchievementCount, emptyAchievements, observeAchievementEvent, parseAchievements, type AchievementDefinition } from './src/achievements';
 import { defaultProfile, parseProfile, sanitizeProfile, type PlayerProfile } from './src/profile';
@@ -348,9 +348,11 @@ function GameApp() {
 
   if (screen.current === 'home') return <View style={s.root}>
     <StatusBar barStyle="light-content" />
-    <HomeScreen name={profile.current.name || 'Player'} pucks={puckBalance(shop.current, progress.current, achievements.current)} soundOn={soundOn}
-      onPlay={() => { screen.current = 'levels'; redraw(value => value + 1); }} onLocker={() => openMenuScreen('profile', 'home')}
-      onShop={() => openMenuScreen('shop', 'home')} onAchievements={() => openMenuScreen('achievements', 'home')}
+    <HomeScreen name={profile.current.name || 'Player'} jerseyNumber={profile.current.jerseyNumber}
+      pucks={puckBalance(shop.current, progress.current, achievements.current)} progress={progress.current}
+      onPlay={() => selectLevel(currentLevel(progress.current))}
+      onCampaign={() => { screen.current = 'levels'; redraw(value => value + 1); }} onLocker={() => openMenuScreen('profile', 'home')}
+      onShop={() => openMenuScreen('shop', 'home')} onMedals={() => openMenuScreen('achievements', 'home')}
       onHelp={() => setShowHelp(true)} onSettings={() => openMenuScreen('settings', 'home')} />
     {helpSheet('BACK TO HOME')}
   </View>;
@@ -389,9 +391,10 @@ function GameApp() {
     <StatusBar barStyle="light-content" />
     <CampaignMap progress={progress.current} loaded={loaded} error={saveError}
       save={() => { if (loaded) { persist(); persistProfile(); persistAchievements(); } }}
-      select={selectLevel} playerNumber={profile.current.jerseyNumber}
+      select={selectLevel} playerName={profile.current.name || 'Player'} playerNumber={profile.current.jerseyNumber}
+      pucks={puckBalance(shop.current, progress.current, achievements.current)} medals={completedAchievementCount(achievements.current)}
       openHome={() => { screen.current = 'home'; redraw(value => value + 1); }}
-      openProfile={() => openMenuScreen('profile', 'levels')} openShop={() => openMenuScreen('shop', 'levels')} openAchievements={() => openMenuScreen('achievements', 'levels')}
+      openProfile={() => openMenuScreen('profile', 'levels')} openShop={() => openMenuScreen('shop', 'levels')} openMedals={() => openMenuScreen('achievements', 'levels')}
       openSettings={() => openMenuScreen('settings', 'levels')}
       onHelp={() => setShowHelp(true)} />
     {helpSheet('BACK TO THE MAP')}

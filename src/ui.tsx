@@ -77,15 +77,59 @@ export function Quiet({ live, children, style }: { live: boolean; children: Reac
 }
 
 /** Vertical band backdrop. Stands in for venue art until it is commissioned. */
-export function Band({ colors, style }: { colors: readonly [string, string, string]; style?: StyleProp<ViewStyle> }) {
+export function Band({ colors, stops = [0, 0.45, 1], style }: {
+  colors: readonly [string, string, string]; stops?: readonly [number, number, number]; style?: StyleProp<ViewStyle>;
+}) {
   const id = React.useId();
   return <View pointerEvents="none" style={[StyleSheet.absoluteFill, style]}>
     <Svg width="100%" height="100%">
       <Defs><LinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-        <Stop offset="0" stopColor={colors[0]} /><Stop offset="0.45" stopColor={colors[1]} /><Stop offset="1" stopColor={colors[2]} />
+        <Stop offset={stops[0]} stopColor={colors[0]} /><Stop offset={stops[1]} stopColor={colors[1]} /><Stop offset={stops[2]} stopColor={colors[2]} />
       </LinearGradient></Defs>
       <Rect x="0" y="0" width="100%" height="100%" fill={'url(#' + id + ')'} />
     </Svg>
+  </View>;
+}
+
+/** One colour fading down its own alpha: the chrome scrim under the top bar. */
+export function Fade({ color, from = 1, to = 0, style }: {
+  color: string; from?: number; to?: number; style?: StyleProp<ViewStyle>;
+}) {
+  const id = React.useId();
+  return <View pointerEvents="none" style={[StyleSheet.absoluteFill, style]}>
+    <Svg width="100%" height="100%">
+      <Defs><LinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+        <Stop offset="0" stopColor={color} stopOpacity={from} /><Stop offset="1" stopColor={color} stopOpacity={to} />
+      </LinearGradient></Defs>
+      <Rect x="0" y="0" width="100%" height="100%" fill={'url(#' + id + ')'} />
+    </Svg>
+  </View>;
+}
+
+/**
+ * Diagonal hatch standing in for venue art and the jersey weave. RN has no
+ * repeating-linear-gradient, so the stripes are drawn as parallel lines and
+ * clipped by the caller's overflow:hidden. `angle` is the CSS gradient angle:
+ * the lines run perpendicular to it, `period` apart.
+ */
+export function Stripes({ color, angle, thickness, period, style }: {
+  color: string; angle: number; thickness: number; period: number; style?: StyleProp<ViewStyle>;
+}) {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  const radians = (angle * Math.PI) / 180;
+  const axis = { x: Math.sin(radians), y: -Math.cos(radians) };
+  const run = { x: Math.cos(radians), y: Math.sin(radians) };
+  const span = size.width + size.height, steps = Math.ceil(span / period);
+  return <View pointerEvents="none" style={[StyleSheet.absoluteFill, style]}
+    onLayout={event => setSize(event.nativeEvent.layout)}>
+    {span > 0 && <Svg width={size.width} height={size.height}>
+      {Array.from({ length: steps * 2 + 1 }, (_, step) => {
+        const offset = (step - steps) * period + thickness / 2;
+        const x = size.width / 2 + axis.x * offset, y = size.height / 2 + axis.y * offset;
+        return <Line key={step} x1={x - run.x * span} y1={y - run.y * span} x2={x + run.x * span} y2={y + run.y * span}
+          stroke={color} strokeWidth={thickness} />;
+      })}
+    </Svg>}
   </View>;
 }
 
